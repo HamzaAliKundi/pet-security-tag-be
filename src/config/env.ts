@@ -9,8 +9,9 @@ interface EnvVars {
   MONGODB_URI: string;
   JWT_SECRET: string;
   SALT_ROUNDS: number;
-  SMTP_USER: string;
-  SMTP_PASS: string;
+  SENDGRID_API_KEY: string;
+  SENDGRID_FROM_EMAIL: string;
+  SENDGRID_FROM_NAME: string;
   FRONTEND_URL: string;
 }
 
@@ -21,8 +22,9 @@ const validateEnv = (): EnvVars => {
     'MONGODB_URI', 
     'JWT_SECRET', 
     'SALT_ROUNDS',
-    'SMTP_USER',
-    'SMTP_PASS',
+    'SENDGRID_API_KEY',
+    'SENDGRID_FROM_EMAIL',
+    'SENDGRID_FROM_NAME',
     'FRONTEND_URL'
   ];
   
@@ -39,8 +41,9 @@ const validateEnv = (): EnvVars => {
     MONGODB_URI: process.env.MONGODB_URI!,
     JWT_SECRET: process.env.JWT_SECRET!,
     SALT_ROUNDS: Number(process.env.SALT_ROUNDS),
-    SMTP_USER: process.env.SMTP_USER!,
-    SMTP_PASS: process.env.SMTP_PASS!,
+    SENDGRID_API_KEY: process.env.SENDGRID_API_KEY!,
+    SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL!,
+    SENDGRID_FROM_NAME: process.env.SENDGRID_FROM_NAME!,
     FRONTEND_URL: process.env.FRONTEND_URL!
   };
 };
