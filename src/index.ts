@@ -12,7 +12,7 @@ connectDB();
 const app: Express = express();
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://pet-security-admin.vercel.app', "https://user.digitaltails.com", "https://digitaltails.com"],
+  origin: ['http://localhost:5173', 'https://admin.digitaltails.com', "https://user.digitaltails.com", "https://digitaltails.com"],
   credentials: true
 }));
 

@@ -14,7 +14,7 @@ const env_1 = require("./config/env");
 (0, config_1.default)();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
-    origin: ['http://localhost:5173', 'https://pet-security-admin.vercel.app', "https://user.digitaltails.com", "https://digitaltails.com"],
+    origin: ['http://localhost:5173', 'https://admin.digitaltails.com', "https://user.digitaltails.com", "https://digitaltails.com"],
     credentials: true
 }));
 app.use((0, helmet_1.default)());
