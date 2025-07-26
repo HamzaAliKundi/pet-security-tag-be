@@ -7,7 +7,7 @@ import { sendPasswordResetEmail, sendVerificationEmail } from '../utils/emailSer
 import { generateForgotPasswordToken, generateToken, generateVerificationToken, verifyToken } from '../utils/jwt';
 
 export const register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email, password, name } = req.body;
+  const { email, password, firstName, lastName } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) res.status(400).json({ message: 'User already exists' });
@@ -18,12 +18,13 @@ export const register = asyncHandler(async (req: Request, res: Response): Promis
   const user = await User.create({
     email,
     password: hashedPassword,
-    name,
+    firstName,
+    lastName,
     isEmailVerified: false
   });
 
   const token = generateVerificationToken(user);
-  await sendVerificationEmail(email, name, token);
+  await sendVerificationEmail(email, firstName, token);
 
   res.status(201).json({
     message: 'User registered successfully. Please check your email to verify your account.',
@@ -32,7 +33,8 @@ export const register = asyncHandler(async (req: Request, res: Response): Promis
     user: {
       _id: user._id,
       email: user.email,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       role: user.role,
       isEmailVerified: user.isEmailVerified
     }
@@ -68,7 +70,8 @@ export const login = asyncHandler(async (req: Request, res: Response): Promise<v
     user: {
       _id: user._id,
       email: user.email,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       role: user.role
     }
   });
@@ -113,7 +116,7 @@ export const sendForgotPasswordEmail = asyncHandler(async (req: Request, res: Re
   }
 
   const token = generateForgotPasswordToken(user);
-  await sendPasswordResetEmail(email, user?.name, token);
+  await sendPasswordResetEmail(email, user?.firstName, token);
 
   res.status(200).json({
     message: 'Forgot password email sent successfully',

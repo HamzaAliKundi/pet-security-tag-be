@@ -11,7 +11,7 @@ const express_async_handler_1 = __importDefault(require("express-async-handler")
 const emailService_1 = require("../utils/emailService");
 const jwt_1 = require("../utils/jwt");
 exports.register = (0, express_async_handler_1.default)(async (req, res) => {
-    const { email, password, name } = req.body;
+    const { email, password, firstName, lastName } = req.body;
     const existingUser = await User_1.default.findOne({ email });
     if (existingUser)
         res.status(400).json({ message: 'User already exists' });
@@ -20,11 +20,12 @@ exports.register = (0, express_async_handler_1.default)(async (req, res) => {
     const user = await User_1.default.create({
         email,
         password: hashedPassword,
-        name,
+        firstName,
+        lastName,
         isEmailVerified: false
     });
     const token = (0, jwt_1.generateVerificationToken)(user);
-    await (0, emailService_1.sendVerificationEmail)(email, name, token);
+    await (0, emailService_1.sendVerificationEmail)(email, firstName, token);
     res.status(201).json({
         message: 'User registered successfully. Please check your email to verify your account.',
         status: 201,
@@ -32,7 +33,8 @@ exports.register = (0, express_async_handler_1.default)(async (req, res) => {
         user: {
             _id: user._id,
             email: user.email,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             role: user.role,
             isEmailVerified: user.isEmailVerified
         }
@@ -62,7 +64,8 @@ exports.login = (0, express_async_handler_1.default)(async (req, res) => {
         user: {
             _id: user._id,
             email: user.email,
-            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             role: user.role
         }
     });
@@ -100,7 +103,7 @@ exports.sendForgotPasswordEmail = (0, express_async_handler_1.default)(async (re
         return;
     }
     const token = (0, jwt_1.generateForgotPasswordToken)(user);
-    await (0, emailService_1.sendPasswordResetEmail)(email, user === null || user === void 0 ? void 0 : user.name, token);
+    await (0, emailService_1.sendPasswordResetEmail)(email, user === null || user === void 0 ? void 0 : user.firstName, token);
     res.status(200).json({
         message: 'Forgot password email sent successfully',
         status: 200
