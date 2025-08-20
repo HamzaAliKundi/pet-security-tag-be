@@ -3,6 +3,13 @@ import {
   createOrder, 
 } from '../controllers/user/order';
 import { 
+  createUserPetTagOrder,
+  getUserPetTagOrders,
+  getUserPetTagOrder,
+  updateUserPetTagOrder,
+  confirmPayment
+} from '../controllers/user/userPetTagOrder';
+import { 
   submitContact, 
   getAllContacts, 
   getContact, 
@@ -22,9 +29,15 @@ router.get('/contact', getAllContacts);
 router.get('/contact/:contactId', getContact);
 router.put('/contact/:contactId/status', updateContactStatus);
 
-// User dashbaord (Private)
+// User dashboard (Private)
 router.get("/get-single-user", authMiddleware, getSingleUser);
 router.patch("/update-single-user", authMiddleware, updateSingleUser);
 
+// Authenticated user pet tag order endpoints (Private)
+router.post('/user-pet-tag-orders', authMiddleware, createUserPetTagOrder);
+router.get('/user-pet-tag-orders', authMiddleware, getUserPetTagOrders);
+router.get('/user-pet-tag-orders/:orderId', authMiddleware, getUserPetTagOrder);
+router.put('/user-pet-tag-orders/:orderId', authMiddleware, updateUserPetTagOrder);
+router.post('/user-pet-tag-orders/:orderId/confirm-payment', authMiddleware, confirmPayment);
 
 export default router; 

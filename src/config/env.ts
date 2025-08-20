@@ -13,6 +13,8 @@ interface EnvVars {
   SENDGRID_FROM_EMAIL: string;
   SENDGRID_FROM_NAME: string;
   FRONTEND_URL: string;
+  STRIPE_PUBLISH_KEY: string;
+  STRIPE_SECRET_KEY: string;
 }
 
 const validateEnv = (): EnvVars => {
@@ -25,7 +27,9 @@ const validateEnv = (): EnvVars => {
     'SENDGRID_API_KEY',
     'SENDGRID_FROM_EMAIL',
     'SENDGRID_FROM_NAME',
-    'FRONTEND_URL'
+    'FRONTEND_URL',
+    'STRIPE_PUBLISH_KEY',
+    'STRIPE_SECRET_KEY'
   ];
   
   for (const envVar of requiredEnvVars) {
@@ -44,7 +48,9 @@ const validateEnv = (): EnvVars => {
     SENDGRID_API_KEY: process.env.SENDGRID_API_KEY!,
     SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL!,
     SENDGRID_FROM_NAME: process.env.SENDGRID_FROM_NAME!,
-    FRONTEND_URL: process.env.FRONTEND_URL!
+    FRONTEND_URL: process.env.FRONTEND_URL!,
+    STRIPE_PUBLISH_KEY: process.env.STRIPE_PUBLISH_KEY!,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!
   };
 };
 

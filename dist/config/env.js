@@ -17,7 +17,9 @@ const validateEnv = () => {
         'SENDGRID_API_KEY',
         'SENDGRID_FROM_EMAIL',
         'SENDGRID_FROM_NAME',
-        'FRONTEND_URL'
+        'FRONTEND_URL',
+        'STRIPE_PUBLISH_KEY',
+        'STRIPE_SECRET_KEY'
     ];
     for (const envVar of requiredEnvVars) {
         if (!process.env[envVar]) {
@@ -34,7 +36,9 @@ const validateEnv = () => {
         SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
         SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL,
         SENDGRID_FROM_NAME: process.env.SENDGRID_FROM_NAME,
-        FRONTEND_URL: process.env.FRONTEND_URL
+        FRONTEND_URL: process.env.FRONTEND_URL,
+        STRIPE_PUBLISH_KEY: process.env.STRIPE_PUBLISH_KEY,
+        STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY
     };
 };
 exports.env = validateEnv();
