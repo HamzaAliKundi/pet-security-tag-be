@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateUserPetTagOrder = exports.getUserPetTagOrder = exports.getUserPetTagOrders = exports.confirmPayment = exports.createUserPetTagOrder = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
+const Pet_1 = __importDefault(require("../../models/Pet"));
 const stripeService_1 = require("../../utils/stripeService");
 // Create pet tag order (Private - requires authentication)
 exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req, res) => {
@@ -145,28 +146,78 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
             order.paymentStatus = 'succeeded';
             order.status = 'paid';
             await order.save();
-            res.status(200).json({
-                message: 'Payment confirmed successfully',
-                status: 200,
-                order: {
-                    _id: order._id,
+            // Create pet record automatically when payment succeeds
+            try {
+                const pet = await Pet_1.default.create({
+                    userId: order.userId,
+                    userPetTagOrderId: order._id,
                     petName: order.petName,
-                    quantity: order.quantity,
-                    totalCostEuro: order.totalCostEuro,
-                    tagColor: order.tagColor,
-                    phone: order.phone,
-                    street: order.street,
-                    city: order.city,
-                    state: order.state,
-                    zipCode: order.zipCode,
-                    country: order.country,
-                    status: order.status,
-                    paymentStatus: order.paymentStatus,
-                    paymentIntentId: order.paymentIntentId,
-                    createdAt: order.createdAt,
-                    updatedAt: order.updatedAt
-                }
-            });
+                    hideName: false,
+                    age: undefined,
+                    breed: '',
+                    medication: '',
+                    allergies: '',
+                    notes: ''
+                });
+                res.status(200).json({
+                    message: 'Payment confirmed successfully and pet record created',
+                    status: 200,
+                    order: {
+                        _id: order._id,
+                        petName: order.petName,
+                        quantity: order.quantity,
+                        totalCostEuro: order.totalCostEuro,
+                        tagColor: order.tagColor,
+                        phone: order.phone,
+                        street: order.street,
+                        city: order.city,
+                        state: order.state,
+                        zipCode: order.zipCode,
+                        country: order.country,
+                        status: order.status,
+                        paymentStatus: order.paymentStatus,
+                        paymentIntentId: order.paymentIntentId,
+                        createdAt: order.createdAt,
+                        updatedAt: order.updatedAt
+                    },
+                    pet: {
+                        _id: pet._id,
+                        petName: pet.petName,
+                        hideName: pet.hideName,
+                        age: pet.age,
+                        breed: pet.breed,
+                        medication: pet.medication,
+                        allergies: pet.allergies,
+                        notes: pet.notes
+                    }
+                });
+            }
+            catch (petError) {
+                console.error('Error creating pet record:', petError);
+                // Still return success for payment, but log pet creation error
+                res.status(200).json({
+                    message: 'Payment confirmed successfully but failed to create pet record',
+                    status: 200,
+                    order: {
+                        _id: order._id,
+                        petName: order.petName,
+                        quantity: order.quantity,
+                        totalCostEuro: order.totalCostEuro,
+                        tagColor: order.tagColor,
+                        phone: order.phone,
+                        street: order.street,
+                        city: order.city,
+                        state: order.state,
+                        zipCode: order.zipCode,
+                        country: order.country,
+                        status: order.status,
+                        paymentStatus: order.paymentStatus,
+                        paymentIntentId: order.paymentIntentId,
+                        createdAt: order.createdAt,
+                        updatedAt: order.updatedAt
+                    }
+                });
+            }
         }
         else {
             // Payment failed
