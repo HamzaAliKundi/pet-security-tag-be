@@ -93,7 +93,7 @@ export const getUserById = asyncHandler(async (req: Request, res: Response): Pro
     const { userId } = req.params;
 
     const user = await User.findById(userId)
-      .select('firstName lastName email status createdAt lastLogin phone street city state zipCode country')
+      .select('firstName lastName email role status createdAt lastLogin phone street city state zipCode country')
       .lean();
 
     if (!user) {
@@ -277,3 +277,5 @@ export const getUserStats = asyncHandler(async (req: Request, res: Response): Pr
     });
   }
 });
+
+

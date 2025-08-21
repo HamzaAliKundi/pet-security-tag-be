@@ -7,7 +7,7 @@ import {
   getUserById, 
   updateUserStatus, 
   deleteUser, 
-  getUserStats 
+  getUserStats
 } from '../controllers/admin/users';
 
 const router = Router();

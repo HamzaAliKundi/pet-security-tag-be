@@ -78,7 +78,7 @@ exports.getUserById = (0, express_async_handler_1.default)(async (req, res) => {
     try {
         const { userId } = req.params;
         const user = await User_1.default.findById(userId)
-            .select('firstName lastName email status createdAt lastLogin phone street city state zipCode country')
+            .select('firstName lastName email role status createdAt lastLogin phone street city state zipCode country')
             .lean();
         if (!user) {
             res.status(404).json({
