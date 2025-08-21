@@ -60,9 +60,41 @@ const UserSchema = new mongoose_1.Schema({
         type: String,
         default: 'user'
     },
+    status: {
+        type: String,
+        enum: ['active', 'inactive', 'suspended'],
+        default: 'active'
+    },
     isEmailVerified: {
         type: Boolean,
         default: false
+    },
+    lastLogin: {
+        type: Date
+    },
+    phone: {
+        type: String,
+        trim: true
+    },
+    street: {
+        type: String,
+        trim: true
+    },
+    city: {
+        type: String,
+        trim: true
+    },
+    state: {
+        type: String,
+        trim: true
+    },
+    zipCode: {
+        type: String,
+        trim: true
+    },
+    country: {
+        type: String,
+        trim: true
     }
 }, {
     timestamps: true

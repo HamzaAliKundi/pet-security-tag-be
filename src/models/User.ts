@@ -6,8 +6,15 @@ export interface IUser extends Document {
   firstName: string;
   lastName: string;
   role: string;
-  status: boolean;
+  status: 'active' | 'inactive' | 'suspended';
   isEmailVerified: boolean;
+  lastLogin?: Date;
+  phone?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,9 +45,41 @@ const UserSchema: Schema = new Schema({
     type: String,
     default: 'user'
   },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended'],
+    default: 'active'
+  },
   isEmailVerified: {
     type: Boolean,
     default: false
+  },
+  lastLogin: {
+    type: Date
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  street: {
+    type: String,
+    trim: true
+  },
+  city: {
+    type: String,
+    trim: true
+  },
+  state: {
+    type: String,
+    trim: true
+  },
+  zipCode: {
+    type: String,
+    trim: true
+  },
+  country: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true
