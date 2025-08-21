@@ -7,11 +7,15 @@ const recentActivity_1 = require("../controllers/admin/recentActivity");
 const users_1 = require("../controllers/admin/users");
 const pets_1 = require("../controllers/admin/pets");
 const orders_1 = require("../controllers/admin/orders");
+const payments_1 = require("../controllers/admin/payments");
+const me_1 = require("../controllers/admin/me");
 const router = (0, express_1.Router)();
 // All admin routes require authentication
 router.use(auth_1.authMiddleware);
 // Admin overview endpoint
 router.get('/overview', overview_1.getOverview);
+// Admin session endpoint
+router.get('/me', me_1.getAdminMe);
 // Admin recent activity endpoint
 router.get('/recent-activity', recentActivity_1.getRecentActivity);
 // Admin user management endpoints
@@ -30,4 +34,8 @@ router.get('/orders', orders_1.getOrders);
 router.get('/orders/:orderId', orders_1.getOrderById);
 router.put('/orders/:orderId/status', orders_1.updateOrderStatus);
 router.get('/orders/stats', orders_1.getOrderStats);
+// Admin payment management endpoints
+router.get('/payments', payments_1.getPayments);
+router.get('/payments/stats', payments_1.getPaymentStats);
+router.get('/payments/:paymentId', payments_1.getPaymentById);
 exports.default = router;

@@ -21,6 +21,12 @@ import {
   updateOrderStatus, 
   getOrderStats
 } from '../controllers/admin/orders';
+import { 
+  getPayments, 
+  getPaymentById, 
+  getPaymentStats
+} from '../controllers/admin/payments';
+import { getAdminMe } from '../controllers/admin/me';
 
 const router = Router();
 
@@ -29,6 +35,9 @@ router.use(authMiddleware);
 
 // Admin overview endpoint
 router.get('/overview', getOverview);
+
+// Admin session endpoint
+router.get('/me', getAdminMe);
 
 // Admin recent activity endpoint
 router.get('/recent-activity', getRecentActivity);
@@ -51,5 +60,10 @@ router.get('/orders', getOrders);
 router.get('/orders/:orderId', getOrderById);
 router.put('/orders/:orderId/status', updateOrderStatus);
 router.get('/orders/stats', getOrderStats);
+
+// Admin payment management endpoints
+router.get('/payments', getPayments);
+router.get('/payments/stats', getPaymentStats);
+router.get('/payments/:paymentId', getPaymentById);
 
 export default router;
