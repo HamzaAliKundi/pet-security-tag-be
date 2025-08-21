@@ -26,7 +26,7 @@ import {
   getPaymentById, 
   getPaymentStats
 } from '../controllers/admin/payments';
-import { getAdminMe } from '../controllers/admin/me';
+
 
 const router = Router();
 
@@ -35,9 +35,6 @@ router.use(authMiddleware);
 
 // Admin overview endpoint
 router.get('/overview', getOverview);
-
-// Admin session endpoint
-router.get('/me', getAdminMe);
 
 // Admin recent activity endpoint
 router.get('/recent-activity', getRecentActivity);
