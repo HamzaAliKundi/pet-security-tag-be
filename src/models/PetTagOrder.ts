@@ -6,14 +6,13 @@ export interface IPetTagOrder extends Document {
   petName: string;
   quantity: number;
   subscriptionType: 'monthly' | 'yearly';
-  price: number;
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
   paymentIntentId?: string;
   shippingAddress?: {
     street: string;
     city: string;
     state: string;
-    zipCode: string;
+    zipCode: string;  
     country: string;
   };
   phone?: string;
@@ -49,10 +48,6 @@ const PetTagOrderSchema: Schema = new Schema({
     required: true,
     enum: ['monthly', 'yearly'],
     default: 'monthly'
-  },
-  price: {
-    type: Number,
-    required: true
   },
   status: {
     type: String,

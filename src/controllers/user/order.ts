@@ -7,9 +7,9 @@ import PetTagOrder from '../../models/PetTagOrder';
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { email, name, petName, quantity, subscriptionType, price, phone, shippingAddress } = req.body;
 
-  if (!email || !name || !petName || !quantity || !subscriptionType || !price) {
+  if (!email || !name || !petName || !quantity || !subscriptionType) {
     res.status(400).json({ 
-      message: 'All fields are required: email, name, petName, quantity, subscriptionType, price' 
+      message: 'All fields are required: email, name, petName, quantity, subscriptionType' 
     });
     return;
   }
@@ -30,18 +30,12 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
     return;
   }
 
-  if (typeof price !== 'number' || price <= 0) {
-    res.status(400).json({ message: 'Price must be a positive number' });
-    return;
-  }
-
   const order = await PetTagOrder.create({
     email,
     name,
     petName,
     quantity,
     subscriptionType,
-    price,
     phone,
     shippingAddress,
     status: 'pending'
@@ -57,7 +51,6 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       petName: order.petName,
       quantity: order.quantity,
       subscriptionType: order.subscriptionType,
-      price: order.price,
       status: order.status,
       phone: order.phone,
       shippingAddress: order.shippingAddress,
