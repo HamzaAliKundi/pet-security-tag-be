@@ -14,6 +14,8 @@ declare global {
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
+
+    console.log("token", token);
     
     if (!token) {
       res.status(401).json({ message: 'Authentication required' });
@@ -22,6 +24,8 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     const decoded = jwt.verify(token, env.JWT_SECRET) as unknown as { _id: string };
     const user = await User.findById(decoded._id).select('-password');
+    
+    console.log("user", user);
     
     if (!user) {
       res.status(401).json({ message: 'Unauthorized' });
