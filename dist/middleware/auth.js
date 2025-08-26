@@ -11,12 +11,14 @@ const authMiddleware = async (req, res, next) => {
     var _a;
     try {
         const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
+        console.log("token", token);
         if (!token) {
             res.status(401).json({ message: 'Authentication required' });
             return;
         }
         const decoded = jsonwebtoken_1.default.verify(token, env_1.env.JWT_SECRET);
         const user = await User_1.default.findById(decoded._id).select('-password');
+        console.log("user", user);
         if (!user) {
             res.status(401).json({ message: 'Unauthorized' });
             return;
