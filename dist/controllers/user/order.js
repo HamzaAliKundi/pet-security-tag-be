@@ -6,11 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createOrder = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
+const stripeService_1 = require("../../utils/stripeService");
 exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
-    const { email, name, petName, quantity, subscriptionType, price, phone, shippingAddress } = req.body;
-    if (!email || !name || !petName || !quantity || !subscriptionType || !price) {
+    const { email, name, petName, quantity, subscriptionType, tagColor, totalCostEuro, phone, shippingAddress, paymentMethodId } = req.body;
+    if (!email || !name || !petName || !quantity || !subscriptionType) {
         res.status(400).json({
-            message: 'All fields are required: email, name, petName, quantity, subscriptionType, price'
+            message: 'All fields are required: email, name, petName, quantity, subscriptionType'
         });
         return;
     }
@@ -27,36 +28,67 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
         res.status(400).json({ message: 'Subscription type must be either "monthly" or "yearly"' });
         return;
     }
-    if (typeof price !== 'number' || price <= 0) {
-        res.status(400).json({ message: 'Price must be a positive number' });
-        return;
-    }
-    const order = await PetTagOrder_1.default.create({
-        email,
-        name,
-        petName,
-        quantity,
-        subscriptionType,
-        price,
-        phone,
-        shippingAddress,
-        status: 'pending'
-    });
-    res.status(201).json({
-        message: 'Order created successfully',
-        status: 201,
-        order: {
-            _id: order._id,
-            email: order.email,
-            name: order.name,
-            petName: order.petName,
-            quantity: order.quantity,
-            subscriptionType: order.subscriptionType,
-            price: order.price,
-            status: order.status,
-            phone: order.phone,
-            shippingAddress: order.shippingAddress,
-            createdAt: order.createdAt
+    try {
+        // Create Stripe payment intent
+        const amountInCents = Math.round((totalCostEuro || 0) * 100); // Convert to cents
+        const paymentResult = await (0, stripeService_1.createPaymentIntent)({
+            amount: amountInCents,
+            currency: 'eur',
+            metadata: {
+                userId: email, // Using email as userId for now
+                petName,
+                quantity: quantity.toString(),
+                tagColor: tagColor || 'blue'
+            }
+        });
+        if (!paymentResult.success) {
+            res.status(400).json({
+                message: 'Failed to create payment intent: ' + (paymentResult.error || 'Unknown error')
+            });
+            return;
         }
-    });
+        // Create the order with payment intent ID
+        const order = await PetTagOrder_1.default.create({
+            email,
+            name,
+            petName,
+            quantity,
+            subscriptionType,
+            tagColor,
+            totalCostEuro,
+            phone,
+            shippingAddress,
+            paymentIntentId: paymentResult.paymentIntentId,
+            status: 'pending'
+        });
+        res.status(201).json({
+            message: 'Order created successfully',
+            status: 201,
+            order: {
+                _id: order._id,
+                email: order.email,
+                name: order.name,
+                petName: order.petName,
+                quantity: order.quantity,
+                subscriptionType: order.subscriptionType,
+                status: order.status,
+                tagColor: order.tagColor,
+                totalCostEuro: order.totalCostEuro,
+                phone: order.phone,
+                shippingAddress: order.shippingAddress,
+                paymentIntentId: order.paymentIntentId,
+                createdAt: order.createdAt
+            },
+            payment: {
+                clientSecret: paymentResult.clientSecret,
+                paymentIntentId: paymentResult.paymentIntentId
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error creating order:', error);
+        res.status(500).json({
+            message: 'Internal server error while creating order'
+        });
+    }
 });

@@ -63,10 +63,6 @@ const PetTagOrderSchema = new mongoose_1.Schema({
         enum: ['monthly', 'yearly'],
         default: 'monthly'
     },
-    price: {
-        type: Number,
-        required: true
-    },
     status: {
         type: String,
         required: true,
@@ -102,6 +98,14 @@ const PetTagOrderSchema = new mongoose_1.Schema({
     phone: {
         type: String,
         trim: true
+    },
+    tagColor: {
+        type: String,
+        trim: true
+    },
+    totalCostEuro: {
+        type: Number,
+        min: 0
     }
 }, {
     timestamps: true
