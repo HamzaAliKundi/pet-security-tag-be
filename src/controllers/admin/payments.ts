@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
+import PetTagOrder from '../../models/PetTagOrder';
 import User from '../../models/User';
 
 // Get all payments with search, filtering, and pagination
@@ -46,43 +47,124 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute query with pagination and populate user info
-    const payments = await UserPetTagOrder.find(searchQuery)
-      .populate('userId', 'firstName lastName email')
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    // Execute queries for both models
+    const [userPayments, petPayments] = await Promise.all([
+      UserPetTagOrder.find(searchQuery)
+        .populate('userId', 'firstName lastName email')
+        .sort(sortObj)
+        .lean(),
+      PetTagOrder.find(searchQuery)
+        .sort(sortObj)
+        .lean()
+    ]);
+
+    // Combine and sort all payments
+    let allPayments: any[] = [...userPayments, ...petPayments];
+    
+    // Sort combined payments
+    allPayments.sort((a, b) => {
+      const aValue = a[sortBy as string];
+      const bValue = b[sortBy as string];
+      
+      if (sortOrder === 'desc') {
+        return new Date(bValue).getTime() - new Date(aValue).getTime();
+      } else {
+        return new Date(aValue).getTime() - new Date(bValue).getTime();
+      }
+    });
 
     // Get total count for pagination
-    const totalPayments = await UserPetTagOrder.countDocuments(searchQuery);
+    const totalPayments = allPayments.length;
+    
+    // Check if requested page is valid
+    const totalPages = Math.ceil(totalPayments / limitNum);
+    
+    // Handle case when there are no payments
+    if (totalPayments === 0) {
+      res.status(200).json({
+        message: 'No payments found',
+        status: 200,
+        payments: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalPayments: 0,
+          paymentsPerPage: limitNum,
+          hasNextPage: false,
+          hasPrevPage: false
+        }
+      });
+      return;
+    }
+    
+    // Check if requested page is valid
+    if (pageNum > totalPages) {
+      res.status(400).json({
+        message: 'Invalid page number',
+        error: `Page ${pageNum} does not exist. Total pages: ${totalPages}`,
+        status: 400
+      });
+      return;
+    }
+
+    // Apply pagination to combined results
+    const paginatedPayments = allPayments.slice(skip, skip + limitNum);
 
     // Transform payments data to match frontend requirements
-    const transformedPayments = payments.map((payment) => {
-      const user = payment.userId as any;
-      return {
-        id: payment._id,
-        invoice: payment.paymentIntentId || `INV-${payment._id.toString().slice(-6).toUpperCase()}`,
-        customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-        date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
-        amount: `€${payment.totalCostEuro.toFixed(2)}`,
-        status: payment.paymentStatus === 'succeeded' ? 'Paid' : 
-                payment.paymentStatus === 'pending' ? 'Pending' : 
-                payment.paymentStatus === 'failed' ? 'Failed' : 'Refunded',
-        method: 'Card',
-        petName: payment.petName,
-        tagColor: payment.tagColor,
-        phone: payment.phone,
-        street: payment.street,
-        city: payment.city,
-        state: payment.state,
-        zipCode: payment.zipCode,
-        country: payment.country,
-        quantity: payment.quantity,
-        paymentStatus: payment.paymentStatus,
-        createdAt: payment.createdAt,
-        updatedAt: payment.updatedAt
-      };
+    const transformedPayments = paginatedPayments.map((payment) => {
+      // Check if it's a UserPetTagOrder (has userId) or PetTagOrder (has email/name)
+      if (payment.userId) {
+        // UserPetTagOrder
+        const user = payment.userId as any;
+        return {
+          id: payment._id,
+          invoice: payment.paymentIntentId || `INV-${payment._id.toString().slice(-6).toUpperCase()}`,
+          customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+          date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
+          amount: `€${(payment.totalCostEuro || 0).toFixed(2)}`,
+          status: payment.paymentStatus === 'succeeded' ? 'Paid' : 
+                  payment.paymentStatus === 'pending' ? 'Pending' : 
+                  payment.paymentStatus === 'failed' ? 'Failed' : 'Refunded',
+          method: 'Card',
+          petName: payment.petName || 'Unknown Pet',
+          tagColor: payment.tagColor || 'Unknown',
+          phone: payment.phone || 'No Phone',
+          street: payment.street || '',
+          city: payment.city || '',
+          state: payment.state || '',
+          zipCode: payment.zipCode || '',
+          country: payment.country || '',
+          quantity: payment.quantity || 1,
+          paymentStatus: payment.paymentStatus || 'pending',
+          paymentType: 'UserPetTagOrder',
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt
+        };
+      } else {
+        // PetTagOrder
+        return {
+          id: payment._id,
+          invoice: payment.paymentIntentId || `INV-${payment._id.toString().slice(-6).toUpperCase()}`,
+          customer: payment.name || 'No Name',
+          date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
+          amount: `€${(payment.totalCostEuro || 0).toFixed(2)}`,
+          status: 'Pending', // PetTagOrder doesn't have paymentStatus
+          method: 'Card',
+          petName: payment.petName || 'Unknown Pet',
+          tagColor: payment.tagColor || 'Unknown',
+          phone: payment.phone || 'No Phone',
+          street: payment.shippingAddress?.street || '',
+          city: payment.shippingAddress?.city || '',
+          state: payment.shippingAddress?.state || '',
+          zipCode: payment.shippingAddress?.zipCode || '',
+          country: payment.shippingAddress?.country || '',
+          quantity: payment.quantity || 1,
+          paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+          paymentType: 'PetTagOrder',
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt
+        };
+      }
     });
 
     res.status(200).json({
@@ -112,9 +194,18 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
   try {
     const { paymentId } = req.params;
 
-    const payment = await UserPetTagOrder.findById(paymentId)
+    // Search in both models
+    let payment = await UserPetTagOrder.findById(paymentId)
       .populate('userId', 'firstName lastName email')
       .lean();
+
+    let paymentType = 'UserPetTagOrder';
+
+    if (!payment) {
+      // If not found in UserPetTagOrder, search in PetTagOrder
+      payment = await PetTagOrder.findById(paymentId).lean();
+      paymentType = 'PetTagOrder';
+    }
 
     if (!payment) {
       res.status(404).json({
@@ -124,30 +215,61 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
       return;
     }
 
-    const user = payment.userId as any;
-    const transformedPayment = {
-      id: payment._id,
-      invoice: payment.paymentIntentId || `INV-${payment._id.toString().slice(-6).toUpperCase()}`,
-      customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-      date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
-      amount: `€${payment.totalCostEuro.toFixed(2)}`,
-      status: payment.paymentStatus === 'succeeded' ? 'Paid' : 
-              payment.paymentStatus === 'pending' ? 'Pending' : 
-              payment.paymentStatus === 'failed' ? 'Failed' : 'Refunded',
-      method: 'Card',
-      petName: payment.petName,
-      tagColor: payment.tagColor,
-      phone: payment.phone,
-      street: payment.street,
-      city: payment.city,
-      state: payment.state,
-      zipCode: payment.zipCode,
-      country: payment.country,
-      quantity: payment.quantity,
-      paymentStatus: payment.paymentStatus,
-      createdAt: payment.createdAt,
-      updatedAt: payment.updatedAt
-    };
+    let transformedPayment;
+
+    if (paymentType === 'UserPetTagOrder') {
+      // UserPetTagOrder
+      const user = payment.userId as any;
+      transformedPayment = {
+        id: payment._id,
+        invoice: payment.paymentIntentId || `INV-${payment._id.toString().slice(-6).toUpperCase()}`,
+        customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+        date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
+        amount: `€${(payment.totalCostEuro || 0).toFixed(2)}`,
+        status: payment.paymentStatus === 'succeeded' ? 'Paid' : 
+                payment.paymentStatus === 'pending' ? 'Pending' : 
+                payment.paymentStatus === 'failed' ? 'Failed' : 'Refunded',
+        method: 'Card',
+        petName: payment.petName || 'Unknown Pet',
+        tagColor: payment.tagColor || 'Unknown',
+        phone: payment.phone || 'No Phone',
+        street: payment.street || '',
+        city: payment.city || '',
+        state: payment.state || '',
+        zipCode: payment.zipCode || '',
+        country: payment.country || '',
+        quantity: payment.quantity || 1,
+        paymentStatus: payment.paymentStatus || 'pending',
+        paymentType: 'UserPetTagOrder',
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt
+      };
+    } else {
+      // PetTagOrder
+      const petPayment = payment as any;
+      transformedPayment = {
+        id: petPayment._id,
+        invoice: petPayment.paymentIntentId || `INV-${petPayment._id.toString().slice(-6).toUpperCase()}`,
+        customer: petPayment.name || 'No Name',
+        date: new Date(petPayment.createdAt).toLocaleDateString('en-GB'),
+        amount: `€${(petPayment.totalCostEuro || 0).toFixed(2)}`,
+        status: 'Pending', // PetTagOrder doesn't have paymentStatus
+        method: 'Card',
+        petName: petPayment.petName || 'Unknown Pet',
+        tagColor: petPayment.tagColor || 'Unknown',
+        phone: petPayment.phone || 'No Phone',
+        street: petPayment.shippingAddress?.street || '',
+        city: petPayment.shippingAddress?.city || '',
+        state: petPayment.shippingAddress?.state || '',
+        zipCode: petPayment.shippingAddress?.zipCode || '',
+        country: petPayment.shippingAddress?.country || '',
+        quantity: petPayment.quantity || 1,
+        paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+        paymentType: 'PetTagOrder',
+        createdAt: petPayment.createdAt,
+        updatedAt: petPayment.updatedAt
+      };
+    }
 
     res.status(200).json({
       message: 'Payment retrieved successfully',
@@ -166,10 +288,16 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
 // Get payment statistics
 export const getPaymentStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
-    const totalTransactions = await UserPetTagOrder.countDocuments();
+    // Get counts from both models
+    const [userTotalTransactions, petTotalTransactions] = await Promise.all([
+      UserPetTagOrder.countDocuments(),
+      PetTagOrder.countDocuments()
+    ]);
     
-    // Calculate total revenue from successful payments (same approach as overview endpoint)
-    const revenueData = await UserPetTagOrder.aggregate([
+    const totalTransactions = userTotalTransactions + petTotalTransactions;
+    
+    // Calculate total revenue from successful payments (UserPetTagOrder has paymentStatus)
+    const userRevenueData = await UserPetTagOrder.aggregate([
       {
         $match: {
           paymentStatus: 'succeeded'
@@ -183,10 +311,22 @@ export const getPaymentStats = asyncHandler(async (req: Request, res: Response):
       }
     ]);
     
-    const totalRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
+    // PetTagOrder doesn't have paymentStatus, so we'll count all as potential revenue
+    const petRevenueData = await PetTagOrder.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$totalCostEuro' }
+        }
+      }
+    ]);
     
-    // Calculate pending amount (same approach as overview endpoint)
-    const pendingData = await UserPetTagOrder.aggregate([
+    const userRevenue = userRevenueData.length > 0 ? userRevenueData[0].totalRevenue : 0;
+    const petRevenue = petRevenueData.length > 0 ? petRevenueData[0].totalRevenue : 0;
+    const totalRevenue = userRevenue + petRevenue;
+    
+    // Calculate pending amount (UserPetTagOrder has paymentStatus)
+    const userPendingData = await UserPetTagOrder.aggregate([
       {
         $match: {
           paymentStatus: 'pending'
@@ -200,7 +340,19 @@ export const getPaymentStats = asyncHandler(async (req: Request, res: Response):
       }
     ]);
     
-    const pendingAmount = pendingData.length > 0 ? pendingData[0].pendingAmount : 0;
+    // PetTagOrder doesn't have paymentStatus, so we'll count all as pending
+    const petPendingData = await PetTagOrder.aggregate([
+      {
+        $group: {
+          _id: null,
+          pendingAmount: { $sum: '$totalCostEuro' }
+        }
+      }
+    ]);
+    
+    const userPendingAmount = userPendingData.length > 0 ? userPendingData[0].pendingAmount : 0;
+    const petPendingAmount = petPendingData.length > 0 ? petPendingData[0].pendingAmount : 0;
+    const pendingAmount = userPendingAmount + petPendingAmount;
 
     res.status(200).json({
       message: 'Payment statistics retrieved successfully',
