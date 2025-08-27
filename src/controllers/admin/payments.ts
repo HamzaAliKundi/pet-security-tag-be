@@ -148,7 +148,7 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
           customer: payment.name || 'No Name',
           date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
           amount: `€${(payment.totalCostEuro || 0).toFixed(2)}`,
-          status: 'Pending', // PetTagOrder doesn't have paymentStatus
+          status: 'Paid', 
           method: 'Card',
           petName: payment.petName || 'Unknown Pet',
           tagColor: payment.tagColor || 'Unknown',
@@ -253,7 +253,7 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
         customer: petPayment.name || 'No Name',
         date: new Date(petPayment.createdAt).toLocaleDateString('en-GB'),
         amount: `€${(petPayment.totalCostEuro || 0).toFixed(2)}`,
-        status: 'Pending', // PetTagOrder doesn't have paymentStatus
+                 status: 'Paid', // PetTagOrder orders are considered paid
         method: 'Card',
         petName: petPayment.petName || 'Unknown Pet',
         tagColor: petPayment.tagColor || 'Unknown',
