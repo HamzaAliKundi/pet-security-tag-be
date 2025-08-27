@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import User from '../../models/User';
+import PetTagOrder from '../../models/PetTagOrder'; // Added import for PetTagOrder
 
 // Get all orders with search, filtering, and pagination
 export const getOrders = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -38,42 +39,91 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute query with pagination and populate user info
-    const orders = await UserPetTagOrder.find(searchQuery)
-      .populate('userId', 'firstName lastName email')
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    // Execute queries for both models
+    const [userOrders, petOrders] = await Promise.all([
+      UserPetTagOrder.find(searchQuery)
+        .populate('userId', 'firstName lastName email')
+        .sort(sortObj)
+        .lean(),
+      PetTagOrder.find(searchQuery)
+        .sort(sortObj)
+        .lean()
+    ]);
 
-    // Get total count for pagination
-    const totalOrders = await UserPetTagOrder.countDocuments(searchQuery);
+    // Combine and sort all orders
+    let allOrders: any[] = [...userOrders, ...petOrders];
+    
+    // Sort combined orders
+    allOrders.sort((a, b) => {
+      const aValue = a[sortBy as string];
+      const bValue = b[sortBy as string];
+      
+      if (sortOrder === 'desc') {
+        return new Date(bValue).getTime() - new Date(aValue).getTime();
+      } else {
+        return new Date(aValue).getTime() - new Date(bValue).getTime();
+      }
+    });
+
+    // Apply pagination to combined results
+    const paginatedOrders = allOrders.slice(skip, skip + limitNum);
+    const totalOrders = allOrders.length;
 
     // Transform orders data to match frontend requirements
-    const transformedOrders = orders.map((order) => {
-      const user = order.userId as any;
-      return {
-        id: order._id,
-        orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
-        customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-        email: user ? user.email : 'No Email',
-        items: order.quantity,
-        total: `€${order.totalCostEuro.toFixed(2)}`,
-        status: order.status,
-        date: new Date(order.createdAt).toISOString().split('T')[0],
-        tracking: order.paymentIntentId || 'N/A',
-        petName: order.petName,
-        tagColor: order.tagColor,
-        phone: order.phone,
-        street: order.street,
-        city: order.city,
-        state: order.state,
-        zipCode: order.zipCode,
-        country: order.country,
-        paymentStatus: order.paymentStatus,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt
-      };
+    const transformedOrders = paginatedOrders.map((order) => {
+      // Check if it's a UserPetTagOrder (has userId) or PetTagOrder (has email/name)
+      if (order.userId) {
+        // UserPetTagOrder
+        const user = order.userId as any;
+        return {
+          id: order._id,
+          orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+          customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+          email: user ? user.email : 'No Email',
+          items: order.quantity,
+          total: `€${order.totalCostEuro.toFixed(2)}`,
+          status: order.status,
+          date: new Date(order.createdAt).toISOString().split('T')[0],
+          tracking: order.paymentIntentId || 'N/A',
+          petName: order.petName,
+          tagColor: order.tagColor,
+          phone: order.phone,
+          street: order.street,
+          city: order.city,
+          state: order.state,
+          zipCode: order.zipCode,
+          country: order.country,
+          paymentStatus: order.paymentStatus,
+          orderType: 'UserPetTagOrder',
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt
+        };
+      } else {
+        // PetTagOrder
+        return {
+          id: order._id,
+          orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+          customer: order.name || 'No Name',
+          email: order.email || 'No Email',
+          items: order.quantity,
+          total: `€${order.totalCostEuro?.toFixed(2) || '0.00'}`,
+          status: order.status,
+          date: new Date(order.createdAt).toISOString().split('T')[0],
+          tracking: order.paymentIntentId || 'N/A',
+          petName: order.petName,
+          tagColor: order.tagColor,
+          phone: order.phone,
+          street: order.shippingAddress?.street || '',
+          city: order.shippingAddress?.city || '',
+          state: order.shippingAddress?.state || '',
+          zipCode: order.shippingAddress?.zipCode || '',
+          country: order.shippingAddress?.country || '',
+          paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+          orderType: 'PetTagOrder',
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt
+        };
+      }
     });
 
     res.status(200).json({
@@ -103,9 +153,18 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
   try {
     const { orderId } = req.params;
 
-    const order = await UserPetTagOrder.findById(orderId)
+    // Search in both models
+    let order = await UserPetTagOrder.findById(orderId)
       .populate('userId', 'firstName lastName email')
       .lean();
+
+    let orderType = 'UserPetTagOrder';
+
+    if (!order) {
+      // If not found in UserPetTagOrder, search in PetTagOrder
+      order = await PetTagOrder.findById(orderId).lean();
+      orderType = 'PetTagOrder';
+    }
 
     if (!order) {
       res.status(404).json({
@@ -115,29 +174,61 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
       return;
     }
 
-    const user = order.userId as any;
-    const transformedOrder = {
-      id: order._id,
-      orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
-      customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-      email: user ? user.email : 'No Email',
-      items: order.quantity,
-      total: `€${order.totalCostEuro.toFixed(2)}`,
-      status: order.status,
-      date: new Date(order.createdAt).toISOString().split('T')[0],
-      tracking: order.paymentIntentId || 'N/A',
-      petName: order.petName,
-      tagColor: order.tagColor,
-      phone: order.phone,
-      street: order.street,
-      city: order.city,
-      state: order.state,
-      zipCode: order.zipCode,
-      country: order.country,
-      paymentStatus: order.paymentStatus,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt
-    };
+    let transformedOrder;
+
+    if (orderType === 'UserPetTagOrder') {
+      // UserPetTagOrder
+      const user = order.userId as any;
+      transformedOrder = {
+        id: order._id,
+        orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+        customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+        email: user ? user.email : 'No Email',
+        items: order.quantity,
+        total: `€${order.totalCostEuro.toFixed(2)}`,
+        status: order.status,
+        date: new Date(order.createdAt).toISOString().split('T')[0],
+        tracking: order.paymentIntentId || 'N/A',
+        petName: order.petName,
+        tagColor: order.tagColor,
+        phone: order.phone,
+        street: order.street,
+        city: order.city,
+        state: order.state,
+        zipCode: order.zipCode,
+        country: order.country,
+        paymentStatus: order.paymentStatus,
+        orderType: 'UserPetTagOrder',
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      };
+    } else {
+      // PetTagOrder
+      const petOrder = order as any;
+      transformedOrder = {
+        id: petOrder._id,
+        orderId: petOrder.paymentIntentId || `ORD-${petOrder._id.toString().slice(-6).toUpperCase()}`,
+        customer: petOrder.name || 'No Name',
+        email: petOrder.email || 'No Email',
+        items: petOrder.quantity,
+        total: `€${petOrder.totalCostEuro?.toFixed(2) || '0.00'}`,
+        status: petOrder.status,
+        date: new Date(petOrder.createdAt).toISOString().split('T')[0],
+        tracking: petOrder.paymentIntentId || 'N/A',
+        petName: petOrder.petName,
+        tagColor: petOrder.tagColor,
+        phone: petOrder.phone,
+        street: petOrder.shippingAddress?.street || '',
+        city: petOrder.shippingAddress?.city || '',
+        state: petOrder.shippingAddress?.state || '',
+        zipCode: petOrder.shippingAddress?.zipCode || '',
+        country: petOrder.shippingAddress?.country || '',
+        paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+        orderType: 'PetTagOrder',
+        createdAt: petOrder.createdAt,
+        updatedAt: petOrder.updatedAt
+      };
+    }
 
     res.status(200).json({
       message: 'Order retrieved successfully',
@@ -233,20 +324,48 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
 // Get order statistics
 export const getOrderStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
-    const totalOrders = await UserPetTagOrder.countDocuments();
+    // Get counts from both models
+    const [userTotalOrders, petTotalOrders] = await Promise.all([
+      UserPetTagOrder.countDocuments(),
+      PetTagOrder.countDocuments()
+    ]);
     
-    // Get status breakdown
-    const statusStats = await UserPetTagOrder.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
+    const totalOrders = userTotalOrders + petTotalOrders;
+    
+    // Get status breakdown from both models
+    const [userStatusStats, petStatusStats] = await Promise.all([
+      UserPetTagOrder.aggregate([
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
         }
-      }
+      ]),
+      PetTagOrder.aggregate([
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
+        }
+      ])
     ]);
 
-    // Calculate total revenue from successful payments
-    const revenueStats = await UserPetTagOrder.aggregate([
+    // Combine status stats
+    const combinedStatusStats = [...userStatusStats, ...petStatusStats];
+    const statusBreakdown: any = {};
+    
+    combinedStatusStats.forEach((stat: any) => {
+      if (statusBreakdown[stat._id]) {
+        statusBreakdown[stat._id] += stat.count;
+      } else {
+        statusBreakdown[stat._id] = stat.count;
+      }
+    });
+
+    // Calculate total revenue from successful payments (UserPetTagOrder has paymentStatus)
+    const userRevenueStats = await UserPetTagOrder.aggregate([
       {
         $match: {
           paymentStatus: 'succeeded'
@@ -260,13 +379,21 @@ export const getOrderStats = asyncHandler(async (req: Request, res: Response): P
       }
     ]);
 
-    const totalRevenue = revenueStats.length > 0 ? revenueStats[0].totalRevenue : 0;
+    // PetTagOrder doesn't have paymentStatus, so we'll count all as potential revenue
+    const petRevenueStats = await PetTagOrder.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$totalCostEuro' }
+        }
+      }
+    ]);
 
-    // Transform status stats to object
-    const statusBreakdown: any = {};
-    statusStats.forEach((stat: any) => {
-      statusBreakdown[stat._id] = stat.count;
-    });
+    const userRevenue = userRevenueStats.length > 0 ? userRevenueStats[0].totalRevenue : 0;
+    const petRevenue = petRevenueStats.length > 0 ? petRevenueStats[0].totalRevenue : 0;
+    const totalRevenue = userRevenue + petRevenue;
+
+    // Transform status stats to object (already done above)
 
     res.status(200).json({
       message: 'Order statistics retrieved successfully',
