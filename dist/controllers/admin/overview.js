@@ -8,6 +8,7 @@ const express_async_handler_1 = __importDefault(require("express-async-handler")
 const User_1 = __importDefault(require("../../models/User"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
+const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
 // Get admin overview statistics
 exports.getOverview = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -17,28 +18,48 @@ exports.getOverview = (0, express_async_handler_1.default)(async (req, res) => {
         const totalUsers = await User_1.default.countDocuments();
         // Get count of active pets (pets that have been created after successful payment)
         const activePets = await Pet_1.default.countDocuments();
-        // Get count of total orders
-        const totalOrders = await UserPetTagOrder_1.default.countDocuments();
-        // Get count of total revenue (sum of all successful payments)
-        const revenueData = await UserPetTagOrder_1.default.aggregate([
-            {
-                $match: {
-                    paymentStatus: 'succeeded'
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    totalRevenue: { $sum: '$totalCostEuro' }
-                }
-            }
+        // Get count of total orders from both models
+        const [userTotalOrders, petTotalOrders] = await Promise.all([
+            UserPetTagOrder_1.default.countDocuments(),
+            PetTagOrder_1.default.countDocuments()
         ]);
-        const totalRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0;
-        // Get count of successful orders
-        const successfulOrders = await UserPetTagOrder_1.default.countDocuments({ paymentStatus: 'succeeded' });
-        // Get count of pending orders
+        const totalOrders = userTotalOrders + petTotalOrders;
+        // Get count of total revenue from both models
+        const [userRevenueData, petRevenueData] = await Promise.all([
+            UserPetTagOrder_1.default.aggregate([
+                {
+                    $match: {
+                        paymentStatus: 'succeeded'
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: '$totalCostEuro' }
+                    }
+                }
+            ]),
+            PetTagOrder_1.default.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: '$totalCostEuro' }
+                    }
+                }
+            ])
+        ]);
+        const userRevenue = userRevenueData.length > 0 ? userRevenueData[0].totalRevenue : 0;
+        const petRevenue = petRevenueData.length > 0 ? petRevenueData[0].totalRevenue : 0;
+        const totalRevenue = userRevenue + petRevenue;
+        // Get count of successful orders from both models
+        const [userSuccessfulOrders, petSuccessfulOrders] = await Promise.all([
+            UserPetTagOrder_1.default.countDocuments({ paymentStatus: 'succeeded' }),
+            PetTagOrder_1.default.countDocuments() // All PetTagOrder orders are considered successful
+        ]);
+        const successfulOrders = userSuccessfulOrders + petSuccessfulOrders;
+        // Get count of pending orders (only from UserPetTagOrder since PetTagOrder doesn't have paymentStatus)
         const pendingOrders = await UserPetTagOrder_1.default.countDocuments({ paymentStatus: 'pending' });
-        // Get count of failed orders
+        // Get count of failed orders (only from UserPetTagOrder since PetTagOrder doesn't have paymentStatus)
         const failedOrders = await UserPetTagOrder_1.default.countDocuments({ paymentStatus: 'failed' });
         res.status(200).json({
             message: 'Admin overview retrieved successfully',

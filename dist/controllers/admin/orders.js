@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOrderStats = exports.updateOrderStatus = exports.getOrderById = exports.getOrders = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
+const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder")); // Added import for PetTagOrder
 // Get all orders with search, filtering, and pagination
 exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -28,40 +29,118 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
         // Build sort object
         const sortObj = {};
         sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-        // Execute query with pagination and populate user info
-        const orders = await UserPetTagOrder_1.default.find(searchQuery)
-            .populate('userId', 'firstName lastName email')
-            .sort(sortObj)
-            .skip(skip)
-            .limit(limitNum)
-            .lean();
+        // Execute queries for both models with pagination
+        const [userOrders, petOrders] = await Promise.all([
+            UserPetTagOrder_1.default.find(searchQuery)
+                .populate('userId', 'firstName lastName email')
+                .sort(sortObj)
+                .lean(),
+            PetTagOrder_1.default.find(searchQuery)
+                .sort(sortObj)
+                .lean()
+        ]);
+        // Combine and sort all orders
+        let allOrders = [...userOrders, ...petOrders];
+        // Sort combined orders
+        allOrders.sort((a, b) => {
+            const aValue = a[sortBy];
+            const bValue = b[sortBy];
+            if (sortOrder === 'desc') {
+                return new Date(bValue).getTime() - new Date(aValue).getTime();
+            }
+            else {
+                return new Date(aValue).getTime() - new Date(bValue).getTime();
+            }
+        });
         // Get total count for pagination
-        const totalOrders = await UserPetTagOrder_1.default.countDocuments(searchQuery);
+        const totalOrders = allOrders.length;
+        // Check if requested page is valid
+        const totalPages = Math.ceil(totalOrders / limitNum);
+        // Handle case when there are no orders
+        if (totalOrders === 0) {
+            res.status(200).json({
+                message: 'No orders found',
+                status: 200,
+                orders: [],
+                pagination: {
+                    currentPage: 1,
+                    totalPages: 0,
+                    totalOrders: 0,
+                    ordersPerPage: limitNum,
+                    hasNextPage: false,
+                    hasPrevPage: false
+                }
+            });
+            return;
+        }
+        // Check if requested page is valid
+        if (pageNum > totalPages) {
+            res.status(400).json({
+                message: 'Invalid page number',
+                error: `Page ${pageNum} does not exist. Total pages: ${totalPages}`,
+                status: 400
+            });
+            return;
+        }
+        // Apply pagination to combined results
+        const paginatedOrders = allOrders.slice(skip, skip + limitNum);
         // Transform orders data to match frontend requirements
-        const transformedOrders = orders.map((order) => {
-            const user = order.userId;
-            return {
-                id: order._id,
-                orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
-                customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-                email: user ? user.email : 'No Email',
-                items: order.quantity,
-                total: `€${order.totalCostEuro.toFixed(2)}`,
-                status: order.status,
-                date: new Date(order.createdAt).toISOString().split('T')[0],
-                tracking: order.paymentIntentId || 'N/A',
-                petName: order.petName,
-                tagColor: order.tagColor,
-                phone: order.phone,
-                street: order.street,
-                city: order.city,
-                state: order.state,
-                zipCode: order.zipCode,
-                country: order.country,
-                paymentStatus: order.paymentStatus,
-                createdAt: order.createdAt,
-                updatedAt: order.updatedAt
-            };
+        const transformedOrders = paginatedOrders.map((order) => {
+            var _a, _b, _c, _d, _e;
+            // Check if it's a UserPetTagOrder (has userId) or PetTagOrder (has email/name)
+            if (order.userId) {
+                // UserPetTagOrder
+                const user = order.userId;
+                return {
+                    id: order._id,
+                    orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+                    customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+                    email: user ? user.email : 'No Email',
+                    items: order.quantity || 1,
+                    total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+                    status: order.status || 'pending',
+                    date: new Date(order.createdAt).toISOString().split('T')[0],
+                    tracking: order.paymentIntentId || 'N/A',
+                    petName: order.petName || 'Unknown Pet',
+                    tagColor: order.tagColor || 'Unknown',
+                    phone: order.phone || 'No Phone',
+                    street: order.street || '',
+                    city: order.city || '',
+                    state: order.state || '',
+                    zipCode: order.zipCode || '',
+                    country: order.country || '',
+                    paymentStatus: order.paymentStatus || 'pending',
+                    orderType: 'UserPetTagOrder',
+                    createdAt: order.createdAt,
+                    updatedAt: order.updatedAt
+                };
+            }
+            else {
+                // PetTagOrder
+                return {
+                    id: order._id,
+                    orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+                    customer: order.name || 'No Name',
+                    email: order.email || 'No Email',
+                    items: order.quantity || 1,
+                    total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+                    status: order.status || 'pending',
+                    date: new Date(order.createdAt).toISOString().split('T')[0],
+                    tracking: order.paymentIntentId || 'N/A',
+                    petName: order.petName || 'Unknown Pet',
+                    tagColor: order.tagColor || 'Unknown',
+                    phone: order.phone || 'No Phone',
+                    street: ((_a = order.shippingAddress) === null || _a === void 0 ? void 0 : _a.street) || '',
+                    city: ((_b = order.shippingAddress) === null || _b === void 0 ? void 0 : _b.city) || '',
+                    state: ((_c = order.shippingAddress) === null || _c === void 0 ? void 0 : _c.state) || '',
+                    zipCode: ((_d = order.shippingAddress) === null || _d === void 0 ? void 0 : _d.zipCode) || '',
+                    country: ((_e = order.shippingAddress) === null || _e === void 0 ? void 0 : _e.country) || '',
+                    paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                    orderType: 'PetTagOrder',
+                    createdAt: order.createdAt,
+                    updatedAt: order.updatedAt
+                };
+            }
         });
         res.status(200).json({
             message: 'Orders retrieved successfully',
@@ -79,19 +158,28 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
     }
     catch (error) {
         console.error('Error getting orders:', error);
+        console.error('Request query:', req.query);
         res.status(500).json({
             message: 'Failed to get orders',
-            error: 'Internal server error'
+            error: error instanceof Error ? error.message : 'Internal server error'
         });
     }
 });
 // Get single order by ID
 exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => {
+    var _a, _b, _c, _d, _e, _f;
     try {
         const { orderId } = req.params;
-        const order = await UserPetTagOrder_1.default.findById(orderId)
+        // Search in both models
+        let order = await UserPetTagOrder_1.default.findById(orderId)
             .populate('userId', 'firstName lastName email')
             .lean();
+        let orderType = 'UserPetTagOrder';
+        if (!order) {
+            // If not found in UserPetTagOrder, search in PetTagOrder
+            order = await PetTagOrder_1.default.findById(orderId).lean();
+            orderType = 'PetTagOrder';
+        }
         if (!order) {
             res.status(404).json({
                 message: 'Order not found',
@@ -99,29 +187,61 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
             });
             return;
         }
-        const user = order.userId;
-        const transformedOrder = {
-            id: order._id,
-            orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
-            customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-            email: user ? user.email : 'No Email',
-            items: order.quantity,
-            total: `€${order.totalCostEuro.toFixed(2)}`,
-            status: order.status,
-            date: new Date(order.createdAt).toISOString().split('T')[0],
-            tracking: order.paymentIntentId || 'N/A',
-            petName: order.petName,
-            tagColor: order.tagColor,
-            phone: order.phone,
-            street: order.street,
-            city: order.city,
-            state: order.state,
-            zipCode: order.zipCode,
-            country: order.country,
-            paymentStatus: order.paymentStatus,
-            createdAt: order.createdAt,
-            updatedAt: order.updatedAt
-        };
+        let transformedOrder;
+        if (orderType === 'UserPetTagOrder') {
+            // UserPetTagOrder
+            const user = order.userId;
+            transformedOrder = {
+                id: order._id,
+                orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+                customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+                email: user ? user.email : 'No Email',
+                items: order.quantity,
+                total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+                status: order.status,
+                date: new Date(order.createdAt).toISOString().split('T')[0],
+                tracking: order.paymentIntentId || 'N/A',
+                petName: order.petName,
+                tagColor: order.tagColor,
+                phone: order.phone,
+                street: order.street,
+                city: order.city,
+                state: order.state,
+                zipCode: order.zipCode,
+                country: order.country,
+                paymentStatus: order.paymentStatus,
+                orderType: 'UserPetTagOrder',
+                createdAt: order.createdAt,
+                updatedAt: order.updatedAt
+            };
+        }
+        else {
+            // PetTagOrder
+            const petOrder = order;
+            transformedOrder = {
+                id: petOrder._id,
+                orderId: petOrder.paymentIntentId || `ORD-${petOrder._id.toString().slice(-6).toUpperCase()}`,
+                customer: petOrder.name || 'No Name',
+                email: petOrder.email || 'No Email',
+                items: petOrder.quantity,
+                total: `€${((_a = petOrder.totalCostEuro) === null || _a === void 0 ? void 0 : _a.toFixed(2)) || '0.00'}`,
+                status: petOrder.status,
+                date: new Date(petOrder.createdAt).toISOString().split('T')[0],
+                tracking: petOrder.paymentIntentId || 'N/A',
+                petName: petOrder.petName,
+                tagColor: petOrder.tagColor,
+                phone: petOrder.phone,
+                street: ((_b = petOrder.shippingAddress) === null || _b === void 0 ? void 0 : _b.street) || '',
+                city: ((_c = petOrder.shippingAddress) === null || _c === void 0 ? void 0 : _c.city) || '',
+                state: ((_d = petOrder.shippingAddress) === null || _d === void 0 ? void 0 : _d.state) || '',
+                zipCode: ((_e = petOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
+                country: ((_f = petOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
+                paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                orderType: 'PetTagOrder',
+                createdAt: petOrder.createdAt,
+                updatedAt: petOrder.updatedAt
+            };
+        }
         res.status(200).json({
             message: 'Order retrieved successfully',
             status: 200,
@@ -173,7 +293,7 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
             customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
             email: user ? user.email : 'No Email',
             items: updatedOrder.quantity,
-            total: `€${updatedOrder.totalCostEuro.toFixed(2)}`,
+            total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
             status: updatedOrder.status,
             date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
             tracking: updatedOrder.paymentIntentId || 'N/A',
@@ -206,18 +326,44 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
 // Get order statistics
 exports.getOrderStats = (0, express_async_handler_1.default)(async (req, res) => {
     try {
-        const totalOrders = await UserPetTagOrder_1.default.countDocuments();
-        // Get status breakdown
-        const statusStats = await UserPetTagOrder_1.default.aggregate([
-            {
-                $group: {
-                    _id: '$status',
-                    count: { $sum: 1 }
-                }
-            }
+        // Get counts from both models
+        const [userTotalOrders, petTotalOrders] = await Promise.all([
+            UserPetTagOrder_1.default.countDocuments(),
+            PetTagOrder_1.default.countDocuments()
         ]);
-        // Calculate total revenue from successful payments
-        const revenueStats = await UserPetTagOrder_1.default.aggregate([
+        const totalOrders = userTotalOrders + petTotalOrders;
+        // Get status breakdown from both models
+        const [userStatusStats, petStatusStats] = await Promise.all([
+            UserPetTagOrder_1.default.aggregate([
+                {
+                    $group: {
+                        _id: '$status',
+                        count: { $sum: 1 }
+                    }
+                }
+            ]),
+            PetTagOrder_1.default.aggregate([
+                {
+                    $group: {
+                        _id: '$status',
+                        count: { $sum: 1 }
+                    }
+                }
+            ])
+        ]);
+        // Combine status stats
+        const combinedStatusStats = [...userStatusStats, ...petStatusStats];
+        const statusBreakdown = {};
+        combinedStatusStats.forEach((stat) => {
+            if (statusBreakdown[stat._id]) {
+                statusBreakdown[stat._id] += stat.count;
+            }
+            else {
+                statusBreakdown[stat._id] = stat.count;
+            }
+        });
+        // Calculate total revenue from successful payments (UserPetTagOrder has paymentStatus)
+        const userRevenueStats = await UserPetTagOrder_1.default.aggregate([
             {
                 $match: {
                     paymentStatus: 'succeeded'
@@ -230,12 +376,19 @@ exports.getOrderStats = (0, express_async_handler_1.default)(async (req, res) =>
                 }
             }
         ]);
-        const totalRevenue = revenueStats.length > 0 ? revenueStats[0].totalRevenue : 0;
-        // Transform status stats to object
-        const statusBreakdown = {};
-        statusStats.forEach((stat) => {
-            statusBreakdown[stat._id] = stat.count;
-        });
+        // PetTagOrder doesn't have paymentStatus, so we'll count all as potential revenue
+        const petRevenueStats = await PetTagOrder_1.default.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: '$totalCostEuro' }
+                }
+            }
+        ]);
+        const userRevenue = userRevenueStats.length > 0 ? userRevenueStats[0].totalRevenue : 0;
+        const petRevenue = petRevenueStats.length > 0 ? petRevenueStats[0].totalRevenue : 0;
+        const totalRevenue = userRevenue + petRevenue;
+        // Transform status stats to object (already done above)
         res.status(200).json({
             message: 'Order statistics retrieved successfully',
             status: 200,
