@@ -1,37 +1,74 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
+import PetTagOrder from '../../models/PetTagOrder';
 
 // Get recent order activity for admin
 export const getRecentActivity = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get top 5 recent orders based on creation time
-    const recentOrders = await UserPetTagOrder.find()
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate('userId', 'firstName lastName email')
-      .select('petName totalCostEuro status paymentStatus createdAt')
-      .lean();
+    // Get top 5 recent orders from both models based on creation time
+    const [userRecentOrders, petRecentOrders] = await Promise.all([
+      UserPetTagOrder.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .populate('userId', 'firstName lastName email')
+        .select('petName totalCostEuro status paymentStatus createdAt')
+        .lean(),
+      PetTagOrder.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('petName totalCostEuro status createdAt name email')
+        .lean()
+    ]);
+
+    // Combine and sort all orders by creation time
+    let allOrders: any[] = [...userRecentOrders, ...petRecentOrders];
+    allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Take top 5 from combined results
+    const top5Orders = allOrders.slice(0, 5);
 
     // Transform the data for frontend display
-    const recentActivity = recentOrders.map((order) => {
-      const user = order.userId as any;
-      const statusColor = order.paymentStatus === 'succeeded' ? 'success' : 
-                         order.paymentStatus === 'pending' ? 'warning' : 'error';
-      
-      return {
-        id: order._id,
-        type: 'Order',
-        message: `${user?.firstName || 'User'} ordered ${order.petName} tag`,
-        time: getTimeAgo(order.createdAt),
-        status: statusColor,
-        orderDetails: {
-          petName: order.petName,
-          amount: order.totalCostEuro,
-          status: order.status,
-          paymentStatus: order.paymentStatus
-        }
-      };
+    const recentActivity = top5Orders.map((order) => {
+      if (order.userId) {
+        // UserPetTagOrder
+        const user = order.userId as any;
+        const statusColor = order.paymentStatus === 'succeeded' ? 'success' : 
+                           order.paymentStatus === 'pending' ? 'warning' : 'error';
+        
+        return {
+          id: order._id,
+          type: 'Order',
+          message: `${user?.firstName || 'User'} ordered ${order.petName} tag`,
+          time: getTimeAgo(order.createdAt),
+          status: statusColor,
+          orderType: 'UserPetTagOrder',
+          orderDetails: {
+            petName: order.petName,
+            amount: order.totalCostEuro,
+            status: order.status,
+            paymentStatus: order.paymentStatus
+          }
+        };
+      } else {
+        // PetTagOrder
+        const statusColor = 'success'; // PetTagOrder orders are considered successful
+        
+        return {
+          id: order._id,
+          type: 'Order',
+          message: `${order.name || 'Guest User'} ordered ${order.petName} tag`,
+          time: getTimeAgo(order.createdAt),
+          status: statusColor,
+          orderType: 'PetTagOrder',
+          orderDetails: {
+            petName: order.petName,
+            amount: order.totalCostEuro,
+            status: order.status,
+            paymentStatus: 'succeeded' // PetTagOrder orders are considered successful
+          }
+        };
+      }
     });
 
     res.status(200).json({
