@@ -39,7 +39,7 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute queries for both models
+    // Execute queries for both models with pagination
     const [userOrders, petOrders] = await Promise.all([
       UserPetTagOrder.find(searchQuery)
         .populate('userId', 'firstName lastName email')
@@ -65,9 +65,42 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
       }
     });
 
+    // Get total count for pagination
+    const totalOrders = allOrders.length;
+    
+    // Check if requested page is valid
+    const totalPages = Math.ceil(totalOrders / limitNum);
+    
+    // Handle case when there are no orders
+    if (totalOrders === 0) {
+      res.status(200).json({
+        message: 'No orders found',
+        status: 200,
+        orders: [],
+        pagination: {
+          currentPage: 1,
+          totalPages: 0,
+          totalOrders: 0,
+          ordersPerPage: limitNum,
+          hasNextPage: false,
+          hasPrevPage: false
+        }
+      });
+      return;
+    }
+    
+    // Check if requested page is valid
+    if (pageNum > totalPages) {
+      res.status(400).json({
+        message: 'Invalid page number',
+        error: `Page ${pageNum} does not exist. Total pages: ${totalPages}`,
+        status: 400
+      });
+      return;
+    }
+
     // Apply pagination to combined results
     const paginatedOrders = allOrders.slice(skip, skip + limitNum);
-    const totalOrders = allOrders.length;
 
     // Transform orders data to match frontend requirements
     const transformedOrders = paginatedOrders.map((order) => {
@@ -75,54 +108,54 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
       if (order.userId) {
         // UserPetTagOrder
         const user = order.userId as any;
-        return {
-          id: order._id,
-          orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
-          customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-          email: user ? user.email : 'No Email',
-          items: order.quantity,
-          total: `€${order.totalCostEuro.toFixed(2)}`,
-          status: order.status,
-          date: new Date(order.createdAt).toISOString().split('T')[0],
-          tracking: order.paymentIntentId || 'N/A',
-          petName: order.petName,
-          tagColor: order.tagColor,
-          phone: order.phone,
-          street: order.street,
-          city: order.city,
-          state: order.state,
-          zipCode: order.zipCode,
-          country: order.country,
-          paymentStatus: order.paymentStatus,
-          orderType: 'UserPetTagOrder',
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt
-        };
+                 return {
+           id: order._id,
+           orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+           customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+           email: user ? user.email : 'No Email',
+           items: order.quantity || 1,
+           total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+           status: order.status || 'pending',
+           date: new Date(order.createdAt).toISOString().split('T')[0],
+           tracking: order.paymentIntentId || 'N/A',
+           petName: order.petName || 'Unknown Pet',
+           tagColor: order.tagColor || 'Unknown',
+           phone: order.phone || 'No Phone',
+           street: order.street || '',
+           city: order.city || '',
+           state: order.state || '',
+           zipCode: order.zipCode || '',
+           country: order.country || '',
+           paymentStatus: order.paymentStatus || 'pending',
+           orderType: 'UserPetTagOrder',
+           createdAt: order.createdAt,
+           updatedAt: order.updatedAt
+         };
       } else {
         // PetTagOrder
-        return {
-          id: order._id,
-          orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
-          customer: order.name || 'No Name',
-          email: order.email || 'No Email',
-          items: order.quantity,
-          total: `€${order.totalCostEuro?.toFixed(2) || '0.00'}`,
-          status: order.status,
-          date: new Date(order.createdAt).toISOString().split('T')[0],
-          tracking: order.paymentIntentId || 'N/A',
-          petName: order.petName,
-          tagColor: order.tagColor,
-          phone: order.phone,
-          street: order.shippingAddress?.street || '',
-          city: order.shippingAddress?.city || '',
-          state: order.shippingAddress?.state || '',
-          zipCode: order.shippingAddress?.zipCode || '',
-          country: order.shippingAddress?.country || '',
-          paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
-          orderType: 'PetTagOrder',
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt
-        };
+                 return {
+           id: order._id,
+           orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
+           customer: order.name || 'No Name',
+           email: order.email || 'No Email',
+           items: order.quantity || 1,
+           total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+           status: order.status || 'pending',
+           date: new Date(order.createdAt).toISOString().split('T')[0],
+           tracking: order.paymentIntentId || 'N/A',
+           petName: order.petName || 'Unknown Pet',
+           tagColor: order.tagColor || 'Unknown',
+           phone: order.phone || 'No Phone',
+           street: order.shippingAddress?.street || '',
+           city: order.shippingAddress?.city || '',
+           state: order.shippingAddress?.state || '',
+           zipCode: order.shippingAddress?.zipCode || '',
+           country: order.shippingAddress?.country || '',
+           paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+           orderType: 'PetTagOrder',
+           createdAt: order.createdAt,
+           updatedAt: order.updatedAt
+         };
       }
     });
 
@@ -141,9 +174,11 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
     });
   } catch (error) {
     console.error('Error getting orders:', error);
+    console.error('Request query:', req.query);
+    
     res.status(500).json({
       message: 'Failed to get orders',
-      error: 'Internal server error'
+      error: error instanceof Error ? error.message : 'Internal server error'
     });
   }
 });
@@ -185,7 +220,7 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
         customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
         email: user ? user.email : 'No Email',
         items: order.quantity,
-        total: `€${order.totalCostEuro.toFixed(2)}`,
+                 total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
         status: order.status,
         date: new Date(order.createdAt).toISOString().split('T')[0],
         tracking: order.paymentIntentId || 'N/A',
@@ -290,7 +325,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
       customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
       email: user ? user.email : 'No Email',
       items: updatedOrder.quantity,
-      total: `€${updatedOrder.totalCostEuro.toFixed(2)}`,
+               total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
       status: updatedOrder.status,
       date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
       tracking: updatedOrder.paymentIntentId || 'N/A',
