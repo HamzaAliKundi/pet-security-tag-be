@@ -34,52 +34,54 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const PetSchema = new mongoose_1.Schema({
-    userId: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+const QRCodeSchema = new mongoose_1.Schema({
+    code: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
     },
-    userPetTagOrderId: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'UserPetTagOrder',
-        required: true
-    },
-    petName: {
+    imageUrl: {
         type: String,
         required: true,
         trim: true
     },
-    hideName: {
+    hasGiven: {
         type: Boolean,
         default: false
     },
-    age: {
+    hasVerified: {
+        type: Boolean,
+        default: false
+    },
+    assignedUserId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    assignedOrderId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'UserPetTagOrder',
+        default: null
+    },
+    assignedPetId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Pet',
+        default: null
+    },
+    status: {
+        type: String,
+        enum: ['unassigned', 'assigned', 'verified', 'lost'],
+        default: 'unassigned'
+    },
+    scannedCount: {
         type: Number,
-        min: 0,
-        max: 30
+        default: 0
     },
-    breed: {
-        type: String,
-        trim: true
-    },
-    medication: {
-        type: String,
-        trim: true
-    },
-    allergies: {
-        type: String,
-        trim: true
-    },
-    notes: {
-        type: String,
-        trim: true
-    },
-    image: {
-        type: String,
-        trim: true
+    lastScannedAt: {
+        type: Date
     }
 }, {
     timestamps: true
 });
-exports.default = mongoose_1.default.model('Pet', PetSchema);
+exports.default = mongoose_1.default.model('QRCode', QRCodeSchema);

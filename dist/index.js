@@ -14,7 +14,14 @@ const env_1 = require("./config/env");
 (0, config_1.default)();
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
-    origin: ['http://localhost:5173', 'https://admin.digitaltails.com', "https://user.digitaltails.com", "https://digitaltails.com"],
+    origin: [
+        'http://localhost:5173', // Main frontend
+        'http://localhost:5174', // User dashboard
+        'http://localhost:5175', // Admin panel (if different port)
+        'https://admin.digitaltails.com',
+        'https://user.digitaltails.com',
+        'https://digitaltails.com'
+    ],
     credentials: true
 }));
 app.use((0, helmet_1.default)());

@@ -34,52 +34,62 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const PetSchema = new mongoose_1.Schema({
+const SubscriptionSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    userPetTagOrderId: {
+    qrCodeId: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'UserPetTagOrder',
+        ref: 'QRCode',
         required: true
     },
-    petName: {
+    type: {
         type: String,
+        enum: ['monthly', 'yearly'],
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['active', 'expired', 'cancelled'],
+        default: 'active'
+    },
+    startDate: {
+        type: Date,
         required: true,
+        default: Date.now
+    },
+    endDate: {
+        type: Date,
+        required: true
+    },
+    stripeSubscriptionId: {
+        type: String,
         trim: true
     },
-    hideName: {
-        type: Boolean,
-        default: false
+    paymentIntentId: {
+        type: String,
+        trim: true
     },
-    age: {
+    amountPaid: {
         type: Number,
-        min: 0,
-        max: 30
+        required: true,
+        min: 0
     },
-    breed: {
+    currency: {
         type: String,
-        trim: true
+        default: 'eur',
+        lowercase: true
     },
-    medication: {
-        type: String,
-        trim: true
-    },
-    allergies: {
-        type: String,
-        trim: true
-    },
-    notes: {
-        type: String,
-        trim: true
-    },
-    image: {
-        type: String,
-        trim: true
+    autoRenew: {
+        type: Boolean,
+        default: true
     }
 }, {
     timestamps: true
 });
-exports.default = mongoose_1.default.model('Pet', PetSchema);
+// Index for efficient queries
+SubscriptionSchema.index({ userId: 1, qrCodeId: 1 });
+SubscriptionSchema.index({ endDate: 1, status: 1 });
+exports.default = mongoose_1.default.model('Subscription', SubscriptionSchema);

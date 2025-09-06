@@ -8,6 +8,7 @@ const users_1 = require("../controllers/admin/users");
 const pets_1 = require("../controllers/admin/pets");
 const orders_1 = require("../controllers/admin/orders");
 const payments_1 = require("../controllers/admin/payments");
+const qrManagement_1 = require("../controllers/qrcode/qrManagement");
 const router = (0, express_1.Router)();
 // All admin routes require authentication
 router.use(auth_1.authMiddleware);
@@ -35,4 +36,10 @@ router.get('/orders/stats', orders_1.getOrderStats);
 router.get('/payments', payments_1.getPayments);
 router.get('/payments/stats', payments_1.getPaymentStats);
 router.get('/payments/:paymentId', payments_1.getPaymentById);
+// Admin QR code management endpoints
+router.post('/qr-codes/generate-bulk', qrManagement_1.generateBulkQRCodes);
+router.get('/qr-codes', qrManagement_1.getAllQRCodes);
+router.get('/qr-codes/stats', qrManagement_1.getQRStats);
+router.get('/qr-codes/:qrId', qrManagement_1.getQRCodeById);
+router.delete('/qr-codes/:qrId', qrManagement_1.deleteQRCode);
 exports.default = router;
