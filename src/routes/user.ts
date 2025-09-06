@@ -17,6 +17,14 @@ import {
 } from '../controllers/user/contact';
 import { authMiddleware } from '../middleware/auth';
 import { getSingleUser, updateSingleUser } from '../controllers/user/account';
+import { 
+  createPet, 
+  getUserPets, 
+  getPet, 
+  updatePet, 
+  uploadPetImage 
+} from '../controllers/user/pet';
+import { upload } from '../utils/imageUploadService';
 
 const router = Router();
 
@@ -39,5 +47,12 @@ router.get('/user-pet-tag-orders', authMiddleware, getUserPetTagOrders);
 router.get('/user-pet-tag-orders/:orderId', authMiddleware, getUserPetTagOrder);
 router.put('/user-pet-tag-orders/:orderId', authMiddleware, updateUserPetTagOrder);
 router.post('/user-pet-tag-orders/:orderId/confirm-payment', authMiddleware, confirmPayment);
+
+// Pet management endpoints (Private)
+router.post('/pets', authMiddleware, createPet);
+router.get('/pets', authMiddleware, getUserPets);
+router.get('/pets/:petId', authMiddleware, getPet);
+router.put('/pets/:petId', authMiddleware, updatePet);
+router.post('/pets/:petId/upload-image', authMiddleware, upload.single('image'), uploadPetImage);
 
 export default router; 
