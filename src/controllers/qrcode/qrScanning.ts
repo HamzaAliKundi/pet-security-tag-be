@@ -40,16 +40,30 @@ export const scanQRCode = asyncHandler(async (req: Request, res: Response): Prom
         endDate: { $gt: new Date() }
       });
 
-      if (activeSubscription && qrCode.assignedPetId) {
-        // Redirect to public profile page for finder
-        res.status(200).json({
-          message: 'QR code verified - redirect to pet profile',
-          status: 200,
-          action: 'redirect_to_profile',
-          petId: (qrCode.assignedPetId as any)?._id,
-          redirectUrl: `/profile/${(qrCode.assignedPetId as any)?._id}`
-        });
-        return;
+      if (activeSubscription) {
+        let petId = (qrCode.assignedPetId as any)?._id;
+        
+        // If no direct pet link, try to find pet by order
+        if (!petId && qrCode.assignedOrderId) {
+          const pet = await Pet.findOne({ userPetTagOrderId: qrCode.assignedOrderId });
+          if (pet) {
+            petId = pet._id;
+            // Update QR code to link to this pet for future scans
+            await QRCode.findByIdAndUpdate(qrCode._id, { assignedPetId: pet._id });
+          }
+        }
+        
+        if (petId) {
+          // Redirect to public profile page for finder
+          res.status(200).json({
+            message: 'QR code verified - redirect to pet profile',
+            status: 200,
+            action: 'redirect_to_profile',
+            petId: petId,
+            redirectUrl: `/profile/${petId}`
+          });
+          return;
+        }
       }
     }
 

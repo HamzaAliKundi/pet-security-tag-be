@@ -184,6 +184,14 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
 
         // Assign QR code to this order
         const qrCodeId = await assignQRToOrder(order._id.toString());
+        
+        // Link the QR code to the pet
+        if (qrCodeId) {
+          const QRCodeModel = (await import('../../models/QRCode')).default;
+          await QRCodeModel.findByIdAndUpdate(qrCodeId, {
+            assignedPetId: pet._id
+          });
+        }
 
         res.status(200).json({
           message: 'Payment confirmed successfully and pet record created',
@@ -224,6 +232,8 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         
         // Try to assign QR code even if pet creation failed
         const qrCodeId = await assignQRToOrder(order._id.toString());
+        
+        // Note: Can't link to pet since pet creation failed
         
         // Still return success for payment, but log pet creation error
         res.status(200).json({
