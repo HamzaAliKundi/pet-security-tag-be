@@ -15,6 +15,9 @@ interface EnvVars {
   FRONTEND_URL: string;
   STRIPE_PUBLISH_KEY: string;
   STRIPE_SECRET_KEY: string;
+  CLOUDINARY_CLOUD_NAME: string;
+  CLOUDINARY_API_KEY: string;
+  CLOUDINARY_API_SECRET: string;
 }
 
 const validateEnv = (): EnvVars => {
@@ -29,7 +32,10 @@ const validateEnv = (): EnvVars => {
     'SENDGRID_FROM_NAME',
     'FRONTEND_URL',
     'STRIPE_PUBLISH_KEY',
-    'STRIPE_SECRET_KEY'
+    'STRIPE_SECRET_KEY',
+    'CLOUDINARY_CLOUD_NAME',
+    'CLOUDINARY_API_KEY',
+    'CLOUDINARY_API_SECRET'
   ];
   
   for (const envVar of requiredEnvVars) {
@@ -50,7 +56,10 @@ const validateEnv = (): EnvVars => {
     SENDGRID_FROM_NAME: process.env.SENDGRID_FROM_NAME!,
     FRONTEND_URL: process.env.FRONTEND_URL!,
     STRIPE_PUBLISH_KEY: process.env.STRIPE_PUBLISH_KEY!,
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME!,
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY!,
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET!
   };
 };
 

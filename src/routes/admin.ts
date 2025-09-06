@@ -26,6 +26,13 @@ import {
   getPaymentById, 
   getPaymentStats
 } from '../controllers/admin/payments';
+import {
+  generateBulkQRCodes,
+  getAllQRCodes,
+  getQRCodeById,
+  getQRStats,
+  deleteQRCode
+} from '../controllers/qrcode/qrManagement';
 
 
 const router = Router();
@@ -62,5 +69,12 @@ router.get('/orders/stats', getOrderStats);
 router.get('/payments', getPayments);
 router.get('/payments/stats', getPaymentStats);
 router.get('/payments/:paymentId', getPaymentById);
+
+// Admin QR code management endpoints
+router.post('/qr-codes/generate-bulk', generateBulkQRCodes);
+router.get('/qr-codes', getAllQRCodes);
+router.get('/qr-codes/stats', getQRStats);
+router.get('/qr-codes/:qrId', getQRCodeById);
+router.delete('/qr-codes/:qrId', deleteQRCode);
 
 export default router;

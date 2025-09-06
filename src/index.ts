@@ -12,7 +12,14 @@ connectDB();
 const app: Express = express();
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://admin.digitaltails.com', "https://user.digitaltails.com", "https://digitaltails.com"],
+  origin: [
+    'http://localhost:5173', // Main frontend
+    'http://localhost:5174', // User dashboard
+    'http://localhost:5175', // Admin panel (if different port)
+    'https://admin.digitaltails.com', 
+    'https://user.digitaltails.com', 
+    'https://digitaltails.com'
+  ],
   credentials: true
 }));
 
