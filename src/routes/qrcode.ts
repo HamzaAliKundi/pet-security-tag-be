@@ -9,6 +9,7 @@ import {
   scanQRCode,
   getQRVerificationDetails,
   verifyQRCodeWithSubscription,
+  autoVerifyQRCode,
   confirmSubscriptionPayment,
   getPetProfileByQR
 } from '../controllers/qrcode/qrScanning';
@@ -26,6 +27,9 @@ router.get('/verify-details/:code', getQRVerificationDetails);
 router.get('/pet-profile/:petId', getPetProfileByQR);
 
 // Protected routes (authentication required)
+// Auto-verify QR code if user has active subscription
+router.post('/auto-verify', authMiddleware, autoVerifyQRCode);
+
 // Verify QR code with subscription (user must be logged in)
 router.post('/verify-subscription', authMiddleware, verifyQRCodeWithSubscription);
 

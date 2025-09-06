@@ -129,11 +129,24 @@ export const getQRVerificationDetails = asyncHandler(async (req: Request, res: R
       return;
     }
 
+    // For unverified QR codes, check if user (if assigned) has any active subscription
+    let userHasActiveSubscription = false;
+    let existingSubscription = null;
+    
+    if (qrCode.assignedUserId) {
+      existingSubscription = await Subscription.findOne({
+        userId: qrCode.assignedUserId,
+        status: 'active',
+        endDate: { $gt: new Date() }
+      });
+      userHasActiveSubscription = !!existingSubscription;
+    }
+
     res.status(200).json({
       message: 'QR code verification details',
       status: 200,
       isVerified: false,
-      hasActiveSubscription: false,
+      hasActiveSubscription: userHasActiveSubscription,
       qrCode: {
         id: qrCode._id,
         code: qrCode.code,
@@ -141,13 +154,96 @@ export const getQRVerificationDetails = asyncHandler(async (req: Request, res: R
         assignedPetName: (qrCode.assignedPetId as any)?.petName || (qrCode.assignedOrderId as any)?.petName,
         assignedUser: qrCode.assignedUserId
       },
-      requiresLogin: !qrCode.assignedUserId
+      subscription: existingSubscription,
+      requiresLogin: !qrCode.assignedUserId,
+      canAutoVerify: userHasActiveSubscription && qrCode.assignedUserId
     });
 
   } catch (error) {
     console.error('Error getting QR verification details:', error);
     res.status(500).json({
       message: 'Failed to get QR verification details',
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Auto-verify QR Code if user has active subscription
+export const autoVerifyQRCode = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?._id;
+    const { qrCodeId } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        message: 'Authentication required',
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Find QR code
+    const qrCode = await QRCode.findById(qrCodeId);
+    if (!qrCode) {
+      res.status(404).json({
+        message: 'QR code not found',
+        error: 'Invalid QR code ID'
+      });
+      return;
+    }
+
+    // Check if user has any active subscription
+    const existingActiveSubscription = await Subscription.findOne({
+      userId,
+      status: 'active',
+      endDate: { $gt: new Date() }
+    });
+
+    if (!existingActiveSubscription) {
+      res.status(400).json({
+        message: 'No active subscription found',
+        error: 'User does not have an active subscription'
+      });
+      return;
+    }
+
+    // Auto-verify the QR code
+    qrCode.hasVerified = true;
+    qrCode.status = 'verified';
+    qrCode.assignedUserId = qrCode.assignedUserId || userId;
+    await qrCode.save();
+
+    // Create a new subscription record linking this QR to the user's active subscription
+    const newSubscription = await Subscription.create({
+      userId,
+      qrCodeId: qrCode._id,
+      type: existingActiveSubscription.type,
+      status: 'active',
+      startDate: new Date(),
+      endDate: existingActiveSubscription.endDate,
+      paymentIntentId: existingActiveSubscription.paymentIntentId,
+      amountPaid: 0, // No additional payment required
+      currency: existingActiveSubscription.currency,
+      autoRenew: existingActiveSubscription.autoRenew
+    });
+
+    res.status(200).json({
+      message: 'QR code auto-verified with existing subscription',
+      status: 200,
+      qrCode: {
+        id: qrCode._id,
+        code: qrCode.code,
+        status: qrCode.status,
+        hasVerified: qrCode.hasVerified
+      },
+      subscription: newSubscription,
+      existingSubscription: existingActiveSubscription
+    });
+
+  } catch (error) {
+    console.error('Error auto-verifying QR code:', error);
+    res.status(500).json({
+      message: 'Failed to auto-verify QR code',
       error: 'Internal server error'
     });
   }
@@ -185,23 +281,36 @@ export const verifyQRCodeWithSubscription = asyncHandler(async (req: Request, re
       return;
     }
 
-    // Check if user has existing active subscription for this QR
-    const existingSubscription = await Subscription.findOne({
+    // Check if user has ANY existing active subscription (not just for this QR)
+    const existingActiveSubscription = await Subscription.findOne({
       userId,
-      qrCodeId,
       status: 'active',
       endDate: { $gt: new Date() }
     });
 
-    if (existingSubscription) {
-      // Auto-verify if subscription exists
+    if (existingActiveSubscription) {
+      // Auto-verify if user has any active subscription
       qrCode.hasVerified = true;
       qrCode.status = 'verified';
       qrCode.assignedPetId = petId || qrCode.assignedPetId;
       await qrCode.save();
 
+      // Create a new subscription record linking this QR to the user's active subscription
+      const newSubscription = await Subscription.create({
+        userId,
+        qrCodeId: qrCode._id,
+        type: existingActiveSubscription.type,
+        status: 'active',
+        startDate: new Date(),
+        endDate: existingActiveSubscription.endDate, // Use the same end date as existing subscription
+        paymentIntentId: existingActiveSubscription.paymentIntentId,
+        amountPaid: 0, // No additional payment required
+        currency: existingActiveSubscription.currency,
+        autoRenew: existingActiveSubscription.autoRenew
+      });
+
       res.status(200).json({
-        message: 'QR code verified with existing subscription',
+        message: 'QR code verified with existing active subscription',
         status: 200,
         qrCode: {
           id: qrCode._id,
@@ -209,7 +318,9 @@ export const verifyQRCodeWithSubscription = asyncHandler(async (req: Request, re
           status: qrCode.status,
           hasVerified: qrCode.hasVerified
         },
-        subscription: existingSubscription
+        subscription: newSubscription,
+        existingSubscription: existingActiveSubscription,
+        note: 'Tag verified automatically using your existing subscription'
       });
       return;
     }
