@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import Pet from '../../models/Pet';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
+import { assignQRToOrder } from '../qrcode/qrManagement';
 
 // Create pet tag order (Private - requires authentication)
 export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -181,6 +182,17 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
           notes: ''
         });
 
+        // Assign QR code to this order
+        const qrCodeId = await assignQRToOrder(order._id.toString());
+        
+        // Link the QR code to the pet
+        if (qrCodeId) {
+          const QRCodeModel = (await import('../../models/QRCode')).default;
+          await QRCodeModel.findByIdAndUpdate(qrCodeId, {
+            assignedPetId: pet._id
+          });
+        }
+
         res.status(200).json({
           message: 'Payment confirmed successfully and pet record created',
           status: 200,
@@ -211,10 +223,18 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             medication: pet.medication,
             allergies: pet.allergies,
             notes: pet.notes
-          }
+          },
+          qrCodeAssigned: !!qrCodeId,
+          qrCodeId: qrCodeId
         });
       } catch (petError) {
         console.error('Error creating pet record:', petError);
+        
+        // Try to assign QR code even if pet creation failed
+        const qrCodeId = await assignQRToOrder(order._id.toString());
+        
+        // Note: Can't link to pet since pet creation failed
+        
         // Still return success for payment, but log pet creation error
         res.status(200).json({
           message: 'Payment confirmed successfully but failed to create pet record',
@@ -236,7 +256,9 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             paymentIntentId: order.paymentIntentId,
             createdAt: order.createdAt,
             updatedAt: order.updatedAt
-          }
+          },
+          qrCodeAssigned: !!qrCodeId,
+          qrCodeId: qrCodeId
         });
       }
     } else {

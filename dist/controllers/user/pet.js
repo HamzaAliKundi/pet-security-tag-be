@@ -3,9 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updatePet = exports.getPet = exports.getUserPets = exports.createPet = void 0;
+exports.uploadPetImage = exports.updatePet = exports.getPet = exports.getUserPets = exports.createPet = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
+const imageUploadService_1 = require("../../utils/imageUploadService");
 // Create a new pet
 exports.createPet = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
@@ -181,6 +182,59 @@ exports.updatePet = (0, express_async_handler_1.default)(async (req, res) => {
         console.error('Error updating pet:', error);
         res.status(500).json({
             message: 'Failed to update pet',
+            error: 'Internal server error'
+        });
+    }
+});
+// Upload pet image
+exports.uploadPetImage = (0, express_async_handler_1.default)(async (req, res) => {
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
+    const { petId } = req.params;
+    if (!req.file) {
+        res.status(400).json({
+            message: 'No image file provided'
+        });
+        return;
+    }
+    try {
+        // Check if pet exists and belongs to user
+        const existingPet = await Pet_1.default.findOne({ _id: petId, userId });
+        if (!existingPet) {
+            res.status(404).json({
+                message: 'Pet not found'
+            });
+            return;
+        }
+        // Delete old image if exists
+        if (existingPet.image) {
+            try {
+                // Extract public ID from URL and delete
+                const urlParts = existingPet.image.split('/');
+                const fileName = urlParts[urlParts.length - 1];
+                const publicId = `pet-security-tags/pets/${fileName.split('.')[0]}`;
+                await (0, imageUploadService_1.deleteImageFromCloudinary)(publicId);
+            }
+            catch (deleteError) {
+                console.error('Error deleting old image:', deleteError);
+                // Continue even if deletion fails
+            }
+        }
+        // Upload new image
+        const result = await (0, imageUploadService_1.uploadImageToCloudinary)(req.file.buffer, `${petId}-${Date.now()}`);
+        // Update pet with new image URL
+        const updatedPet = await Pet_1.default.findByIdAndUpdate(petId, { image: result.url }, { new: true, runValidators: true }).populate('userPetTagOrderId', 'petName quantity tagColor totalCostEuro status');
+        res.status(200).json({
+            message: 'Pet image uploaded successfully',
+            status: 200,
+            pet: updatedPet,
+            imageUrl: result.url
+        });
+    }
+    catch (error) {
+        console.error('Error uploading pet image:', error);
+        res.status(500).json({
+            message: 'Failed to upload pet image',
             error: 'Internal server error'
         });
     }

@@ -10,6 +10,7 @@ export interface IPet extends Document {
   medication: string;
   allergies: string;
   notes: string;
+  image?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +53,10 @@ const PetSchema: Schema = new Schema({
     trim: true
   },
   notes: {
+    type: String,
+    trim: true
+  },
+  image: {
     type: String,
     trim: true
   }

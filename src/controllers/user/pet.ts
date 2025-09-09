@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import Pet from '../../models/Pet';
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from '../../utils/imageUploadService';
 
 // Create a new pet
 export const createPet = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -193,6 +194,70 @@ export const updatePet = asyncHandler(async (req: Request, res: Response): Promi
     console.error('Error updating pet:', error);
     res.status(500).json({
       message: 'Failed to update pet',
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Upload pet image
+export const uploadPetImage = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as any).user?._id;
+  const { petId } = req.params;
+
+  if (!req.file) {
+    res.status(400).json({
+      message: 'No image file provided'
+    });
+    return;
+  }
+
+  try {
+    // Check if pet exists and belongs to user
+    const existingPet = await Pet.findOne({ _id: petId, userId });
+    if (!existingPet) {
+      res.status(404).json({
+        message: 'Pet not found'
+      });
+      return;
+    }
+
+    // Delete old image if exists
+    if (existingPet.image) {
+      try {
+        // Extract public ID from URL and delete
+        const urlParts = existingPet.image.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        const publicId = `pet-security-tags/pets/${fileName.split('.')[0]}`;
+        await deleteImageFromCloudinary(publicId);
+      } catch (deleteError) {
+        console.error('Error deleting old image:', deleteError);
+        // Continue even if deletion fails
+      }
+    }
+
+    // Upload new image
+    const result = await uploadImageToCloudinary(
+      req.file.buffer,
+      `${petId}-${Date.now()}`
+    );
+
+    // Update pet with new image URL
+    const updatedPet = await Pet.findByIdAndUpdate(
+      petId,
+      { image: result.url },
+      { new: true, runValidators: true }
+    ).populate('userPetTagOrderId', 'petName quantity tagColor totalCostEuro status');
+
+    res.status(200).json({
+      message: 'Pet image uploaded successfully',
+      status: 200,
+      pet: updatedPet,
+      imageUrl: result.url
+    });
+  } catch (error) {
+    console.error('Error uploading pet image:', error);
+    res.status(500).json({
+      message: 'Failed to upload pet image',
       error: 'Internal server error'
     });
   }

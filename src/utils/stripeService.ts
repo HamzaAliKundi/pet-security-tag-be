@@ -17,6 +17,16 @@ export interface CreatePaymentIntentParams {
   };
 }
 
+export interface CreateSubscriptionPaymentIntentParams {
+  amount: number; // Amount in cents
+  currency: string;
+  metadata: {
+    userId: string;
+    petName: string;
+    subscriptionType: string;
+  };
+}
+
 export interface PaymentIntentResult {
   success: boolean;
   paymentIntentId?: string;
@@ -42,6 +52,31 @@ export const createPaymentIntent = async (params: CreatePaymentIntentParams): Pr
     };
   } catch (error) {
     console.error('Error creating payment intent:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+export const createSubscriptionPaymentIntent = async (params: CreateSubscriptionPaymentIntentParams): Promise<PaymentIntentResult> => {
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: params.amount,
+      currency: params.currency,
+      metadata: params.metadata,
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+
+    return {
+      success: true,
+      paymentIntentId: paymentIntent.id,
+      clientSecret: paymentIntent.client_secret || undefined,
+    };
+  } catch (error) {
+    console.error('Error creating subscription payment intent:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
