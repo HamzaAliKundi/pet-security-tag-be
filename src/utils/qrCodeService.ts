@@ -32,7 +32,7 @@ export const generateQRCodeWithCloudinary = async (): Promise<{
     const uniqueCode = generateUniqueQRCode();
     
     // Create the URL that will be encoded in QR
-    const qrURL = `${env.FRONTEND_URL}/qr/${uniqueCode}`;
+    const qrURL = `${env.QR_URL}/qr/${uniqueCode}`;
     
     // Generate QR code as data URL
     const qrCodeDataURL = await QRCodeLib.toDataURL(qrURL, {

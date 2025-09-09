@@ -40,6 +40,7 @@ const validateEnv = () => {
         SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL,
         SENDGRID_FROM_NAME: process.env.SENDGRID_FROM_NAME,
         FRONTEND_URL: process.env.FRONTEND_URL,
+        QR_URL: process.env.QR_URL,
         STRIPE_PUBLISH_KEY: process.env.STRIPE_PUBLISH_KEY,
         STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
         CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
