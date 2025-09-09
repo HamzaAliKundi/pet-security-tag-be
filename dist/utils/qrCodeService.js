@@ -26,7 +26,7 @@ const generateQRCodeWithCloudinary = async () => {
         // Generate unique code
         const uniqueCode = generateUniqueQRCode();
         // Create the URL that will be encoded in QR
-        const qrURL = `${env_1.env.FRONTEND_URL}/qr/${uniqueCode}`;
+        const qrURL = `${env_1.env.QR_URL}/qr/${uniqueCode}`;
         // Generate QR code as data URL
         const qrCodeDataURL = await qrcode_1.default.toDataURL(qrURL, {
             errorCorrectionLevel: 'M',
