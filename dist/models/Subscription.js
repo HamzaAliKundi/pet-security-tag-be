@@ -47,7 +47,7 @@ const SubscriptionSchema = new mongoose_1.Schema({
     },
     type: {
         type: String,
-        enum: ['monthly', 'yearly'],
+        enum: ['monthly', 'yearly', 'lifetime'],
         required: true
     },
     status: {
