@@ -83,9 +83,10 @@ exports.scanQRCode = (0, express_async_handler_1.default)(async (req, res) => {
 });
 // Get QR verification details for frontend
 exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (req, res) => {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     try {
         const { code } = req.params;
+        const currentUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id; // Get current logged-in user from JWT token
         const qrCode = await QRCode_1.default.findOne({ code })
             .populate('assignedUserId', 'firstName lastName email')
             .populate('assignedOrderId', 'petName totalCostEuro')
@@ -113,16 +114,18 @@ exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (r
                     id: qrCode._id,
                     code: qrCode.code,
                     status: qrCode.status,
-                    assignedPetName: ((_a = qrCode.assignedPetId) === null || _a === void 0 ? void 0 : _a.petName) || ((_b = qrCode.assignedOrderId) === null || _b === void 0 ? void 0 : _b.petName),
+                    assignedPetName: ((_b = qrCode.assignedPetId) === null || _b === void 0 ? void 0 : _b.petName) || ((_c = qrCode.assignedOrderId) === null || _c === void 0 ? void 0 : _c.petName),
                     assignedUser: qrCode.assignedUserId
                 },
                 subscription: activeSubscription
             });
             return;
         }
-        // For unverified QR codes, check if user (if assigned) has any active subscription
+        // For unverified QR codes, check if any user has active subscription
         let userHasActiveSubscription = false;
         let existingSubscription = null;
+        let canAutoVerify = false;
+        // First check if the QR code is assigned to a user and they have active subscription
         if (qrCode.assignedUserId) {
             existingSubscription = await Subscription_1.default.findOne({
                 userId: qrCode.assignedUserId,
@@ -130,7 +133,30 @@ exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (r
                 endDate: { $gt: new Date() }
             });
             userHasActiveSubscription = !!existingSubscription;
+            canAutoVerify = userHasActiveSubscription;
         }
+        // If no assigned user or no active subscription for assigned user,
+        // check if current logged-in user has active subscription
+        if (!canAutoVerify && currentUserId) {
+            const currentUserSubscription = await Subscription_1.default.findOne({
+                userId: currentUserId,
+                status: 'active',
+                endDate: { $gt: new Date() }
+            });
+            if (currentUserSubscription) {
+                userHasActiveSubscription = true;
+                existingSubscription = currentUserSubscription;
+                canAutoVerify = true;
+            }
+        }
+        console.log('QR Verification Details Response:', {
+            isVerified: false,
+            hasActiveSubscription: userHasActiveSubscription,
+            canAutoVerify: canAutoVerify,
+            currentUserId: currentUserId,
+            qrCodeAssignedUserId: qrCode.assignedUserId,
+            requiresLogin: !qrCode.assignedUserId && !currentUserId
+        });
         res.status(200).json({
             message: 'QR code verification details',
             status: 200,
@@ -140,12 +166,12 @@ exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (r
                 id: qrCode._id,
                 code: qrCode.code,
                 status: qrCode.status,
-                assignedPetName: ((_c = qrCode.assignedPetId) === null || _c === void 0 ? void 0 : _c.petName) || ((_d = qrCode.assignedOrderId) === null || _d === void 0 ? void 0 : _d.petName),
+                assignedPetName: ((_d = qrCode.assignedPetId) === null || _d === void 0 ? void 0 : _d.petName) || ((_e = qrCode.assignedOrderId) === null || _e === void 0 ? void 0 : _e.petName),
                 assignedUser: qrCode.assignedUserId
             },
             subscription: existingSubscription,
-            requiresLogin: !qrCode.assignedUserId,
-            canAutoVerify: userHasActiveSubscription && qrCode.assignedUserId
+            requiresLogin: !qrCode.assignedUserId && !currentUserId,
+            canAutoVerify: canAutoVerify
         });
     }
     catch (error) {

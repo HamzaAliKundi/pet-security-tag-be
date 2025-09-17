@@ -90,6 +90,7 @@ export const scanQRCode = asyncHandler(async (req: Request, res: Response): Prom
 export const getQRVerificationDetails = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { code } = req.params;
+    const currentUserId = (req as any).user?._id; // Get current logged-in user from JWT token
     
     const qrCode = await QRCode.findOne({ code })
       .populate('assignedUserId', 'firstName lastName email')
@@ -129,10 +130,12 @@ export const getQRVerificationDetails = asyncHandler(async (req: Request, res: R
       return;
     }
 
-    // For unverified QR codes, check if user (if assigned) has any active subscription
+    // For unverified QR codes, check if any user has active subscription
     let userHasActiveSubscription = false;
     let existingSubscription = null;
+    let canAutoVerify = false;
     
+    // First check if the QR code is assigned to a user and they have active subscription
     if (qrCode.assignedUserId) {
       existingSubscription = await Subscription.findOne({
         userId: qrCode.assignedUserId,
@@ -140,7 +143,33 @@ export const getQRVerificationDetails = asyncHandler(async (req: Request, res: R
         endDate: { $gt: new Date() }
       });
       userHasActiveSubscription = !!existingSubscription;
+      canAutoVerify = userHasActiveSubscription;
     }
+    
+    // If no assigned user or no active subscription for assigned user,
+    // check if current logged-in user has active subscription
+    if (!canAutoVerify && currentUserId) {
+      const currentUserSubscription = await Subscription.findOne({
+        userId: currentUserId,
+        status: 'active',
+        endDate: { $gt: new Date() }
+      });
+      
+      if (currentUserSubscription) {
+        userHasActiveSubscription = true;
+        existingSubscription = currentUserSubscription;
+        canAutoVerify = true;
+      }
+    }
+
+    console.log('QR Verification Details Response:', {
+      isVerified: false,
+      hasActiveSubscription: userHasActiveSubscription,
+      canAutoVerify: canAutoVerify,
+      currentUserId: currentUserId,
+      qrCodeAssignedUserId: qrCode.assignedUserId,
+      requiresLogin: !qrCode.assignedUserId && !currentUserId
+    });
 
     res.status(200).json({
       message: 'QR code verification details',
@@ -155,8 +184,8 @@ export const getQRVerificationDetails = asyncHandler(async (req: Request, res: R
         assignedUser: qrCode.assignedUserId
       },
       subscription: existingSubscription,
-      requiresLogin: !qrCode.assignedUserId,
-      canAutoVerify: userHasActiveSubscription && qrCode.assignedUserId
+      requiresLogin: !qrCode.assignedUserId && !currentUserId,
+      canAutoVerify: canAutoVerify
     });
 
   } catch (error) {
