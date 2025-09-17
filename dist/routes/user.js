@@ -7,6 +7,7 @@ const contact_1 = require("../controllers/user/contact");
 const auth_1 = require("../middleware/auth");
 const account_1 = require("../controllers/user/account");
 const pet_1 = require("../controllers/user/pet");
+const subscription_1 = require("../controllers/user/subscription");
 const imageUploadService_1 = require("../utils/imageUploadService");
 const router = (0, express_1.Router)();
 // Pet tag order endpoints (public)
@@ -31,4 +32,7 @@ router.get('/pets', auth_1.authMiddleware, pet_1.getUserPets);
 router.get('/pets/:petId', auth_1.authMiddleware, pet_1.getPet);
 router.put('/pets/:petId', auth_1.authMiddleware, pet_1.updatePet);
 router.post('/pets/:petId/upload-image', auth_1.authMiddleware, imageUploadService_1.upload.single('image'), pet_1.uploadPetImage);
+// Subscription endpoints (Private)
+router.get('/subscriptions', auth_1.authMiddleware, subscription_1.getUserSubscriptions);
+router.get('/subscriptions/stats', auth_1.authMiddleware, subscription_1.getSubscriptionStats);
 exports.default = router;

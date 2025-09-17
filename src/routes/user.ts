@@ -24,6 +24,10 @@ import {
   updatePet, 
   uploadPetImage 
 } from '../controllers/user/pet';
+import { 
+  getUserSubscriptions, 
+  getSubscriptionStats 
+} from '../controllers/user/subscription';
 import { upload } from '../utils/imageUploadService';
 
 const router = Router();
@@ -54,5 +58,9 @@ router.get('/pets', authMiddleware, getUserPets);
 router.get('/pets/:petId', authMiddleware, getPet);
 router.put('/pets/:petId', authMiddleware, updatePet);
 router.post('/pets/:petId/upload-image', authMiddleware, upload.single('image'), uploadPetImage);
+
+// Subscription endpoints (Private)
+router.get('/subscriptions', authMiddleware, getUserSubscriptions);
+router.get('/subscriptions/stats', authMiddleware, getSubscriptionStats);
 
 export default router; 

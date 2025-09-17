@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface ISubscription extends Document {
   userId: string;
   qrCodeId: string;
-  type: 'monthly' | 'yearly';
+  type: 'monthly' | 'yearly' | 'lifetime';
   status: 'active' | 'expired' | 'cancelled';
   startDate: Date;
   endDate: Date;
@@ -29,7 +29,7 @@ const SubscriptionSchema: Schema = new Schema({
   },
   type: {
     type: String,
-    enum: ['monthly', 'yearly'],
+    enum: ['monthly', 'yearly', 'lifetime'],
     required: true
   },
   status: {

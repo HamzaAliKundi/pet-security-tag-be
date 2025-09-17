@@ -269,10 +269,10 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
             });
             return;
         }
-        if (!['monthly', 'yearly'].includes(subscriptionType)) {
+        if (!['monthly', 'yearly', 'lifetime'].includes(subscriptionType)) {
             res.status(400).json({
                 message: 'Invalid subscription type',
-                error: 'Subscription type must be monthly or yearly'
+                error: 'Subscription type must be monthly, yearly, or lifetime'
             });
             return;
         }
@@ -327,22 +327,27 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
         }
         // Calculate subscription pricing
         const pricing = {
-            monthly: 4.99,
-            yearly: 49.99
+            monthly: 2.75,
+            yearly: 19.99,
+            lifetime: 99.00
         };
         const amount = pricing[subscriptionType];
         const endDate = new Date();
         if (subscriptionType === 'monthly') {
             endDate.setMonth(endDate.getMonth() + 1);
         }
-        else {
+        else if (subscriptionType === 'yearly') {
             endDate.setFullYear(endDate.getFullYear() + 1);
+        }
+        else if (subscriptionType === 'lifetime') {
+            // Set end date to 100 years from now for lifetime subscription
+            endDate.setFullYear(endDate.getFullYear() + 100);
         }
         // Create Stripe payment intent for subscription
         const amountInCents = Math.round(amount * 100);
         const paymentResult = await (0, stripeService_1.createSubscriptionPaymentIntent)({
             amount: amountInCents,
-            currency: 'eur',
+            currency: 'gbp',
             metadata: {
                 userId: userId.toString(),
                 subscriptionType,
@@ -414,12 +419,17 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
         if (subscriptionType === 'monthly') {
             endDate.setMonth(endDate.getMonth() + 1);
         }
-        else {
+        else if (subscriptionType === 'yearly') {
             endDate.setFullYear(endDate.getFullYear() + 1);
         }
+        else if (subscriptionType === 'lifetime') {
+            // Set end date to 100 years from now for lifetime subscription
+            endDate.setFullYear(endDate.getFullYear() + 100);
+        }
         const pricing = {
-            monthly: 4.99,
-            yearly: 49.99
+            monthly: 2.75,
+            yearly: 19.99,
+            lifetime: 99.00
         };
         // Create subscription record
         const subscription = await Subscription_1.default.create({
@@ -431,7 +441,7 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             endDate,
             paymentIntentId,
             amountPaid: pricing[subscriptionType],
-            currency: 'eur',
+            currency: 'gbp',
             autoRenew: true
         });
         // Update QR code status

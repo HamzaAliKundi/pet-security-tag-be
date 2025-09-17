@@ -88,17 +88,24 @@ exports.deleteQRCodeFromCloudinary = deleteQRCodeFromCloudinary;
 const getQRCodePricing = () => {
     return {
         monthly: {
-            price: 4.99,
-            currency: 'EUR',
+            price: 2.75,
+            currency: 'GBP',
             duration: '1 month',
             description: 'Monthly subscription for QR code verification'
         },
         yearly: {
-            price: 49.99,
-            currency: 'EUR',
+            price: 19.99,
+            currency: 'GBP',
             duration: '12 months',
-            description: 'Yearly subscription for QR code verification (2 months free)',
-            savings: '10.89'
+            description: 'Yearly subscription for QR code verification',
+            savings: '13.01'
+        },
+        lifetime: {
+            price: 99.00,
+            currency: 'GBP',
+            duration: 'Lifetime',
+            description: 'One-time payment for lifetime QR code verification',
+            savings: 'Maximum value'
         }
     };
 };
