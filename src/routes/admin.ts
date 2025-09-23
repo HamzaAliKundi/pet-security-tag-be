@@ -31,7 +31,9 @@ import {
   getAllQRCodes,
   getQRCodeById,
   getQRStats,
-  deleteQRCode
+  deleteQRCode,
+  bulkDeleteQRCodes,
+  downloadQRCodesCSV
 } from '../controllers/qrcode/qrManagement';
 
 
@@ -74,6 +76,8 @@ router.get('/payments/:paymentId', getPaymentById);
 router.post('/qr-codes/generate-bulk', generateBulkQRCodes);
 router.get('/qr-codes', getAllQRCodes);
 router.get('/qr-codes/stats', getQRStats);
+router.delete('/qr-codes/bulk', bulkDeleteQRCodes);
+router.get('/qr-codes/download/csv', downloadQRCodesCSV);
 router.get('/qr-codes/:qrId', getQRCodeById);
 router.delete('/qr-codes/:qrId', deleteQRCode);
 

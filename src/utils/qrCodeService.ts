@@ -63,7 +63,8 @@ export const generateQRCodeWithCloudinary = async (): Promise<{
       hasGiven: false,
       hasVerified: false,
       status: 'unassigned',
-      scannedCount: 0
+      scannedCount: 0,
+      isDownloaded: false
     });
 
     return {
