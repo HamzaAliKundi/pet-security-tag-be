@@ -30,6 +30,30 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
   }
 
   try {
+    // For public orders, we'll check if the email already has 5 or more orders
+    // This is a basic check - in a real scenario, you might want to link this to user accounts
+    const existingOrdersCount = await PetTagOrder.countDocuments({ email: email.toLowerCase() });
+    if (existingOrdersCount >= 5) {
+      res.status(400).json({ 
+        message: 'Maximum limit reached. You can only have 5 pet tags per account.',
+        error: 'PET_LIMIT_EXCEEDED',
+        currentCount: existingOrdersCount,
+        maxAllowed: 5
+      });
+      return;
+    }
+
+    // Check if adding this order would exceed the limit
+    if (existingOrdersCount + quantity > 5) {
+      res.status(400).json({ 
+        message: `Cannot add ${quantity} pet tag(s). You currently have ${existingOrdersCount} orders and can only have a maximum of 5 pets per account.`,
+        error: 'PET_LIMIT_EXCEEDED',
+        currentCount: existingOrdersCount,
+        requestedQuantity: quantity,
+        maxAllowed: 5
+      });
+      return;
+    }
     // Create Stripe payment intent
     const amountInCents = Math.round((totalCostEuro || 0) * 100); // Convert to cents
     const paymentResult = await createPaymentIntent({

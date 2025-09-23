@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
+import { createSubscriptionPaymentIntent } from '../../utils/stripeService';
 
 // Get user's subscriptions
 export const getUserSubscriptions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -114,6 +115,313 @@ export const getSubscriptionStats = asyncHandler(async (req: Request, res: Respo
     console.error('Error getting subscription statistics:', error);
     res.status(500).json({
       message: 'Failed to get subscription statistics',
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Renew subscription
+export const renewSubscription = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?._id;
+    const { subscriptionId } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        message: 'Authentication required',
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    if (!subscriptionId) {
+      res.status(400).json({
+        message: 'Subscription ID is required',
+        error: 'Invalid request body'
+      });
+      return;
+    }
+
+    // Find the subscription
+    const subscription = await Subscription.findOne({ 
+      _id: subscriptionId, 
+      userId,
+      status: 'active'
+    });
+
+    if (!subscription) {
+      res.status(404).json({
+        message: 'Active subscription not found',
+        error: 'Subscription does not exist or is not active'
+      });
+      return;
+    }
+
+    // Check if it's a lifetime subscription
+    if (subscription.type === 'lifetime') {
+      res.status(400).json({
+        message: 'Lifetime subscriptions do not need renewal',
+        error: 'Invalid operation'
+      });
+      return;
+    }
+
+    // Calculate renewal amount
+    const pricing = {
+      monthly: 2.75,
+      yearly: 19.99
+    };
+
+    const amount = pricing[subscription.type as keyof typeof pricing];
+    const amountInCents = Math.round(amount * 100);
+
+    // Create Stripe payment intent
+    const paymentResult = await createSubscriptionPaymentIntent({
+      amount: amountInCents,
+      currency: 'gbp',
+      metadata: {
+        userId: userId.toString(),
+        subscriptionType: subscription.type,
+        action: 'renewal',
+        originalSubscriptionId: subscription._id.toString()
+      }
+    });
+
+    if (!paymentResult.success) {
+      res.status(500).json({
+        message: 'Failed to create payment intent',
+        error: paymentResult.error
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'Renewal payment intent created successfully',
+      status: 200,
+      payment: {
+        paymentIntentId: paymentResult.paymentIntentId,
+        clientSecret: paymentResult.clientSecret,
+        publishableKey: process.env.STRIPE_PUBLISH_KEY
+      },
+      subscription: {
+        id: subscription._id,
+        type: subscription.type,
+        amount,
+        currency: 'GBP'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating renewal payment intent:', error);
+    res.status(500).json({
+      message: 'Failed to create renewal payment intent',
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Upgrade subscription
+export const upgradeSubscription = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?._id;
+    const { subscriptionId, newType } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        message: 'Authentication required',
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    if (!subscriptionId || !newType) {
+      res.status(400).json({
+        message: 'Subscription ID and new type are required',
+        error: 'Invalid request body'
+      });
+      return;
+    }
+
+    // Validate new type
+    if (!['monthly', 'yearly', 'lifetime'].includes(newType)) {
+      res.status(400).json({
+        message: 'Invalid subscription type',
+        error: 'Type must be monthly, yearly, or lifetime'
+      });
+      return;
+    }
+
+    // Find the subscription
+    const subscription = await Subscription.findOne({ 
+      _id: subscriptionId, 
+      userId,
+      status: 'active'
+    });
+
+    if (!subscription) {
+      res.status(404).json({
+        message: 'Active subscription not found',
+        error: 'Subscription does not exist or is not active'
+      });
+      return;
+    }
+
+    // Check if it's already the same type
+    if (subscription.type === newType) {
+      res.status(400).json({
+        message: 'Subscription is already of this type',
+        error: 'No upgrade needed'
+      });
+      return;
+    }
+
+    // Check if trying to downgrade from lifetime
+    if (subscription.type === 'lifetime') {
+      res.status(400).json({
+        message: 'Cannot downgrade from lifetime subscription',
+        error: 'Invalid operation'
+      });
+      return;
+    }
+
+    // Calculate upgrade amount
+    const pricing = {
+      monthly: 2.75,
+      yearly: 19.99,
+      lifetime: 99.00
+    };
+
+    const amount = pricing[newType as keyof typeof pricing];
+    const amountInCents = Math.round(amount * 100);
+
+    // Create Stripe payment intent
+    const paymentResult = await createSubscriptionPaymentIntent({
+      amount: amountInCents,
+      currency: 'gbp',
+      metadata: {
+        userId: userId.toString(),
+        subscriptionType: newType,
+        action: 'upgrade',
+        originalSubscriptionId: subscription._id.toString()
+      }
+    });
+
+    if (!paymentResult.success) {
+      res.status(500).json({
+        message: 'Failed to create payment intent',
+        error: paymentResult.error
+      });
+      return;
+    }
+
+    res.status(200).json({
+      message: 'Upgrade payment intent created successfully',
+      status: 200,
+      payment: {
+        paymentIntentId: paymentResult.paymentIntentId,
+        clientSecret: paymentResult.clientSecret,
+        publishableKey: process.env.STRIPE_PUBLISH_KEY
+      },
+      subscription: {
+        id: subscription._id,
+        currentType: subscription.type,
+        newType,
+        amount,
+        currency: 'GBP'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating upgrade payment intent:', error);
+    res.status(500).json({
+      message: 'Failed to create upgrade payment intent',
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Confirm subscription renewal/upgrade payment
+export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user?._id;
+    const { subscriptionId, paymentIntentId, action, newType } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        message: 'Authentication required',
+        error: 'User not authenticated'
+      });
+      return;
+    }
+
+    if (!subscriptionId || !paymentIntentId || !action) {
+      res.status(400).json({
+        message: 'Subscription ID, payment intent ID, and action are required',
+        error: 'Invalid request body'
+      });
+      return;
+    }
+
+    // Find the subscription
+    const subscription = await Subscription.findOne({ 
+      _id: subscriptionId, 
+      userId,
+      status: 'active'
+    });
+
+    if (!subscription) {
+      res.status(404).json({
+        message: 'Active subscription not found',
+        error: 'Subscription does not exist or is not active'
+      });
+      return;
+    }
+
+    // Calculate new end date
+    const startDate = new Date();
+    const endDate = new Date();
+    
+    if (action === 'renewal') {
+      // Extend current subscription
+      if (subscription.type === 'monthly') {
+        endDate.setMonth(endDate.getMonth() + 1);
+      } else if (subscription.type === 'yearly') {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      }
+    } else if (action === 'upgrade' && newType) {
+      // Upgrade to new type
+      if (newType === 'monthly') {
+        endDate.setMonth(endDate.getMonth() + 1);
+      } else if (newType === 'yearly') {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else if (newType === 'lifetime') {
+        endDate.setFullYear(endDate.getFullYear() + 100);
+      }
+    }
+
+    // Update subscription
+    subscription.endDate = endDate;
+    if (action === 'upgrade' && newType) {
+      subscription.type = newType as 'monthly' | 'yearly' | 'lifetime';
+    }
+    subscription.paymentIntentId = paymentIntentId;
+    await subscription.save();
+
+    res.status(200).json({
+      message: `Subscription ${action} confirmed successfully`,
+      status: 200,
+      subscription: {
+        id: subscription._id,
+        type: subscription.type,
+        endDate: subscription.endDate,
+        status: subscription.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error confirming subscription payment:', error);
+    res.status(500).json({
+      message: 'Failed to confirm subscription payment',
       error: 'Internal server error'
     });
   }

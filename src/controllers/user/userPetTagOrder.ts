@@ -5,6 +5,35 @@ import Pet from '../../models/Pet';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
 import { assignQRToOrder } from '../qrcode/qrManagement';
 
+// Get user's pet count for limit validation
+export const getUserPetCount = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as any).user?._id;
+
+  try {
+    const petCount = await Pet.countDocuments({ userId });
+    const maxAllowed = 5;
+    const canOrderMore = petCount < maxAllowed;
+    const remainingSlots = Math.max(0, maxAllowed - petCount);
+
+    res.status(200).json({
+      message: 'Pet count retrieved successfully',
+      status: 200,
+      data: {
+        currentCount: petCount,
+        maxAllowed,
+        canOrderMore,
+        remainingSlots
+      }
+    });
+  } catch (error) {
+    console.error('Error getting pet count:', error);
+    res.status(500).json({
+      message: 'Failed to get pet count',
+      error: 'Internal server error'
+    });
+  }
+});
+
 // Create pet tag order (Private - requires authentication)
 export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const userId = (req as any).user?._id;
@@ -60,6 +89,29 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
   }
 
   try {
+    // Check if user already has 5 or more pets
+    const existingPetsCount = await Pet.countDocuments({ userId });
+    if (existingPetsCount >= 5) {
+      res.status(400).json({ 
+        message: 'Maximum limit reached. You can only have 5 pet tags per account.',
+        error: 'PET_LIMIT_EXCEEDED',
+        currentCount: existingPetsCount,
+        maxAllowed: 5
+      });
+      return;
+    }
+
+    // Check if adding this order would exceed the limit
+    if (existingPetsCount + quantity > 5) {
+      res.status(400).json({ 
+        message: `Cannot add ${quantity} pet tag(s). You currently have ${existingPetsCount} pets and can only have a maximum of 5 pets per account.`,
+        error: 'PET_LIMIT_EXCEEDED',
+        currentCount: existingPetsCount,
+        requestedQuantity: quantity,
+        maxAllowed: 5
+      });
+      return;
+    }
     // Create Stripe payment intent
     const amountInCents = Math.round(totalCostEuro * 100); // Convert euros to cents
     const paymentResult = await createPaymentIntent({

@@ -61,6 +61,7 @@ exports.getPets = (0, express_async_handler_1.default)(async (req, res) => {
                 breed: pet.breed || 'Unknown',
                 age: pet.age || 0,
                 lastSeen: pet.updatedAt ? new Date(pet.updatedAt).toISOString().split('T')[0] : 'Never',
+                image: pet.image || null, // Include pet image
                 // Additional fields for modal
                 hideName: pet.hideName,
                 medication: pet.medication || '',
@@ -117,6 +118,7 @@ exports.getPetById = (0, express_async_handler_1.default)(async (req, res) => {
             breed: pet.breed || 'Unknown',
             age: pet.age || 0,
             lastSeen: pet.updatedAt ? new Date(pet.updatedAt).toISOString().split('T')[0] : 'Never',
+            image: pet.image || null, // Include pet image
             hideName: pet.hideName,
             medication: pet.medication || '',
             allergies: pet.allergies || '',

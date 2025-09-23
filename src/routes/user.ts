@@ -7,7 +7,8 @@ import {
   getUserPetTagOrders,
   getUserPetTagOrder,
   updateUserPetTagOrder,
-  confirmPayment
+  confirmPayment,
+  getUserPetCount 
 } from '../controllers/user/userPetTagOrder';
 import { 
   submitContact, 
@@ -26,7 +27,10 @@ import {
 } from '../controllers/user/pet';
 import { 
   getUserSubscriptions, 
-  getSubscriptionStats 
+  getSubscriptionStats,
+  renewSubscription,
+  upgradeSubscription,
+  confirmSubscriptionPayment
 } from '../controllers/user/subscription';
 import { upload } from '../utils/imageUploadService';
 
@@ -46,6 +50,7 @@ router.get("/get-single-user", authMiddleware, getSingleUser);
 router.patch("/update-single-user", authMiddleware, updateSingleUser);
 
 // Authenticated user pet tag order endpoints (Private)
+router.get('/user-pet-count', authMiddleware, getUserPetCount);
 router.post('/user-pet-tag-orders', authMiddleware, createUserPetTagOrder);
 router.get('/user-pet-tag-orders', authMiddleware, getUserPetTagOrders);
 router.get('/user-pet-tag-orders/:orderId', authMiddleware, getUserPetTagOrder);
@@ -62,5 +67,8 @@ router.post('/pets/:petId/upload-image', authMiddleware, upload.single('image'),
 // Subscription endpoints (Private)
 router.get('/subscriptions', authMiddleware, getUserSubscriptions);
 router.get('/subscriptions/stats', authMiddleware, getSubscriptionStats);
+router.post('/subscriptions/renew', authMiddleware, renewSubscription);
+router.post('/subscriptions/upgrade', authMiddleware, upgradeSubscription);
+router.post('/subscriptions/confirm-payment', authMiddleware, confirmSubscriptionPayment);
 
 export default router; 

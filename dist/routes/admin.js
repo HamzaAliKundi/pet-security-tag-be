@@ -40,6 +40,8 @@ router.get('/payments/:paymentId', payments_1.getPaymentById);
 router.post('/qr-codes/generate-bulk', qrManagement_1.generateBulkQRCodes);
 router.get('/qr-codes', qrManagement_1.getAllQRCodes);
 router.get('/qr-codes/stats', qrManagement_1.getQRStats);
+router.delete('/qr-codes/bulk', qrManagement_1.bulkDeleteQRCodes);
+router.get('/qr-codes/download/csv', qrManagement_1.downloadQRCodesCSV);
 router.get('/qr-codes/:qrId', qrManagement_1.getQRCodeById);
 router.delete('/qr-codes/:qrId', qrManagement_1.deleteQRCode);
 exports.default = router;
