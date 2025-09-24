@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import Pet from '../../models/Pet';
+import QRCode from '../../models/QRCode';
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from '../../utils/imageUploadService';
 
 // Create a new pet
@@ -88,12 +89,33 @@ export const getUserPets = asyncHandler(async (req: Request, res: Response): Pro
       Pet.countDocuments({ userId })
     ]);
 
+    // Get QR code information for each pet
+    const petsWithQRInfo = await Promise.all(
+      pets.map(async (pet) => {
+        const qrCode = await QRCode.findOne({ assignedPetId: pet._id })
+          .select('code status hasVerified scannedCount lastScannedAt imageUrl')
+          .lean();
+        
+        return {
+          ...pet,
+          qrCode: qrCode ? {
+            code: qrCode.code,
+            status: qrCode.status,
+            hasVerified: qrCode.hasVerified,
+            scannedCount: qrCode.scannedCount,
+            lastScannedAt: qrCode.lastScannedAt,
+            imageUrl: qrCode.imageUrl
+          } : null
+        };
+      })
+    );
+
     const totalPages = Math.ceil(totalPets / limitNum);
 
     res.status(200).json({
       message: 'Pets retrieved successfully',
       status: 200,
-      pets,
+      pets: petsWithQRInfo,
       pagination: {
         currentPage: pageNum,
         totalPages,
@@ -128,10 +150,27 @@ export const getPet = asyncHandler(async (req: Request, res: Response): Promise<
       return;
     }
 
+    // Get QR code information for the pet
+    const qrCode = await QRCode.findOne({ assignedPetId: pet._id })
+      .select('code status hasVerified scannedCount lastScannedAt imageUrl')
+      .lean();
+
+    const petWithQRInfo = {
+      ...pet,
+      qrCode: qrCode ? {
+        code: qrCode.code,
+        status: qrCode.status,
+        hasVerified: qrCode.hasVerified,
+        scannedCount: qrCode.scannedCount,
+        lastScannedAt: qrCode.lastScannedAt,
+        imageUrl: qrCode.imageUrl
+      } : null
+    };
+
     res.status(200).json({
       message: 'Pet retrieved successfully',
       status: 200,
-      pet
+      pet: petWithQRInfo
     });
   } catch (error) {
     console.error('Error getting pet:', error);

@@ -80,6 +80,13 @@ const QRCodeSchema = new mongoose_1.Schema({
     },
     lastScannedAt: {
         type: Date
+    },
+    isDownloaded: {
+        type: Boolean,
+        default: false
+    },
+    downloadedAt: {
+        type: Date
     }
 }, {
     timestamps: true

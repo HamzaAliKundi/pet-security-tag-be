@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.uploadPetImage = exports.updatePet = exports.getPet = exports.getUserPets = exports.createPet = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
+const QRCode_1 = __importDefault(require("../../models/QRCode"));
 const imageUploadService_1 = require("../../utils/imageUploadService");
 // Create a new pet
 exports.createPet = (0, express_async_handler_1.default)(async (req, res) => {
@@ -86,11 +87,28 @@ exports.getUserPets = (0, express_async_handler_1.default)(async (req, res) => {
                 .lean(),
             Pet_1.default.countDocuments({ userId })
         ]);
+        // Get QR code information for each pet
+        const petsWithQRInfo = await Promise.all(pets.map(async (pet) => {
+            const qrCode = await QRCode_1.default.findOne({ assignedPetId: pet._id })
+                .select('code status hasVerified scannedCount lastScannedAt imageUrl')
+                .lean();
+            return {
+                ...pet,
+                qrCode: qrCode ? {
+                    code: qrCode.code,
+                    status: qrCode.status,
+                    hasVerified: qrCode.hasVerified,
+                    scannedCount: qrCode.scannedCount,
+                    lastScannedAt: qrCode.lastScannedAt,
+                    imageUrl: qrCode.imageUrl
+                } : null
+            };
+        }));
         const totalPages = Math.ceil(totalPets / limitNum);
         res.status(200).json({
             message: 'Pets retrieved successfully',
             status: 200,
-            pets,
+            pets: petsWithQRInfo,
             pagination: {
                 currentPage: pageNum,
                 totalPages,
@@ -123,10 +141,25 @@ exports.getPet = (0, express_async_handler_1.default)(async (req, res) => {
             });
             return;
         }
+        // Get QR code information for the pet
+        const qrCode = await QRCode_1.default.findOne({ assignedPetId: pet._id })
+            .select('code status hasVerified scannedCount lastScannedAt imageUrl')
+            .lean();
+        const petWithQRInfo = {
+            ...pet,
+            qrCode: qrCode ? {
+                code: qrCode.code,
+                status: qrCode.status,
+                hasVerified: qrCode.hasVerified,
+                scannedCount: qrCode.scannedCount,
+                lastScannedAt: qrCode.lastScannedAt,
+                imageUrl: qrCode.imageUrl
+            } : null
+        };
         res.status(200).json({
             message: 'Pet retrieved successfully',
             status: 200,
-            pet
+            pet: petWithQRInfo
         });
     }
     catch (error) {

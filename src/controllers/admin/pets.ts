@@ -71,6 +71,7 @@ export const getPets = asyncHandler(async (req: Request, res: Response): Promise
         breed: pet.breed || 'Unknown',
         age: pet.age || 0,
         lastSeen: pet.updatedAt ? new Date(pet.updatedAt).toISOString().split('T')[0] : 'Never',
+        image: pet.image || null, // Include pet image
         // Additional fields for modal
         hideName: pet.hideName,
         medication: pet.medication || '',
@@ -131,6 +132,7 @@ export const getPetById = asyncHandler(async (req: Request, res: Response): Prom
       breed: pet.breed || 'Unknown',
       age: pet.age || 0,
       lastSeen: pet.updatedAt ? new Date(pet.updatedAt).toISOString().split('T')[0] : 'Never',
+      image: pet.image || null, // Include pet image
       hideName: pet.hideName,
       medication: pet.medication || '',
       allergies: pet.allergies || '',

@@ -21,6 +21,7 @@ router.put('/contact/:contactId/status', contact_1.updateContactStatus);
 router.get("/get-single-user", auth_1.authMiddleware, account_1.getSingleUser);
 router.patch("/update-single-user", auth_1.authMiddleware, account_1.updateSingleUser);
 // Authenticated user pet tag order endpoints (Private)
+router.get('/user-pet-count', auth_1.authMiddleware, userPetTagOrder_1.getUserPetCount);
 router.post('/user-pet-tag-orders', auth_1.authMiddleware, userPetTagOrder_1.createUserPetTagOrder);
 router.get('/user-pet-tag-orders', auth_1.authMiddleware, userPetTagOrder_1.getUserPetTagOrders);
 router.get('/user-pet-tag-orders/:orderId', auth_1.authMiddleware, userPetTagOrder_1.getUserPetTagOrder);
@@ -35,4 +36,7 @@ router.post('/pets/:petId/upload-image', auth_1.authMiddleware, imageUploadServi
 // Subscription endpoints (Private)
 router.get('/subscriptions', auth_1.authMiddleware, subscription_1.getUserSubscriptions);
 router.get('/subscriptions/stats', auth_1.authMiddleware, subscription_1.getSubscriptionStats);
+router.post('/subscriptions/renew', auth_1.authMiddleware, subscription_1.renewSubscription);
+router.post('/subscriptions/upgrade', auth_1.authMiddleware, subscription_1.upgradeSubscription);
+router.post('/subscriptions/confirm-payment', auth_1.authMiddleware, subscription_1.confirmSubscriptionPayment);
 exports.default = router;

@@ -36,12 +36,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateUserPetTagOrder = exports.getUserPetTagOrder = exports.getUserPetTagOrders = exports.confirmPayment = exports.createUserPetTagOrder = void 0;
+exports.updateUserPetTagOrder = exports.getUserPetTagOrder = exports.getUserPetTagOrders = exports.confirmPayment = exports.createUserPetTagOrder = exports.getUserPetCount = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
 const stripeService_1 = require("../../utils/stripeService");
 const qrManagement_1 = require("../qrcode/qrManagement");
+// Get user's pet count for limit validation
+exports.getUserPetCount = (0, express_async_handler_1.default)(async (req, res) => {
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
+    try {
+        const petCount = await Pet_1.default.countDocuments({ userId });
+        const maxAllowed = 5;
+        const canOrderMore = petCount < maxAllowed;
+        const remainingSlots = Math.max(0, maxAllowed - petCount);
+        res.status(200).json({
+            message: 'Pet count retrieved successfully',
+            status: 200,
+            data: {
+                currentCount: petCount,
+                maxAllowed,
+                canOrderMore,
+                remainingSlots
+            }
+        });
+    }
+    catch (error) {
+        console.error('Error getting pet count:', error);
+        res.status(500).json({
+            message: 'Failed to get pet count',
+            error: 'Internal server error'
+        });
+    }
+});
 // Create pet tag order (Private - requires authentication)
 exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
@@ -80,6 +108,28 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
         return;
     }
     try {
+        // Check if user already has 5 or more pets
+        const existingPetsCount = await Pet_1.default.countDocuments({ userId });
+        if (existingPetsCount >= 5) {
+            res.status(400).json({
+                message: 'Maximum limit reached. You can only have 5 pet tags per account.',
+                error: 'PET_LIMIT_EXCEEDED',
+                currentCount: existingPetsCount,
+                maxAllowed: 5
+            });
+            return;
+        }
+        // Check if adding this order would exceed the limit
+        if (existingPetsCount + quantity > 5) {
+            res.status(400).json({
+                message: `Cannot add ${quantity} pet tag(s). You currently have ${existingPetsCount} pets and can only have a maximum of 5 pets per account.`,
+                error: 'PET_LIMIT_EXCEEDED',
+                currentCount: existingPetsCount,
+                requestedQuantity: quantity,
+                maxAllowed: 5
+            });
+            return;
+        }
         // Create Stripe payment intent
         const amountInCents = Math.round(totalCostEuro * 100); // Convert euros to cents
         const paymentResult = await (0, stripeService_1.createPaymentIntent)({

@@ -54,7 +54,8 @@ const generateQRCodeWithCloudinary = async () => {
             hasGiven: false,
             hasVerified: false,
             status: 'unassigned',
-            scannedCount: 0
+            scannedCount: 0,
+            isDownloaded: false
         });
         return {
             id: qrCodeRecord._id,

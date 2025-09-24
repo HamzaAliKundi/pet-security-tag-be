@@ -11,6 +11,8 @@ export interface IQRCode extends Document {
   status: 'unassigned' | 'assigned' | 'verified' | 'lost';
   scannedCount: number;
   lastScannedAt?: Date;
+  isDownloaded: boolean;
+  downloadedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -60,6 +62,13 @@ const QRCodeSchema: Schema = new Schema({
     default: 0
   },
   lastScannedAt: {
+    type: Date
+  },
+  isDownloaded: {
+    type: Boolean,
+    default: false
+  },
+  downloadedAt: {
     type: Date
   }
 }, {

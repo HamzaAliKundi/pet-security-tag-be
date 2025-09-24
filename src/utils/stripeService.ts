@@ -22,8 +22,10 @@ export interface CreateSubscriptionPaymentIntentParams {
   currency: string;
   metadata: {
     userId: string;
-    petName: string;
+    petName?: string;
     subscriptionType: string;
+    action?: string;
+    originalSubscriptionId?: string;
   };
 }
 

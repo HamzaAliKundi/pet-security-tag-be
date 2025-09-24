@@ -24,7 +24,14 @@ export const register = asyncHandler(async (req: Request, res: Response): Promis
   });
 
   const token = generateVerificationToken(user);
-  await sendVerificationEmail(email, firstName, token);
+  
+  // Send verification email (non-blocking)
+  try {
+    await sendVerificationEmail(email, firstName, token);
+  } catch (emailError) {
+    console.error('Failed to send verification email:', emailError);
+    // Don't fail the registration if email fails
+  }
 
   res.status(201).json({
     message: 'User registered successfully. Please check your email to verify your account.',
@@ -116,7 +123,14 @@ export const sendForgotPasswordEmail = asyncHandler(async (req: Request, res: Re
   }
 
   const token = generateForgotPasswordToken(user);
-  await sendPasswordResetEmail(email, user?.firstName, token);
+  
+  // Send password reset email (non-blocking)
+  try {
+    await sendPasswordResetEmail(email, user?.firstName, token);
+  } catch (emailError) {
+    console.error('Failed to send password reset email:', emailError);
+    // Don't fail the request if email fails
+  }
 
   res.status(200).json({
     message: 'Forgot password email sent successfully',

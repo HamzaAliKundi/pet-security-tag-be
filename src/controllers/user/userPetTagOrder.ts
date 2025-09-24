@@ -4,6 +4,37 @@ import UserPetTagOrder from '../../models/UserPetTagOrder';
 import Pet from '../../models/Pet';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
 import { assignQRToOrder } from '../qrcode/qrManagement';
+import { sendOrderConfirmationEmail } from '../../utils/emailService';
+import User from '../../models/User';
+
+// Get user's pet count for limit validation
+export const getUserPetCount = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as any).user?._id;
+
+  try {
+    const petCount = await Pet.countDocuments({ userId });
+    const maxAllowed = 5;
+    const canOrderMore = petCount < maxAllowed;
+    const remainingSlots = Math.max(0, maxAllowed - petCount);
+
+    res.status(200).json({
+      message: 'Pet count retrieved successfully',
+      status: 200,
+      data: {
+        currentCount: petCount,
+        maxAllowed,
+        canOrderMore,
+        remainingSlots
+      }
+    });
+  } catch (error) {
+    console.error('Error getting pet count:', error);
+    res.status(500).json({
+      message: 'Failed to get pet count',
+      error: 'Internal server error'
+    });
+  }
+});
 
 // Create pet tag order (Private - requires authentication)
 export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -60,6 +91,29 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
   }
 
   try {
+    // Check if user already has 5 or more pets
+    const existingPetsCount = await Pet.countDocuments({ userId });
+    if (existingPetsCount >= 5) {
+      res.status(400).json({ 
+        message: 'Maximum limit reached. You can only have 5 pet tags per account.',
+        error: 'PET_LIMIT_EXCEEDED',
+        currentCount: existingPetsCount,
+        maxAllowed: 5
+      });
+      return;
+    }
+
+    // Check if adding this order would exceed the limit
+    if (existingPetsCount + quantity > 5) {
+      res.status(400).json({ 
+        message: `Cannot add ${quantity} pet tag(s). You currently have ${existingPetsCount} pets and can only have a maximum of 5 pets per account.`,
+        error: 'PET_LIMIT_EXCEEDED',
+        currentCount: existingPetsCount,
+        requestedQuantity: quantity,
+        maxAllowed: 5
+      });
+      return;
+    }
     // Create Stripe payment intent
     const amountInCents = Math.round(totalCostEuro * 100); // Convert euros to cents
     const paymentResult = await createPaymentIntent({
@@ -173,6 +227,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         const pet = await Pet.create({
           userId: order.userId,
           userPetTagOrderId: order._id,
+          orderType: 'UserPetTagOrder',
           petName: order.petName,
           hideName: false,
           age: undefined,
@@ -191,6 +246,24 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
           await QRCodeModel.findByIdAndUpdate(qrCodeId, {
             assignedPetId: pet._id
           });
+        }
+
+        // Send order confirmation email (non-blocking)
+        try {
+          const user = await User.findById(userId);
+          if (user && user.email) {
+            await sendOrderConfirmationEmail(user.email, {
+              customerName: user.firstName || 'Valued Customer',
+              orderNumber: order.paymentIntentId || order._id.toString(),
+              petName: order.petName,
+              quantity: order.quantity,
+              orderDate: new Date().toLocaleDateString('en-GB'),
+              totalAmount: order.totalCostEuro
+            });
+          }
+        } catch (emailError) {
+          console.error('Failed to send order confirmation email:', emailError);
+          // Don't fail the order if email fails
         }
 
         res.status(200).json({
