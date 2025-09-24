@@ -42,7 +42,12 @@ const PetSchema = new mongoose_1.Schema({
     },
     userPetTagOrderId: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'UserPetTagOrder',
+        refPath: 'orderType',
+        required: true
+    },
+    orderType: {
+        type: String,
+        enum: ['UserPetTagOrder', 'PetTagOrder'],
         required: true
     },
     petName: {

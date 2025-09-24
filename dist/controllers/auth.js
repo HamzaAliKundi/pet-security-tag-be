@@ -25,7 +25,14 @@ exports.register = (0, express_async_handler_1.default)(async (req, res) => {
         isEmailVerified: false
     });
     const token = (0, jwt_1.generateVerificationToken)(user);
-    await (0, emailService_1.sendVerificationEmail)(email, firstName, token);
+    // Send verification email (non-blocking)
+    try {
+        await (0, emailService_1.sendVerificationEmail)(email, firstName, token);
+    }
+    catch (emailError) {
+        console.error('Failed to send verification email:', emailError);
+        // Don't fail the registration if email fails
+    }
     res.status(201).json({
         message: 'User registered successfully. Please check your email to verify your account.',
         status: 201,
@@ -103,7 +110,14 @@ exports.sendForgotPasswordEmail = (0, express_async_handler_1.default)(async (re
         return;
     }
     const token = (0, jwt_1.generateForgotPasswordToken)(user);
-    await (0, emailService_1.sendPasswordResetEmail)(email, user === null || user === void 0 ? void 0 : user.firstName, token);
+    // Send password reset email (non-blocking)
+    try {
+        await (0, emailService_1.sendPasswordResetEmail)(email, user === null || user === void 0 ? void 0 : user.firstName, token);
+    }
+    catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+        // Don't fail the request if email fails
+    }
     res.status(200).json({
         message: 'Forgot password email sent successfully',
         status: 200
