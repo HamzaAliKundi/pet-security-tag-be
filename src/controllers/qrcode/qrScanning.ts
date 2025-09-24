@@ -631,6 +631,7 @@ export const getPetProfileByQR = asyncHandler(async (req: Request, res: Response
       medication: pet.medication || 'None',
       allergies: pet.allergies || 'None',
       notes: pet.notes || 'None',
+      image: pet.image || null, // Include pet image
       tagColor: order?.tagColor || 'blue',
       owner: {
         name: `${user.firstName} ${user.lastName}`,
