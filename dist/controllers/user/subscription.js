@@ -6,7 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.confirmSubscriptionPayment = exports.upgradeSubscription = exports.renewSubscription = exports.getSubscriptionStats = exports.getUserSubscriptions = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const Subscription_1 = __importDefault(require("../../models/Subscription"));
+const User_1 = __importDefault(require("../../models/User"));
 const stripeService_1 = require("../../utils/stripeService");
+const emailService_1 = require("../../utils/emailService");
 // Get user's subscriptions
 exports.getUserSubscriptions = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
@@ -373,6 +375,29 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
         }
         subscription.paymentIntentId = paymentIntentId;
         await subscription.save();
+        // Send subscription notification email (non-blocking)
+        try {
+            const user = await User_1.default.findById(userId);
+            if (user && user.email) {
+                const pricing = {
+                    monthly: 2.75,
+                    yearly: 19.99,
+                    lifetime: 99.00
+                };
+                await (0, emailService_1.sendSubscriptionNotificationEmail)(user.email, {
+                    customerName: user.firstName || 'Valued Customer',
+                    action: action,
+                    planType: action === 'upgrade' && newType ? newType : subscription.type,
+                    amount: pricing[subscription.type],
+                    validUntil: endDate.toLocaleDateString('en-GB'),
+                    paymentDate: new Date().toLocaleDateString('en-GB')
+                });
+            }
+        }
+        catch (emailError) {
+            console.error('Failed to send subscription notification email:', emailError);
+            // Don't fail the subscription if email fails
+        }
         res.status(200).json({
             message: `Subscription ${action} confirmed successfully`,
             status: 200,

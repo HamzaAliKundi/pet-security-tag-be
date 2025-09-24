@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.downloadQRCodesCSV = exports.bulkDeleteQRCodes = exports.deleteQRCode = exports.getQRStats = exports.getQRCodeById = exports.assignQRToOrder = exports.getAllQRCodes = exports.generateBulkQRCodes = void 0;
+exports.downloadQRCodesCSV = exports.bulkDeleteQRCodes = exports.deleteQRCode = exports.getQRStats = exports.getQRCodeById = exports.assignQRToPublicOrder = exports.assignQRToOrder = exports.getAllQRCodes = exports.generateBulkQRCodes = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const QRCode_1 = __importDefault(require("../../models/QRCode"));
 const Subscription_1 = __importDefault(require("../../models/Subscription"));
@@ -148,6 +148,32 @@ const assignQRToOrder = async (orderId) => {
     }
 };
 exports.assignQRToOrder = assignQRToOrder;
+// Assign QR code to public order (FE orders)
+const assignQRToPublicOrder = async (orderId, userId) => {
+    try {
+        // Find available QR code
+        const availableQR = await QRCode_1.default.findOne({
+            hasGiven: false,
+            status: 'unassigned'
+        });
+        if (!availableQR) {
+            console.error('No available QR codes found');
+            return null;
+        }
+        // Update QR code assignment
+        availableQR.hasGiven = true;
+        availableQR.assignedUserId = userId;
+        availableQR.assignedOrderId = orderId;
+        availableQR.status = 'assigned';
+        await availableQR.save();
+        return availableQR._id.toString();
+    }
+    catch (error) {
+        console.error('Error assigning QR code to public order:', error);
+        return null;
+    }
+};
+exports.assignQRToPublicOrder = assignQRToPublicOrder;
 // Get QR code details by ID
 exports.getQRCodeById = (0, express_async_handler_1.default)(async (req, res) => {
     try {

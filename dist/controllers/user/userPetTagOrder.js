@@ -42,6 +42,8 @@ const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"
 const Pet_1 = __importDefault(require("../../models/Pet"));
 const stripeService_1 = require("../../utils/stripeService");
 const qrManagement_1 = require("../qrcode/qrManagement");
+const emailService_1 = require("../../utils/emailService");
+const User_1 = __importDefault(require("../../models/User"));
 // Get user's pet count for limit validation
 exports.getUserPetCount = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
@@ -235,6 +237,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                 const pet = await Pet_1.default.create({
                     userId: order.userId,
                     userPetTagOrderId: order._id,
+                    orderType: 'UserPetTagOrder',
                     petName: order.petName,
                     hideName: false,
                     age: undefined,
@@ -251,6 +254,24 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                     await QRCodeModel.findByIdAndUpdate(qrCodeId, {
                         assignedPetId: pet._id
                     });
+                }
+                // Send order confirmation email (non-blocking)
+                try {
+                    const user = await User_1.default.findById(userId);
+                    if (user && user.email) {
+                        await (0, emailService_1.sendOrderConfirmationEmail)(user.email, {
+                            customerName: user.firstName || 'Valued Customer',
+                            orderNumber: order.paymentIntentId || order._id.toString(),
+                            petName: order.petName,
+                            quantity: order.quantity,
+                            orderDate: new Date().toLocaleDateString('en-GB'),
+                            totalAmount: order.totalCostEuro
+                        });
+                    }
+                }
+                catch (emailError) {
+                    console.error('Failed to send order confirmation email:', emailError);
+                    // Don't fail the order if email fails
                 }
                 res.status(200).json({
                     message: 'Payment confirmed successfully and pet record created',
