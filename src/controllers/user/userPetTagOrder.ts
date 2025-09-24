@@ -227,6 +227,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         const pet = await Pet.create({
           userId: order.userId,
           userPetTagOrderId: order._id,
+          orderType: 'UserPetTagOrder',
           petName: order.petName,
           hideName: false,
           age: undefined,

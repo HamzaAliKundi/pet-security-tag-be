@@ -5,7 +5,8 @@ import {
   resetPasswordTemplate, 
   orderConfirmationTemplate, 
   subscriptionNotificationTemplate, 
-  qrCodeFirstScanTemplate 
+  qrCodeFirstScanTemplate,
+  credentialsEmailTemplate 
 } from './emailtemplate';
 
 // Configure SendGrid with API key
@@ -140,6 +141,34 @@ export const sendQRCodeFirstScanEmail = async (email: string, scanData: {
     console.log('QR code first scan email sent successfully to:', email);
   } catch (error) {
     console.error('Error sending QR code first scan email:', error);
+    throw error;
+  }
+};
+
+// Send account credentials email
+export const sendCredentialsEmail = async (email: string, credentialsData: {
+  customerName: string;
+  email: string;
+  password: string;
+  loginUrl: string;
+}): Promise<void> => {
+  const html = credentialsEmailTemplate(credentialsData);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Your Account Credentials - Digital Tails',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Credentials email sent successfully to:', email);
+  } catch (error) {
+    console.error('Error sending credentials email:', error);
     throw error;
   }
 };

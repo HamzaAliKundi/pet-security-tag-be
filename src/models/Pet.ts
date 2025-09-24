@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IPet extends Document {
   userId: string;
   userPetTagOrderId: string;
+  orderType: 'UserPetTagOrder' | 'PetTagOrder';
   petName: string;
   hideName: boolean;
   age: number;
@@ -23,7 +24,12 @@ const PetSchema: Schema = new Schema({
   },
   userPetTagOrderId: {
     type: Schema.Types.ObjectId,
-    ref: 'UserPetTagOrder',
+    refPath: 'orderType',
+    required: true
+  },
+  orderType: {
+    type: String,
+    enum: ['UserPetTagOrder', 'PetTagOrder'],
     required: true
   },
   petName: {

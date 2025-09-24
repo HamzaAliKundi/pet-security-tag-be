@@ -926,6 +926,227 @@ export const qrCodeFirstScanTemplate = compile(`
 </html>
 `);
 
+export const credentialsEmailTemplate = compile(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Account Credentials - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Arial', sans-serif; 
+            background-color: #f8f9fa; 
+            line-height: 1.6; 
+            color: #333;
+        }
+        .email-container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #ffffff; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header { 
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+            padding: 30px 20px; 
+            text-align: center; 
+            color: white;
+        }
+        .logo { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin-bottom: 10px;
+        }
+        .tagline { 
+            font-size: 16px; 
+            opacity: 0.9;
+        }
+        .content { 
+            padding: 40px 30px; 
+            text-align: center;
+        }
+        .welcome-text { 
+            font-size: 24px; 
+            color: #28a745; 
+            margin-bottom: 20px; 
+            font-weight: bold;
+        }
+        .description { 
+            font-size: 16px; 
+            color: #666; 
+            margin-bottom: 30px; 
+            line-height: 1.8;
+        }
+        .credentials-box { 
+            background-color: #f8f9fa; 
+            border: 2px solid #e9ecef; 
+            padding: 25px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+            text-align: left;
+        }
+        .credential-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 15px; 
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .credential-row:last-child { 
+            border-bottom: none; 
+        }
+        .credential-label { 
+            font-weight: bold; 
+            color: #495057;
+        }
+        .credential-value { 
+            color: #212529;
+            font-family: monospace;
+            background-color: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .cta-button { 
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 50px; 
+            display: inline-block; 
+            font-weight: bold; 
+            font-size: 16px; 
+            margin: 20px 0; 
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .cta-button:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        }
+        .info-box { 
+            background-color: #e3f2fd; 
+            border-left: 4px solid #007bff; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+        }
+        .info-text { 
+            color: #1976d2; 
+            font-size: 14px; 
+            margin: 0;
+        }
+        .security-box { 
+            background-color: #fff3cd; 
+            border-left: 4px solid #ffc107; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+        }
+        .security-text { 
+            color: #856404; 
+            font-size: 14px; 
+            margin: 0;
+        }
+        .footer { 
+            background-color: #f8f9fa; 
+            padding: 30px; 
+            text-align: center; 
+            border-top: 1px solid #e9ecef;
+        }
+        .footer-text { 
+            color: #6c757d; 
+            font-size: 14px; 
+            margin-bottom: 15px;
+        }
+        .social-links { 
+            margin-top: 20px;
+        }
+        .social-links a { 
+            display: inline-block; 
+            margin: 0 10px; 
+            color: #007bff; 
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">Your Account is Ready!</div>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-text">Welcome to Digital Tails, {{customerName}}!</div>
+            <p class="description">
+                Your account has been created successfully! We've generated your login credentials 
+                so you can access your dashboard and manage your pet's protection.
+            </p>
+            
+            <div class="credentials-box">
+                <div class="credential-row">
+                    <span class="credential-label">Email:</span>
+                    <span class="credential-value">{{email}}</span>
+                </div>
+                <div class="credential-row">
+                    <span class="credential-label">Password:</span>
+                    <span class="credential-value">{{password}}</span>
+                </div>
+            </div>
+            
+            <a href="{{loginUrl}}" class="cta-button">
+                🐕 Access Your Dashboard
+            </a>
+            
+            <div class="security-box">
+                <p class="security-text">
+                    <strong>🔒 Security Note:</strong> Please change your password after your first login. 
+                    Keep your credentials safe and don't share them with anyone.
+                </p>
+            </div>
+            
+            <div class="info-box">
+                <p class="info-text">
+                    <strong>📱 What You Can Do:</strong><br>
+                    • View your pet's QR code and status<br>
+                    • Update your pet's information<br>
+                    • Manage your subscription<br>
+                    • Track your order status<br>
+                    • Access 24/7 customer support
+                </p>
+            </div>
+            
+            <p class="description">
+                Your PetSecure Tag order is being processed and you'll receive tracking information soon. 
+                Thank you for choosing Digital Tails to protect your beloved pet!
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p class="footer-text">
+                <strong>Digital Tails Pet Securities</strong><br>
+                Dedicated 24/7 Award Winning Service Team
+            </p>
+            <p class="footer-text">
+                Need help? Contact us via email, WhatsApp, live chat, or phone!
+            </p>
+            <div class="social-links">
+                <a href="#">📧 Email</a> | 
+                <a href="#">💬 WhatsApp</a> | 
+                <a href="#">📞 Phone</a>
+            </div>
+            <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
+                © Digital Tails 2023. All Rights Reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+`);
+
 export const petFoundNotificationTemplate = compile(`
 <!DOCTYPE html>
 <html>

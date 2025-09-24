@@ -173,6 +173,35 @@ export const assignQRToOrder = async (orderId: string): Promise<string | null> =
   }
 };
 
+// Assign QR code to public order (FE orders)
+export const assignQRToPublicOrder = async (orderId: string, userId: string): Promise<string | null> => {
+  try {
+    // Find available QR code
+    const availableQR = await QRCode.findOne({
+      hasGiven: false,
+      status: 'unassigned'
+    });
+
+    if (!availableQR) {
+      console.error('No available QR codes found');
+      return null;
+    }
+
+    // Update QR code assignment
+    availableQR.hasGiven = true;
+    availableQR.assignedUserId = userId;
+    availableQR.assignedOrderId = orderId;
+    availableQR.status = 'assigned';
+    
+    await availableQR.save();
+
+    return availableQR._id.toString();
+  } catch (error) {
+    console.error('Error assigning QR code to public order:', error);
+    return null;
+  }
+};
+
 // Get QR code details by ID
 export const getQRCodeById = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
