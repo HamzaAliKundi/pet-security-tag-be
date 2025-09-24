@@ -5,6 +5,7 @@ import Subscription from '../../models/Subscription';
 import Pet from '../../models/Pet';
 import User from '../../models/User';
 import { createPaymentIntent, createSubscriptionPaymentIntent } from '../../utils/stripeService';
+import { sendQRCodeFirstScanEmail } from '../../utils/emailService';
 
 // Scan QR Code - Main entry point
 export const scanQRCode = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -242,6 +243,24 @@ export const autoVerifyQRCode = asyncHandler(async (req: Request, res: Response)
     qrCode.assignedUserId = qrCode.assignedUserId || userId;
     await qrCode.save();
 
+    // Send first scan notification email (non-blocking)
+    try {
+      const user = await User.findById(userId);
+      const pet = await Pet.findById(qrCode.assignedPetId);
+      if (user && user.email && pet) {
+        await sendQRCodeFirstScanEmail(user.email, {
+          petOwnerName: user.firstName || 'Pet Owner',
+          petName: pet.petName,
+          qrCode: qrCode.code,
+          scanDate: new Date().toLocaleDateString('en-GB'),
+          scanLocation: 'Unknown Location' // We don't have location data in this context
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send QR code first scan email:', emailError);
+      // Don't fail the verification if email fails
+    }
+
     // Create a new subscription record linking this QR to the user's active subscription
     const newSubscription = await Subscription.create({
       userId,
@@ -323,6 +342,24 @@ export const verifyQRCodeWithSubscription = asyncHandler(async (req: Request, re
       qrCode.status = 'verified';
       qrCode.assignedPetId = petId || qrCode.assignedPetId;
       await qrCode.save();
+
+      // Send first scan notification email (non-blocking)
+      try {
+        const user = await User.findById(userId);
+        const pet = await Pet.findById(qrCode.assignedPetId);
+        if (user && user.email && pet) {
+          await sendQRCodeFirstScanEmail(user.email, {
+            petOwnerName: user.firstName || 'Pet Owner',
+            petName: pet.petName,
+            qrCode: qrCode.code,
+            scanDate: new Date().toLocaleDateString('en-GB'),
+            scanLocation: 'Unknown Location' // We don't have location data in this context
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send QR code first scan email:', emailError);
+        // Don't fail the verification if email fails
+      }
 
       // Create a new subscription record linking this QR to the user's active subscription
       const newSubscription = await Subscription.create({
@@ -489,6 +526,24 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       qrCode.assignedPetId = petId;
     }
     await qrCode.save();
+
+    // Send first scan notification email (non-blocking)
+    try {
+      const user = await User.findById(userId);
+      const pet = await Pet.findById(qrCode.assignedPetId);
+      if (user && user.email && pet) {
+        await sendQRCodeFirstScanEmail(user.email, {
+          petOwnerName: user.firstName || 'Pet Owner',
+          petName: pet.petName,
+          qrCode: qrCode.code,
+          scanDate: new Date().toLocaleDateString('en-GB'),
+          scanLocation: 'Unknown Location' // We don't have location data in this context
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send QR code first scan email:', emailError);
+      // Don't fail the verification if email fails
+    }
 
     res.status(200).json({
       message: 'Subscription activated and QR code verified successfully',

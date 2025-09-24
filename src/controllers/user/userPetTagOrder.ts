@@ -4,6 +4,8 @@ import UserPetTagOrder from '../../models/UserPetTagOrder';
 import Pet from '../../models/Pet';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
 import { assignQRToOrder } from '../qrcode/qrManagement';
+import { sendOrderConfirmationEmail } from '../../utils/emailService';
+import User from '../../models/User';
 
 // Get user's pet count for limit validation
 export const getUserPetCount = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -243,6 +245,24 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
           await QRCodeModel.findByIdAndUpdate(qrCodeId, {
             assignedPetId: pet._id
           });
+        }
+
+        // Send order confirmation email (non-blocking)
+        try {
+          const user = await User.findById(userId);
+          if (user && user.email) {
+            await sendOrderConfirmationEmail(user.email, {
+              customerName: user.firstName || 'Valued Customer',
+              orderNumber: order.paymentIntentId || order._id.toString(),
+              petName: order.petName,
+              quantity: order.quantity,
+              orderDate: new Date().toLocaleDateString('en-GB'),
+              totalAmount: order.totalCostEuro
+            });
+          }
+        } catch (emailError) {
+          console.error('Failed to send order confirmation email:', emailError);
+          // Don't fail the order if email fails
         }
 
         res.status(200).json({

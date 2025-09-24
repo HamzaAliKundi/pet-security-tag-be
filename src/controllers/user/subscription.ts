@@ -2,7 +2,9 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
+import User from '../../models/User';
 import { createSubscriptionPaymentIntent } from '../../utils/stripeService';
+import { sendSubscriptionNotificationEmail } from '../../utils/emailService';
 
 // Get user's subscriptions
 export const getUserSubscriptions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -406,6 +408,30 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
     }
     subscription.paymentIntentId = paymentIntentId;
     await subscription.save();
+
+    // Send subscription notification email (non-blocking)
+    try {
+      const user = await User.findById(userId);
+      if (user && user.email) {
+        const pricing = {
+          monthly: 2.75,
+          yearly: 19.99,
+          lifetime: 99.00
+        };
+        
+        await sendSubscriptionNotificationEmail(user.email, {
+          customerName: user.firstName || 'Valued Customer',
+          action: action as 'renewal' | 'upgrade',
+          planType: action === 'upgrade' && newType ? newType : subscription.type,
+          amount: pricing[subscription.type as keyof typeof pricing],
+          validUntil: endDate.toLocaleDateString('en-GB'),
+          paymentDate: new Date().toLocaleDateString('en-GB')
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send subscription notification email:', emailError);
+      // Don't fail the subscription if email fails
+    }
 
     res.status(200).json({
       message: `Subscription ${action} confirmed successfully`,
