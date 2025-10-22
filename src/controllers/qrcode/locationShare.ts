@@ -28,9 +28,9 @@ export const shareLocation = asyncHandler(async (req: Request, res: Response): P
       return;
     }
 
-    if (!['sms', 'whatsapp'].includes(method)) {
+    if (!['sms', 'whatsapp', 'get-phone'].includes(method)) {
       res.status(400).json({
-        message: 'Invalid method. Must be "sms" or "whatsapp"',
+        message: 'Invalid method. Must be "sms", "whatsapp", or "get-phone"',
         error: 'Invalid method'
       });
       return;
@@ -219,7 +219,19 @@ export const shareLocation = asyncHandler(async (req: Request, res: Response): P
 
     console.log(`✅ Formatted phone number: ${formattedPhone}`);
 
-    // Send location notification via Twilio
+    // If method is 'get-phone', just return the phone number without sending
+    if (method === 'get-phone') {
+      console.log(`📞 Returning phone number for WhatsApp (no SMS sent)`);
+      res.status(200).json({
+        message: 'Phone number retrieved successfully',
+        status: 200,
+        phoneNumber: formattedPhone, // Return unmasked for WhatsApp link
+        ownerName
+      });
+      return;
+    }
+
+    // Send location notification via Twilio (SMS only)
     const result = await sendLocationNotification({
       petId,
       method,

@@ -29,9 +29,9 @@ exports.shareLocation = (0, express_async_handler_1.default)(async (req, res) =>
             });
             return;
         }
-        if (!['sms', 'whatsapp'].includes(method)) {
+        if (!['sms', 'whatsapp', 'get-phone'].includes(method)) {
             res.status(400).json({
-                message: 'Invalid method. Must be "sms" or "whatsapp"',
+                message: 'Invalid method. Must be "sms", "whatsapp", or "get-phone"',
                 error: 'Invalid method'
             });
             return;
@@ -201,7 +201,18 @@ exports.shareLocation = (0, express_async_handler_1.default)(async (req, res) =>
             }
         }
         console.log(`✅ Formatted phone number: ${formattedPhone}`);
-        // Send location notification via Twilio
+        // If method is 'get-phone', just return the phone number without sending
+        if (method === 'get-phone') {
+            console.log(`📞 Returning phone number for WhatsApp (no SMS sent)`);
+            res.status(200).json({
+                message: 'Phone number retrieved successfully',
+                status: 200,
+                phoneNumber: formattedPhone, // Return unmasked for WhatsApp link
+                ownerName
+            });
+            return;
+        }
+        // Send location notification via Twilio (SMS only)
         const result = await (0, twilioService_1.sendLocationNotification)({
             petId,
             method,
