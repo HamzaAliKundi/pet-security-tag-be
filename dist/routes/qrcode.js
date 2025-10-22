@@ -6,6 +6,8 @@ const auth_1 = require("../middleware/auth");
 // Admin QR functions are now in admin routes
 // QR Scanning controllers
 const qrScanning_1 = require("../controllers/qrcode/qrScanning");
+// Location sharing controller
+const locationShare_1 = require("../controllers/qrcode/locationShare");
 const router = (0, express_1.Router)();
 // Public routes (no authentication required)
 // QR scanning route - when someone scans a QR code
@@ -14,6 +16,8 @@ router.get('/scan/:code', qrScanning_1.scanQRCode);
 router.get('/verify-details/:code', qrScanning_1.getQRVerificationDetails);
 // Get pet profile for public view (when finder scans verified QR)
 router.get('/pet-profile/:petId', qrScanning_1.getPetProfileByQR);
+// Share location with pet owner (public route)
+router.post('/share-location', locationShare_1.shareLocation);
 // Protected routes (authentication required)
 // Auto-verify QR code if user has active subscription
 router.post('/auto-verify', auth_1.authMiddleware, qrScanning_1.autoVerifyQRCode);

@@ -14,6 +14,9 @@ import {
   getPetProfileByQR
 } from '../controllers/qrcode/qrScanning';
 
+// Location sharing controller
+import { shareLocation } from '../controllers/qrcode/locationShare';
+
 const router = Router();
 
 // Public routes (no authentication required)
@@ -25,6 +28,9 @@ router.get('/verify-details/:code', getQRVerificationDetails);
 
 // Get pet profile for public view (when finder scans verified QR)
 router.get('/pet-profile/:petId', getPetProfileByQR);
+
+// Share location with pet owner (public route)
+router.post('/share-location', shareLocation);
 
 // Protected routes (authentication required)
 // Auto-verify QR code if user has active subscription

@@ -27,7 +27,8 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
     "qrcode": "^1.5.3",
-    "stripe": "^18.4.0"
+    "stripe": "^18.4.0",
+    "twilio": "^4.19.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.13",
