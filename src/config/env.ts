@@ -19,6 +19,11 @@ interface EnvVars {
   CLOUDINARY_CLOUD_NAME: string;
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
+  TWILIO_ACCOUNT_SID: string;
+  TWILIO_AUTH_TOKEN: string;
+  TWILIO_PHONE_NUMBER: string;
+  TWILIO_WHATSAPP_NUMBER: string;
+  TWILIO_TEST_NUMBER?: string; // Optional: For testing with trial account
 }
 
 const validateEnv = (): EnvVars => {
@@ -36,7 +41,11 @@ const validateEnv = (): EnvVars => {
     'STRIPE_SECRET_KEY',
     'CLOUDINARY_CLOUD_NAME',
     'CLOUDINARY_API_KEY',
-    'CLOUDINARY_API_SECRET'
+    'CLOUDINARY_API_SECRET',
+    'TWILIO_ACCOUNT_SID',
+    'TWILIO_AUTH_TOKEN',
+    'TWILIO_PHONE_NUMBER',
+    'TWILIO_WHATSAPP_NUMBER'
   ];
   
   for (const envVar of requiredEnvVars) {
@@ -61,7 +70,12 @@ const validateEnv = (): EnvVars => {
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME!,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY!,
-    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET!
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET!,
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID!,
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN!,
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER!,
+    TWILIO_WHATSAPP_NUMBER: process.env.TWILIO_WHATSAPP_NUMBER!,
+    TWILIO_TEST_NUMBER: process.env.TWILIO_TEST_NUMBER
   };
 };
 
