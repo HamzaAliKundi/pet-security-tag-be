@@ -15,6 +15,7 @@ export interface IUserPetTagOrder extends Document {
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
   paymentIntentId?: string;
   paymentStatus: 'pending' | 'succeeded' | 'failed' | 'cancelled';
+  isReplacement?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,6 +92,10 @@ const UserPetTagOrderSchema: Schema = new Schema({
     required: true,
     enum: ['pending', 'succeeded', 'failed', 'cancelled'],
     default: 'pending'
+  },
+  isReplacement: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

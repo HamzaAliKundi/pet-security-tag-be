@@ -106,6 +106,10 @@ const UserPetTagOrderSchema = new mongoose_1.Schema({
         required: true,
         enum: ['pending', 'succeeded', 'failed', 'cancelled'],
         default: 'pending'
+    },
+    isReplacement: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
