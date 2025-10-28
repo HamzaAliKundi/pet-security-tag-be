@@ -9,7 +9,9 @@ import {
   getUserPetTagOrder,
   updateUserPetTagOrder,
   confirmPayment,
-  getUserPetCount 
+  getUserPetCount,
+  createReplacementOrder,
+  confirmReplacementPayment
 } from '../controllers/user/userPetTagOrder';
 import { 
   submitContact, 
@@ -58,6 +60,10 @@ router.get('/user-pet-tag-orders', authMiddleware, getUserPetTagOrders);
 router.get('/user-pet-tag-orders/:orderId', authMiddleware, getUserPetTagOrder);
 router.put('/user-pet-tag-orders/:orderId', authMiddleware, updateUserPetTagOrder);
 router.post('/user-pet-tag-orders/:orderId/confirm-payment', authMiddleware, confirmPayment);
+
+// Replacement order endpoints (Private)
+router.post('/pets/:petId/replacement-order', authMiddleware, createReplacementOrder);
+router.post('/replacement-orders/:orderId/confirm-payment', authMiddleware, confirmReplacementPayment);
 
 // Pet management endpoints (Private)
 router.post('/pets', authMiddleware, createPet);

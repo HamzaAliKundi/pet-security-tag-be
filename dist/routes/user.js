@@ -28,6 +28,9 @@ router.get('/user-pet-tag-orders', auth_1.authMiddleware, userPetTagOrder_1.getU
 router.get('/user-pet-tag-orders/:orderId', auth_1.authMiddleware, userPetTagOrder_1.getUserPetTagOrder);
 router.put('/user-pet-tag-orders/:orderId', auth_1.authMiddleware, userPetTagOrder_1.updateUserPetTagOrder);
 router.post('/user-pet-tag-orders/:orderId/confirm-payment', auth_1.authMiddleware, userPetTagOrder_1.confirmPayment);
+// Replacement order endpoints (Private)
+router.post('/pets/:petId/replacement-order', auth_1.authMiddleware, userPetTagOrder_1.createReplacementOrder);
+router.post('/replacement-orders/:orderId/confirm-payment', auth_1.authMiddleware, userPetTagOrder_1.confirmReplacementPayment);
 // Pet management endpoints (Private)
 router.post('/pets', auth_1.authMiddleware, pet_1.createPet);
 router.get('/pets', auth_1.authMiddleware, pet_1.getUserPets);
