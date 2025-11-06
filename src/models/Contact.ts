@@ -5,7 +5,7 @@ export interface IContact extends Document {
   email: string;
   purpose: string;
   message: string;
-  status: 'unread' | 'read' | 'replied';
+  isRead: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,11 +32,10 @@ const ContactSchema: Schema = new Schema({
     required: true,
     trim: true
   },
-  status: {
-    type: String,
+  isRead: {
+    type: Boolean,
     required: true,
-    enum: ['unread', 'read', 'replied'],
-    default: 'unread'
+    default: false
   }
 }, {
   timestamps: true

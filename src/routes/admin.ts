@@ -35,6 +35,11 @@ import {
   bulkDeleteQRCodes,
   downloadQRCodesCSV
 } from '../controllers/qrcode/qrManagement';
+import {
+  getAllContacts,
+  getContact,
+  updateContactStatus
+} from '../controllers/user/contact';
 
 
 const router = Router();
@@ -80,5 +85,10 @@ router.delete('/qr-codes/bulk', bulkDeleteQRCodes);
 router.get('/qr-codes/download/csv', downloadQRCodesCSV);
 router.get('/qr-codes/:qrId', getQRCodeById);
 router.delete('/qr-codes/:qrId', deleteQRCode);
+
+// Admin contact management endpoints
+router.get('/contacts', getAllContacts);
+router.get('/contacts/:contactId', getContact);
+router.put('/contacts/:contactId/status', updateContactStatus);
 
 export default router;

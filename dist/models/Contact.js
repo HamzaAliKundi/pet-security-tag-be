@@ -56,11 +56,10 @@ const ContactSchema = new mongoose_1.Schema({
         required: true,
         trim: true
     },
-    status: {
-        type: String,
+    isRead: {
+        type: Boolean,
         required: true,
-        enum: ['unread', 'read', 'replied'],
-        default: 'unread'
+        default: false
     }
 }, {
     timestamps: true
