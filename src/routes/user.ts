@@ -20,7 +20,7 @@ import {
   updateContactStatus 
 } from '../controllers/user/contact';
 import { authMiddleware } from '../middleware/auth';
-import { getSingleUser, updateSingleUser } from '../controllers/user/account';
+import { getSingleUser, updateSingleUser, deleteAccount } from '../controllers/user/account';
 import { 
   createPet, 
   getUserPets, 
@@ -52,6 +52,7 @@ router.put('/contact/:contactId/status', updateContactStatus);
 // User dashboard (Private)
 router.get("/get-single-user", authMiddleware, getSingleUser);
 router.patch("/update-single-user", authMiddleware, updateSingleUser);
+router.delete("/delete-account", authMiddleware, deleteAccount);
 
 // Authenticated user pet tag order endpoints (Private)
 router.get('/user-pet-count', authMiddleware, getUserPetCount);
