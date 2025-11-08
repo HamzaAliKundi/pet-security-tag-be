@@ -33,7 +33,7 @@ exports.submitContact = (0, express_async_handler_1.default)(async (req, res) =>
         email,
         purpose,
         message,
-        status: 'unread'
+        isRead: false
     });
     res.status(201).json({
         message: 'Contact form submitted successfully',
@@ -44,17 +44,28 @@ exports.submitContact = (0, express_async_handler_1.default)(async (req, res) =>
             email: contact.email,
             purpose: contact.purpose,
             message: contact.message,
-            status: contact.status,
+            isRead: contact.isRead,
             createdAt: contact.createdAt
         }
     });
 });
 // Get all contact submissions (for admin use)
 exports.getAllContacts = (0, express_async_handler_1.default)(async (req, res) => {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { isRead, page = 1, limit = 10, search } = req.query;
     const query = {};
-    if (status && ['unread', 'read', 'replied'].includes(status)) {
-        query.status = status;
+    // Filter by isRead status
+    if (isRead !== undefined && isRead !== 'all') {
+        const isReadStr = String(isRead);
+        query.isRead = isReadStr === 'true';
+    }
+    // Search functionality
+    if (search) {
+        query.$or = [
+            { fullName: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+            { purpose: { $regex: search, $options: 'i' } },
+            { message: { $regex: search, $options: 'i' } }
+        ];
     }
     const skip = (Number(page) - 1) * Number(limit);
     const contacts = await Contact_1.default.find(query)
@@ -92,28 +103,27 @@ exports.getContact = (0, express_async_handler_1.default)(async (req, res) => {
             email: contact.email,
             purpose: contact.purpose,
             message: contact.message,
-            status: contact.status,
+            isRead: contact.isRead,
             createdAt: contact.createdAt,
             updatedAt: contact.updatedAt
         }
     });
 });
-// Update contact status
+// Update contact read status
 exports.updateContactStatus = (0, express_async_handler_1.default)(async (req, res) => {
     const { contactId } = req.params;
-    const { status } = req.body;
+    const { isRead } = req.body;
     const contact = await Contact_1.default.findById(contactId);
     if (!contact) {
         res.status(404).json({ message: 'Contact not found' });
         return;
     }
-    // Validate status
-    const validStatuses = ['unread', 'read', 'replied'];
-    if (!validStatuses.includes(status)) {
-        res.status(400).json({ message: 'Invalid status' });
+    // Validate isRead - should be boolean
+    if (typeof isRead !== 'boolean') {
+        res.status(400).json({ message: 'isRead must be a boolean value' });
         return;
     }
-    contact.status = status;
+    contact.isRead = isRead;
     await contact.save();
     res.status(200).json({
         message: 'Contact status updated successfully',
@@ -124,7 +134,7 @@ exports.updateContactStatus = (0, express_async_handler_1.default)(async (req, r
             email: contact.email,
             purpose: contact.purpose,
             message: contact.message,
-            status: contact.status,
+            isRead: contact.isRead,
             createdAt: contact.createdAt,
             updatedAt: contact.updatedAt
         }

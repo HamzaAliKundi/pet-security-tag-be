@@ -33,7 +33,7 @@ export const submitContact = asyncHandler(async (req: Request, res: Response): P
     email,
     purpose,
     message,
-    status: 'unread'
+    isRead: false
   });
 
   res.status(201).json({
@@ -45,7 +45,7 @@ export const submitContact = asyncHandler(async (req: Request, res: Response): P
       email: contact.email,
       purpose: contact.purpose,
       message: contact.message,
-      status: contact.status,
+      isRead: contact.isRead,
       createdAt: contact.createdAt
     }
   });
@@ -53,11 +53,24 @@ export const submitContact = asyncHandler(async (req: Request, res: Response): P
 
 // Get all contact submissions (for admin use)
 export const getAllContacts = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { status, page = 1, limit = 10 } = req.query;
+  const { isRead, page = 1, limit = 10, search } = req.query;
   
   const query: any = {};
-  if (status && ['unread', 'read', 'replied'].includes(status as string)) {
-    query.status = status;
+  
+  // Filter by isRead status
+  if (isRead !== undefined && isRead !== 'all') {
+    const isReadStr = String(isRead);
+    query.isRead = isReadStr === 'true';
+  }
+  
+  // Search functionality
+  if (search) {
+    query.$or = [
+      { fullName: { $regex: search as string, $options: 'i' } },
+      { email: { $regex: search as string, $options: 'i' } },
+      { purpose: { $regex: search as string, $options: 'i' } },
+      { message: { $regex: search as string, $options: 'i' } }
+    ];
   }
 
   const skip = (Number(page) - 1) * Number(limit);
@@ -102,17 +115,17 @@ export const getContact = asyncHandler(async (req: Request, res: Response): Prom
       email: contact.email,
       purpose: contact.purpose,
       message: contact.message,
-      status: contact.status,
+      isRead: contact.isRead,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt
     }
   });
 });
 
-// Update contact status
+// Update contact read status
 export const updateContactStatus = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { contactId } = req.params;
-  const { status } = req.body;
+  const { isRead } = req.body;
 
   const contact = await Contact.findById(contactId);
   if (!contact) {
@@ -120,14 +133,13 @@ export const updateContactStatus = asyncHandler(async (req: Request, res: Respon
     return;
   }
 
-  // Validate status
-  const validStatuses = ['unread', 'read', 'replied'];
-  if (!validStatuses.includes(status)) {
-    res.status(400).json({ message: 'Invalid status' });
+  // Validate isRead - should be boolean
+  if (typeof isRead !== 'boolean') {
+    res.status(400).json({ message: 'isRead must be a boolean value' });
     return;
   }
 
-  contact.status = status;
+  contact.isRead = isRead;
   await contact.save();
 
   res.status(200).json({
@@ -139,7 +151,7 @@ export const updateContactStatus = asyncHandler(async (req: Request, res: Respon
       email: contact.email,
       purpose: contact.purpose,
       message: contact.message,
-      status: contact.status,
+      isRead: contact.isRead,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt
     }

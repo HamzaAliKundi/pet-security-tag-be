@@ -9,6 +9,7 @@ const pets_1 = require("../controllers/admin/pets");
 const orders_1 = require("../controllers/admin/orders");
 const payments_1 = require("../controllers/admin/payments");
 const qrManagement_1 = require("../controllers/qrcode/qrManagement");
+const contact_1 = require("../controllers/user/contact");
 const router = (0, express_1.Router)();
 // All admin routes require authentication
 router.use(auth_1.authMiddleware);
@@ -44,4 +45,8 @@ router.delete('/qr-codes/bulk', qrManagement_1.bulkDeleteQRCodes);
 router.get('/qr-codes/download/csv', qrManagement_1.downloadQRCodesCSV);
 router.get('/qr-codes/:qrId', qrManagement_1.getQRCodeById);
 router.delete('/qr-codes/:qrId', qrManagement_1.deleteQRCode);
+// Admin contact management endpoints
+router.get('/contacts', contact_1.getAllContacts);
+router.get('/contacts/:contactId', contact_1.getContact);
+router.put('/contacts/:contactId/status', contact_1.updateContactStatus);
 exports.default = router;
