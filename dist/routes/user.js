@@ -21,6 +21,7 @@ router.put('/contact/:contactId/status', contact_1.updateContactStatus);
 // User dashboard (Private)
 router.get("/get-single-user", auth_1.authMiddleware, account_1.getSingleUser);
 router.patch("/update-single-user", auth_1.authMiddleware, account_1.updateSingleUser);
+router.delete("/delete-account", auth_1.authMiddleware, account_1.deleteAccount);
 // Authenticated user pet tag order endpoints (Private)
 router.get('/user-pet-count', auth_1.authMiddleware, userPetTagOrder_1.getUserPetCount);
 router.post('/user-pet-tag-orders', auth_1.authMiddleware, userPetTagOrder_1.createUserPetTagOrder);

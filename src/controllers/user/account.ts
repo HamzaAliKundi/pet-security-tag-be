@@ -1,6 +1,10 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import User from '../../models/User';
+import Pet from '../../models/Pet';
+import UserPetTagOrder from '../../models/UserPetTagOrder';
+import Subscription from '../../models/Subscription';
+import QRCode from '../../models/QRCode';
 
 // Get single user (Private)
 export const getSingleUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -101,5 +105,54 @@ export const updateSingleUser = asyncHandler(async (req: Request, res: Response)
       lastName: updatedUser.lastName,
       email: updatedUser.email
     }
+  });
+});
+
+// Delete authenticated user's account (Private)
+export const deleteAccount = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const userId = (req as any).user?.id;
+
+  if (!userId) {
+    res.status(401).json({ message: 'User not authenticated' });
+    return;
+  }
+
+  const existingUser = await User.findById(userId);
+  if (!existingUser) {
+    res.status(404).json({ message: 'User not found' });
+    return;
+  }
+
+  // Reset any QR codes linked to this user
+  await QRCode.updateMany(
+    { assignedUserId: userId },
+    {
+      $set: {
+        assignedUserId: null,
+        assignedOrderId: null,
+        assignedPetId: null,
+        hasGiven: false,
+        hasVerified: false,
+        status: 'unassigned',
+        isDownloaded: false,
+        downloadedAt: null,
+        lastScannedAt: null,
+        scannedCount: 0
+      }
+    }
+  );
+
+  // Remove user-related data
+  await Promise.all([
+    Pet.deleteMany({ userId }),
+    UserPetTagOrder.deleteMany({ userId }),
+    Subscription.deleteMany({ userId })
+  ]);
+
+  await User.findByIdAndDelete(userId);
+
+  res.status(200).json({
+    message: 'Account deleted successfully',
+    status: 200
   });
 });

@@ -3,9 +3,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSingleUser = exports.getSingleUser = void 0;
+exports.deleteAccount = exports.updateSingleUser = exports.getSingleUser = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const User_1 = __importDefault(require("../../models/User"));
+const Pet_1 = __importDefault(require("../../models/Pet"));
+const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
+const Subscription_1 = __importDefault(require("../../models/Subscription"));
+const QRCode_1 = __importDefault(require("../../models/QRCode"));
 // Get single user (Private)
 exports.getSingleUser = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
@@ -90,5 +94,45 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
             lastName: updatedUser.lastName,
             email: updatedUser.email
         }
+    });
+});
+// Delete authenticated user's account (Private)
+exports.deleteAccount = (0, express_async_handler_1.default)(async (req, res) => {
+    var _a;
+    const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    if (!userId) {
+        res.status(401).json({ message: 'User not authenticated' });
+        return;
+    }
+    const existingUser = await User_1.default.findById(userId);
+    if (!existingUser) {
+        res.status(404).json({ message: 'User not found' });
+        return;
+    }
+    // Reset any QR codes linked to this user
+    await QRCode_1.default.updateMany({ assignedUserId: userId }, {
+        $set: {
+            assignedUserId: null,
+            assignedOrderId: null,
+            assignedPetId: null,
+            hasGiven: false,
+            hasVerified: false,
+            status: 'unassigned',
+            isDownloaded: false,
+            downloadedAt: null,
+            lastScannedAt: null,
+            scannedCount: 0
+        }
+    });
+    // Remove user-related data
+    await Promise.all([
+        Pet_1.default.deleteMany({ userId }),
+        UserPetTagOrder_1.default.deleteMany({ userId }),
+        Subscription_1.default.deleteMany({ userId })
+    ]);
+    await User_1.default.findByIdAndDelete(userId);
+    res.status(200).json({
+        message: 'Account deleted successfully',
+        status: 200
     });
 });
