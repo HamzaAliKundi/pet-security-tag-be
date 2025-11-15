@@ -19,7 +19,7 @@ exports.getSingleUser = (0, express_async_handler_1.default)(async (req, res) =>
         res.status(401).json({ message: 'User not authenticated' });
         return;
     }
-    const user = await User_1.default.findById(userId).select('firstName lastName email');
+    const user = await User_1.default.findById(userId).select('firstName lastName email phone');
     if (!user) {
         res.status(404).json({ message: 'User not found' });
         return;
@@ -31,7 +31,8 @@ exports.getSingleUser = (0, express_async_handler_1.default)(async (req, res) =>
             _id: user._id,
             firstName: user.firstName,
             lastName: user.lastName,
-            email: user.email
+            email: user.email,
+            phone: user.phone
         }
     });
 });
@@ -40,7 +41,7 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
     var _a;
     // Assuming the user ID comes from the auth middleware (req.user.id)
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-    const { firstName, lastName, email } = req.body;
+    const { firstName, lastName, email, phone } = req.body;
     if (!userId) {
         res.status(401).json({ message: 'User not authenticated' });
         return;
@@ -58,6 +59,16 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
         res.status(400).json({ message: 'Invalid email format' });
         return;
     }
+    // Validate phone format if provided (should start with + and contain digits)
+    if (phone && phone.trim() !== '') {
+        const phoneRegex = /^\+[\d\s\-()]+$/;
+        if (!phoneRegex.test(phone.trim())) {
+            res.status(400).json({
+                message: 'Invalid phone number format. Phone number must include country code (e.g., +1234567890)'
+            });
+            return;
+        }
+    }
     // Check if user exists
     const existingUser = await User_1.default.findById(userId);
     if (!existingUser) {
@@ -72,15 +83,21 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
             return;
         }
     }
-    // Update user
-    const updatedUser = await User_1.default.findByIdAndUpdate(userId, {
+    // Prepare update object
+    const updateData = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.toLowerCase().trim()
-    }, {
+    };
+    // Add phone if provided, or set to undefined to clear it
+    if (phone !== undefined) {
+        updateData.phone = phone.trim() === '' ? undefined : phone.trim();
+    }
+    // Update user
+    const updatedUser = await User_1.default.findByIdAndUpdate(userId, updateData, {
         new: true,
         runValidators: true
-    }).select('firstName lastName email');
+    }).select('firstName lastName email phone');
     if (!updatedUser) {
         res.status(404).json({ message: 'User not found' });
         return;
@@ -92,7 +109,8 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
             _id: updatedUser._id,
             firstName: updatedUser.firstName,
             lastName: updatedUser.lastName,
-            email: updatedUser.email
+            email: updatedUser.email,
+            phone: updatedUser.phone
         }
     });
 });
