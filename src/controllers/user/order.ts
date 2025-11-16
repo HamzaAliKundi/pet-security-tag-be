@@ -140,7 +140,7 @@ const generateRandomPassword = (length: number = 12): string => {
 const splitName = (name: string): { firstName: string; lastName: string } => {
   const nameParts = name.trim().split(' ');
   const firstName = nameParts[0] || '';
-  const lastName = nameParts.slice(1).join(' ') || '';
+  const lastName = nameParts.slice(1).join(' ') || firstName; // Use firstName as lastName if not provided
   return { firstName, lastName };
 };
 
