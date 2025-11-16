@@ -167,7 +167,7 @@ const generateRandomPassword = (length = 12) => {
 const splitName = (name) => {
     const nameParts = name.trim().split(' ');
     const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
+    const lastName = nameParts.slice(1).join(' ') || firstName; // Use firstName as lastName if not provided
     return { firstName, lastName };
 };
 exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) => {
