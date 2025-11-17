@@ -10,6 +10,7 @@ import { sendSubscriptionNotificationEmail } from '../../utils/emailService';
 export const getUserSubscriptions = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?._id;
+    const { includeAll } = req.query; // Query parameter to get all subscriptions (for payment history)
     
     if (!userId) {
       res.status(401).json({
@@ -19,12 +20,15 @@ export const getUserSubscriptions = asyncHandler(async (req: Request, res: Respo
       return;
     }
 
-    // Get all active subscriptions for the user
-    const subscriptions = await Subscription.find({ 
-      userId, 
-      status: 'active',
-      endDate: { $gt: new Date() } // Only active subscriptions
-    })
+    // Build query - if includeAll is true, get all subscriptions; otherwise only active ones
+    const query: any = { userId };
+    if (includeAll !== 'true') {
+      query.status = 'active';
+      query.endDate = { $gt: new Date() }; // Only active subscriptions
+    }
+
+    // Get subscriptions based on query
+    const subscriptions = await Subscription.find(query)
     .populate('qrCodeId', 'code imageUrl')
     .sort({ createdAt: -1 })
     .lean();
@@ -346,7 +350,7 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
 export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?._id;
-    const { subscriptionId, paymentIntentId, action, newType } = req.body;
+    const { subscriptionId, paymentIntentId, action, newType, amount } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -356,9 +360,9 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       return;
     }
 
-    if (!subscriptionId || !paymentIntentId || !action) {
+    if (!subscriptionId || !paymentIntentId || !action || amount === undefined) {
       res.status(400).json({
-        message: 'Subscription ID, payment intent ID, and action are required',
+        message: 'Subscription ID, payment intent ID, action, and amount are required',
         error: 'Invalid request body'
       });
       return;
@@ -379,9 +383,11 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       return;
     }
 
-    // Calculate new end date
+    // Calculate new end date using amount from frontend
     const startDate = new Date();
     const endDate = new Date();
+    const amountPaid = amount; // Use amount from frontend request
+    const subscriptionType = action === 'upgrade' && newType ? newType : subscription.type;
     
     if (action === 'renewal') {
       // Extend current subscription
@@ -401,29 +407,33 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       }
     }
 
-    // Update subscription
-    subscription.endDate = endDate;
-    if (action === 'upgrade' && newType) {
-      subscription.type = newType as 'monthly' | 'yearly' | 'lifetime';
-    }
-    subscription.paymentIntentId = paymentIntentId;
+    // Create a new subscription record for this payment (preserve previous payment history)
+    const newSubscription = await Subscription.create({
+      userId: subscription.userId,
+      qrCodeId: subscription.qrCodeId,
+      type: subscriptionType as 'monthly' | 'yearly' | 'lifetime',
+      status: 'active',
+      startDate,
+      endDate,
+      paymentIntentId,
+      amountPaid,
+      currency: subscription.currency,
+      autoRenew: subscription.autoRenew
+    });
+
+    // Mark the old subscription as expired (but keep it for payment history)
+    subscription.status = 'expired';
     await subscription.save();
 
     // Send subscription notification email (non-blocking)
     try {
       const user = await User.findById(userId);
       if (user && user.email) {
-        const pricing = {
-          monthly: 2.75,
-          yearly: 19.99,
-          lifetime: 99.00
-        };
-        
         await sendSubscriptionNotificationEmail(user.email, {
           customerName: user.firstName || 'Valued Customer',
           action: action as 'renewal' | 'upgrade',
           planType: action === 'upgrade' && newType ? newType : subscription.type,
-          amount: pricing[subscription.type as keyof typeof pricing],
+          amount: amountPaid,
           validUntil: endDate.toLocaleDateString('en-GB'),
           paymentDate: new Date().toLocaleDateString('en-GB')
         });
@@ -437,10 +447,10 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       message: `Subscription ${action} confirmed successfully`,
       status: 200,
       subscription: {
-        id: subscription._id,
-        type: subscription.type,
-        endDate: subscription.endDate,
-        status: subscription.status
+        id: newSubscription._id,
+        type: newSubscription.type,
+        endDate: newSubscription.endDate,
+        status: newSubscription.status
       }
     });
 

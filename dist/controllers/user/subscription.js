@@ -14,6 +14,7 @@ exports.getUserSubscriptions = (0, express_async_handler_1.default)(async (req, 
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
+        const { includeAll } = req.query; // Query parameter to get all subscriptions (for payment history)
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -21,12 +22,14 @@ exports.getUserSubscriptions = (0, express_async_handler_1.default)(async (req, 
             });
             return;
         }
-        // Get all active subscriptions for the user
-        const subscriptions = await Subscription_1.default.find({
-            userId,
-            status: 'active',
-            endDate: { $gt: new Date() } // Only active subscriptions
-        })
+        // Build query - if includeAll is true, get all subscriptions; otherwise only active ones
+        const query = { userId };
+        if (includeAll !== 'true') {
+            query.status = 'active';
+            query.endDate = { $gt: new Date() }; // Only active subscriptions
+        }
+        // Get subscriptions based on query
+        const subscriptions = await Subscription_1.default.find(query)
             .populate('qrCodeId', 'code imageUrl')
             .sort({ createdAt: -1 })
             .lean();
@@ -316,7 +319,7 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-        const { subscriptionId, paymentIntentId, action, newType } = req.body;
+        const { subscriptionId, paymentIntentId, action, newType, amount } = req.body;
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -324,9 +327,9 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             });
             return;
         }
-        if (!subscriptionId || !paymentIntentId || !action) {
+        if (!subscriptionId || !paymentIntentId || !action || amount === undefined) {
             res.status(400).json({
-                message: 'Subscription ID, payment intent ID, and action are required',
+                message: 'Subscription ID, payment intent ID, action, and amount are required',
                 error: 'Invalid request body'
             });
             return;
@@ -344,9 +347,11 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             });
             return;
         }
-        // Calculate new end date
+        // Calculate new end date using amount from frontend
         const startDate = new Date();
         const endDate = new Date();
+        const amountPaid = amount; // Use amount from frontend request
+        const subscriptionType = action === 'upgrade' && newType ? newType : subscription.type;
         if (action === 'renewal') {
             // Extend current subscription
             if (subscription.type === 'monthly') {
@@ -368,27 +373,31 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
                 endDate.setFullYear(endDate.getFullYear() + 100);
             }
         }
-        // Update subscription
-        subscription.endDate = endDate;
-        if (action === 'upgrade' && newType) {
-            subscription.type = newType;
-        }
-        subscription.paymentIntentId = paymentIntentId;
+        // Create a new subscription record for this payment (preserve previous payment history)
+        const newSubscription = await Subscription_1.default.create({
+            userId: subscription.userId,
+            qrCodeId: subscription.qrCodeId,
+            type: subscriptionType,
+            status: 'active',
+            startDate,
+            endDate,
+            paymentIntentId,
+            amountPaid,
+            currency: subscription.currency,
+            autoRenew: subscription.autoRenew
+        });
+        // Mark the old subscription as expired (but keep it for payment history)
+        subscription.status = 'expired';
         await subscription.save();
         // Send subscription notification email (non-blocking)
         try {
             const user = await User_1.default.findById(userId);
             if (user && user.email) {
-                const pricing = {
-                    monthly: 2.75,
-                    yearly: 19.99,
-                    lifetime: 99.00
-                };
                 await (0, emailService_1.sendSubscriptionNotificationEmail)(user.email, {
                     customerName: user.firstName || 'Valued Customer',
                     action: action,
                     planType: action === 'upgrade' && newType ? newType : subscription.type,
-                    amount: pricing[subscription.type],
+                    amount: amountPaid,
                     validUntil: endDate.toLocaleDateString('en-GB'),
                     paymentDate: new Date().toLocaleDateString('en-GB')
                 });
@@ -402,10 +411,10 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             message: `Subscription ${action} confirmed successfully`,
             status: 200,
             subscription: {
-                id: subscription._id,
-                type: subscription.type,
-                endDate: subscription.endDate,
-                status: subscription.status
+                id: newSubscription._id,
+                type: newSubscription.type,
+                endDate: newSubscription.endDate,
+                status: newSubscription.status
             }
         });
     }
