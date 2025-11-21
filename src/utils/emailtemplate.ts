@@ -10,21 +10,21 @@ export const verificationEmailTemplate = compile(`
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
             background-color: #f8f9fa; 
             line-height: 1.6; 
-            color: #333;
+            color: #2D2D2D;
         }
         .email-container { 
             max-width: 600px; 
             margin: 0 auto; 
             background-color: #ffffff; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             overflow: hidden; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header { 
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
+            background: #4CB2E2; 
             padding: 30px 20px; 
             text-align: center; 
             color: white;
@@ -44,42 +44,43 @@ export const verificationEmailTemplate = compile(`
         }
         .welcome-text { 
             font-size: 24px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             margin-bottom: 20px; 
             font-weight: bold;
         }
         .description { 
             font-size: 16px; 
-            color: #666; 
+            color: #2D2D2D; 
             margin-bottom: 30px; 
             line-height: 1.8;
         }
         .cta-button { 
-            background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%); 
-            color: #333; 
+            background: #FDD30F; 
+            color: #2D2D2D; 
             padding: 16px 32px; 
             text-decoration: none; 
-            border-radius: 50px; 
+            border-radius: 100px; 
             display: inline-block; 
             font-weight: bold; 
             font-size: 16px; 
             margin: 20px 0; 
-            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+            box-shadow: 0 4px 15px rgba(253, 211, 15, 0.3);
             transition: all 0.3s ease;
         }
         .cta-button:hover { 
+            background: #FFE135;
             transform: translateY(-2px); 
-            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+            box-shadow: 0 6px 20px rgba(253, 211, 15, 0.4);
         }
         .info-box { 
-            background-color: #e3f2fd; 
-            border-left: 4px solid #007bff; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .info-text { 
-            color: #1976d2; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
@@ -90,7 +91,7 @@ export const verificationEmailTemplate = compile(`
             border-top: 1px solid #e9ecef;
         }
         .footer-text { 
-            color: #6c757d; 
+            color: #2D2D2D; 
             font-size: 14px; 
             margin-bottom: 15px;
         }
@@ -100,7 +101,7 @@ export const verificationEmailTemplate = compile(`
         .social-links a { 
             display: inline-block; 
             margin: 0 10px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             text-decoration: none;
         }
         .paw-icon { 
@@ -149,9 +150,8 @@ export const verificationEmailTemplate = compile(`
                 Need help? Contact us via email, WhatsApp, live chat, or phone!
             </p>
             <div class="social-links">
-                <a href="#">📧 Email</a> | 
-                <a href="#">💬 WhatsApp</a> | 
-                <a href="#">📞 Phone</a>
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -172,21 +172,21 @@ export const resetPasswordTemplate = compile(`
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
             background-color: #f8f9fa; 
             line-height: 1.6; 
-            color: #333;
+            color: #2D2D2D;
         }
         .email-container { 
             max-width: 600px; 
             margin: 0 auto; 
             background-color: #ffffff; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             overflow: hidden; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header { 
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
+            background: #4CB2E2; 
             padding: 30px 20px; 
             text-align: center; 
             color: white;
@@ -206,36 +206,37 @@ export const resetPasswordTemplate = compile(`
         }
         .welcome-text { 
             font-size: 24px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             margin-bottom: 20px; 
             font-weight: bold;
         }
         .description { 
             font-size: 16px; 
-            color: #666; 
+            color: #2D2D2D; 
             margin-bottom: 30px; 
             line-height: 1.8;
         }
         .cta-button { 
-            background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%); 
-            color: #333; 
+            background: #FDD30F; 
+            color: #2D2D2D; 
             padding: 16px 32px; 
             text-decoration: none; 
-            border-radius: 50px; 
+            border-radius: 100px; 
             display: inline-block; 
             font-weight: bold; 
             font-size: 16px; 
             margin: 20px 0; 
-            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+            box-shadow: 0 4px 15px rgba(253, 211, 15, 0.3);
             transition: all 0.3s ease;
         }
         .cta-button:hover { 
+            background: #FFE135;
             transform: translateY(-2px); 
-            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+            box-shadow: 0 6px 20px rgba(253, 211, 15, 0.4);
         }
         .warning-box { 
-            background-color: #fff3cd; 
-            border-left: 4px solid #ffc107; 
+            background-color: #FFF8DC; 
+            border-left: 4px solid #FDD30F; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
@@ -246,14 +247,14 @@ export const resetPasswordTemplate = compile(`
             margin: 0;
         }
         .security-box { 
-            background-color: #e3f2fd; 
-            border-left: 4px solid #007bff; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .security-text { 
-            color: #1976d2; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
@@ -264,7 +265,7 @@ export const resetPasswordTemplate = compile(`
             border-top: 1px solid #e9ecef;
         }
         .footer-text { 
-            color: #6c757d; 
+            color: #2D2D2D; 
             font-size: 14px; 
             margin-bottom: 15px;
         }
@@ -274,7 +275,7 @@ export const resetPasswordTemplate = compile(`
         .social-links a { 
             display: inline-block; 
             margin: 0 10px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             text-decoration: none;
         }
         .paw-icon { 
@@ -331,9 +332,8 @@ export const resetPasswordTemplate = compile(`
                 Need help? Contact us via email, WhatsApp, live chat, or phone!
             </p>
             <div class="social-links">
-                <a href="#">📧 Email</a> | 
-                <a href="#">💬 WhatsApp</a> | 
-                <a href="#">📞 Phone</a>
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -354,21 +354,21 @@ export const orderConfirmationTemplate = compile(`
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
             background-color: #f8f9fa; 
             line-height: 1.6; 
-            color: #333;
+            color: #2D2D2D;
         }
         .email-container { 
             max-width: 600px; 
             margin: 0 auto; 
             background-color: #ffffff; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             overflow: hidden; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header { 
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+            background: #4CB2E2; 
             padding: 30px 20px; 
             text-align: center; 
             color: white;
@@ -388,22 +388,22 @@ export const orderConfirmationTemplate = compile(`
         }
         .welcome-text { 
             font-size: 24px; 
-            color: #28a745; 
+            color: #4CB2E2; 
             margin-bottom: 20px; 
             font-weight: bold;
         }
         .description { 
             font-size: 16px; 
-            color: #666; 
+            color: #2D2D2D; 
             margin-bottom: 30px; 
             line-height: 1.8;
         }
         .order-details { 
             background-color: #f8f9fa; 
-            border: 2px solid #e9ecef; 
+            border: 2px solid #4CB2E2; 
             padding: 25px; 
             margin: 30px 0; 
-            border-radius: 8px;
+            border-radius: 16px;
             text-align: left;
         }
         .order-row { 
@@ -417,24 +417,24 @@ export const orderConfirmationTemplate = compile(`
             border-bottom: none; 
             font-weight: bold; 
             font-size: 18px;
-            color: #28a745;
+            color: #4CB2E2;
         }
         .order-label { 
             font-weight: bold; 
-            color: #495057;
+            color: #2D2D2D;
         }
         .order-value { 
-            color: #212529;
+            color: #0F2137;
         }
         .info-box { 
-            background-color: #e3f2fd; 
-            border-left: 4px solid #007bff; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .info-text { 
-            color: #1976d2; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
@@ -445,7 +445,7 @@ export const orderConfirmationTemplate = compile(`
             border-top: 1px solid #e9ecef;
         }
         .footer-text { 
-            color: #6c757d; 
+            color: #2D2D2D; 
             font-size: 14px; 
             margin-bottom: 15px;
         }
@@ -455,7 +455,7 @@ export const orderConfirmationTemplate = compile(`
         .social-links a { 
             display: inline-block; 
             margin: 0 10px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             text-decoration: none;
         }
     </style>
@@ -522,9 +522,8 @@ export const orderConfirmationTemplate = compile(`
                 Questions about your order? Contact us anytime!
             </p>
             <div class="social-links">
-                <a href="#">📧 Email</a> | 
-                <a href="#">💬 WhatsApp</a> | 
-                <a href="#">📞 Phone</a>
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -545,21 +544,21 @@ export const subscriptionNotificationTemplate = compile(`
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
             background-color: #f8f9fa; 
             line-height: 1.6; 
-            color: #333;
+            color: #2D2D2D;
         }
         .email-container { 
             max-width: 600px; 
             margin: 0 auto; 
             background-color: #ffffff; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             overflow: hidden; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header { 
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
+            background: #4CB2E2; 
             padding: 30px 20px; 
             text-align: center; 
             color: white;
@@ -579,22 +578,22 @@ export const subscriptionNotificationTemplate = compile(`
         }
         .welcome-text { 
             font-size: 24px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             margin-bottom: 20px; 
             font-weight: bold;
         }
         .description { 
             font-size: 16px; 
-            color: #666; 
+            color: #2D2D2D; 
             margin-bottom: 30px; 
             line-height: 1.8;
         }
         .subscription-details { 
             background-color: #f8f9fa; 
-            border: 2px solid #e9ecef; 
+            border: 2px solid #4CB2E2; 
             padding: 25px; 
             margin: 30px 0; 
-            border-radius: 8px;
+            border-radius: 16px;
             text-align: left;
         }
         .subscription-row { 
@@ -608,24 +607,24 @@ export const subscriptionNotificationTemplate = compile(`
             border-bottom: none; 
             font-weight: bold; 
             font-size: 18px;
-            color: #007bff;
+            color: #4CB2E2;
         }
         .subscription-label { 
             font-weight: bold; 
-            color: #495057;
+            color: #2D2D2D;
         }
         .subscription-value { 
-            color: #212529;
+            color: #0F2137;
         }
         .info-box { 
-            background-color: #e3f2fd; 
-            border-left: 4px solid #007bff; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .info-text { 
-            color: #1976d2; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
@@ -636,7 +635,7 @@ export const subscriptionNotificationTemplate = compile(`
             border-top: 1px solid #e9ecef;
         }
         .footer-text { 
-            color: #6c757d; 
+            color: #2D2D2D; 
             font-size: 14px; 
             margin-bottom: 15px;
         }
@@ -646,7 +645,7 @@ export const subscriptionNotificationTemplate = compile(`
         .social-links a { 
             display: inline-block; 
             margin: 0 10px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             text-decoration: none;
         }
     </style>
@@ -709,9 +708,8 @@ export const subscriptionNotificationTemplate = compile(`
                 Need help with your subscription? Contact us anytime!
             </p>
             <div class="social-links">
-                <a href="#">📧 Email</a> | 
-                <a href="#">💬 WhatsApp</a> | 
-                <a href="#">📞 Phone</a>
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -732,24 +730,24 @@ export const qrCodeFirstScanTemplate = compile(`
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
             background-color: #f8f9fa; 
             line-height: 1.6; 
-            color: #333;
+            color: #2D2D2D;
         }
         .email-container { 
             max-width: 600px; 
             margin: 0 auto; 
             background-color: #ffffff; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             overflow: hidden; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header { 
-            background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%); 
+            background: #FDD30F; 
             padding: 30px 20px; 
             text-align: center; 
-            color: #333;
+            color: #2D2D2D;
         }
         .logo { 
             font-size: 28px; 
@@ -758,7 +756,7 @@ export const qrCodeFirstScanTemplate = compile(`
         }
         .tagline { 
             font-size: 16px; 
-            opacity: 0.8;
+            opacity: 0.9;
         }
         .content { 
             padding: 40px 30px; 
@@ -766,22 +764,22 @@ export const qrCodeFirstScanTemplate = compile(`
         }
         .welcome-text { 
             font-size: 24px; 
-            color: #ff8f00; 
+            color: #4CB2E2; 
             margin-bottom: 20px; 
             font-weight: bold;
         }
         .description { 
             font-size: 16px; 
-            color: #666; 
+            color: #2D2D2D; 
             margin-bottom: 30px; 
             line-height: 1.8;
         }
         .scan-details { 
-            background-color: #fff3cd; 
-            border: 2px solid #ffc107; 
+            background-color: #FFF8DC; 
+            border: 2px solid #FDD30F; 
             padding: 25px; 
             margin: 30px 0; 
-            border-radius: 8px;
+            border-radius: 16px;
             text-align: left;
         }
         .scan-row { 
@@ -789,39 +787,39 @@ export const qrCodeFirstScanTemplate = compile(`
             justify-content: space-between; 
             margin-bottom: 10px; 
             padding: 8px 0;
-            border-bottom: 1px solid #ffeaa7;
+            border-bottom: 1px solid #FFE135;
         }
         .scan-row:last-child { 
             border-bottom: none; 
         }
         .scan-label { 
             font-weight: bold; 
-            color: #856404;
+            color: #2D2D2D;
         }
         .scan-value { 
-            color: #856404;
+            color: #0F2137;
         }
         .success-box { 
-            background-color: #d4edda; 
-            border-left: 4px solid #28a745; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .success-text { 
-            color: #155724; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
         .info-box { 
-            background-color: #e3f2fd; 
-            border-left: 4px solid #007bff; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .info-text { 
-            color: #1976d2; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
@@ -832,7 +830,7 @@ export const qrCodeFirstScanTemplate = compile(`
             border-top: 1px solid #e9ecef;
         }
         .footer-text { 
-            color: #6c757d; 
+            color: #2D2D2D; 
             font-size: 14px; 
             margin-bottom: 15px;
         }
@@ -842,7 +840,7 @@ export const qrCodeFirstScanTemplate = compile(`
         .social-links a { 
             display: inline-block; 
             margin: 0 10px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             text-decoration: none;
         }
     </style>
@@ -913,9 +911,8 @@ export const qrCodeFirstScanTemplate = compile(`
                 Questions about your pet's protection? We're here to help 24/7!
             </p>
             <div class="social-links">
-                <a href="#">📧 Email</a> | 
-                <a href="#">💬 WhatsApp</a> | 
-                <a href="#">📞 Phone</a>
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -936,21 +933,21 @@ export const credentialsEmailTemplate = compile(`
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
             background-color: #f8f9fa; 
             line-height: 1.6; 
-            color: #333;
+            color: #2D2D2D;
         }
         .email-container { 
             max-width: 600px; 
             margin: 0 auto; 
             background-color: #ffffff; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             overflow: hidden; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header { 
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+            background: #4CB2E2; 
             padding: 30px 20px; 
             text-align: center; 
             color: white;
@@ -970,22 +967,22 @@ export const credentialsEmailTemplate = compile(`
         }
         .welcome-text { 
             font-size: 24px; 
-            color: #28a745; 
+            color: #4CB2E2; 
             margin-bottom: 20px; 
             font-weight: bold;
         }
         .description { 
             font-size: 16px; 
-            color: #666; 
+            color: #2D2D2D; 
             margin-bottom: 30px; 
             line-height: 1.8;
         }
         .credentials-box { 
             background-color: #f8f9fa; 
-            border: 2px solid #e9ecef; 
+            border: 2px solid #4CB2E2; 
             padding: 25px; 
             margin: 30px 0; 
-            border-radius: 8px;
+            border-radius: 16px;
             text-align: left;
         }
         .credential-row { 
@@ -1000,47 +997,48 @@ export const credentialsEmailTemplate = compile(`
         }
         .credential-label { 
             font-weight: bold; 
-            color: #495057;
+            color: #2D2D2D;
         }
         .credential-value { 
-            color: #212529;
+            color: #0F2137;
             font-family: monospace;
-            background-color: #e9ecef;
+            background-color: #DBEEFF;
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 8px;
         }
         .cta-button { 
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); 
+            background: #4CB2E2; 
             color: white; 
             padding: 16px 32px; 
             text-decoration: none; 
-            border-radius: 50px; 
+            border-radius: 100px; 
             display: inline-block; 
             font-weight: bold; 
             font-size: 16px; 
             margin: 20px 0; 
-            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(76, 178, 226, 0.3);
             transition: all 0.3s ease;
         }
         .cta-button:hover { 
+            background: #3da1d1;
             transform: translateY(-2px); 
-            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+            box-shadow: 0 6px 20px rgba(76, 178, 226, 0.4);
         }
         .info-box { 
-            background-color: #e3f2fd; 
-            border-left: 4px solid #007bff; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .info-text { 
-            color: #1976d2; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
         .security-box { 
-            background-color: #fff3cd; 
-            border-left: 4px solid #ffc107; 
+            background-color: #FFF8DC; 
+            border-left: 4px solid #FDD30F; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
@@ -1057,7 +1055,7 @@ export const credentialsEmailTemplate = compile(`
             border-top: 1px solid #e9ecef;
         }
         .footer-text { 
-            color: #6c757d; 
+            color: #2D2D2D; 
             font-size: 14px; 
             margin-bottom: 15px;
         }
@@ -1067,7 +1065,7 @@ export const credentialsEmailTemplate = compile(`
         .social-links a { 
             display: inline-block; 
             margin: 0 10px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             text-decoration: none;
         }
     </style>
@@ -1134,9 +1132,8 @@ export const credentialsEmailTemplate = compile(`
                 Need help? Contact us via email, WhatsApp, live chat, or phone!
             </p>
             <div class="social-links">
-                <a href="#">📧 Email</a> | 
-                <a href="#">💬 WhatsApp</a> | 
-                <a href="#">📞 Phone</a>
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -1157,21 +1154,21 @@ export const petFoundNotificationTemplate = compile(`
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Arial', sans-serif; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
             background-color: #f8f9fa; 
             line-height: 1.6; 
-            color: #333;
+            color: #2D2D2D;
         }
         .email-container { 
             max-width: 600px; 
             margin: 0 auto; 
             background-color: #ffffff; 
-            border-radius: 12px; 
+            border-radius: 16px; 
             overflow: hidden; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         .header { 
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+            background: #4CB2E2; 
             padding: 30px 20px; 
             text-align: center; 
             color: white;
@@ -1191,54 +1188,55 @@ export const petFoundNotificationTemplate = compile(`
         }
         .welcome-text { 
             font-size: 24px; 
-            color: #28a745; 
+            color: #4CB2E2; 
             margin-bottom: 20px; 
             font-weight: bold;
         }
         .description { 
             font-size: 16px; 
-            color: #666; 
+            color: #2D2D2D; 
             margin-bottom: 30px; 
             line-height: 1.8;
         }
         .location-box { 
-            background-color: #d4edda; 
-            border: 2px solid #28a745; 
+            background-color: #DBEEFF; 
+            border: 2px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
-            border-radius: 8px;
+            border-radius: 16px;
         }
         .location-text { 
-            color: #155724; 
+            color: #0897FF; 
             font-size: 16px; 
             font-weight: bold;
         }
         .cta-button { 
-            background: linear-gradient(135deg, #ffc107 0%, #ff8f00 100%); 
-            color: #333; 
+            background: #FDD30F; 
+            color: #2D2D2D; 
             padding: 16px 32px; 
             text-decoration: none; 
-            border-radius: 50px; 
+            border-radius: 100px; 
             display: inline-block; 
             font-weight: bold; 
             font-size: 16px; 
             margin: 20px 0; 
-            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+            box-shadow: 0 4px 15px rgba(253, 211, 15, 0.3);
             transition: all 0.3s ease;
         }
         .cta-button:hover { 
+            background: #FFE135;
             transform: translateY(-2px); 
-            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+            box-shadow: 0 6px 20px rgba(253, 211, 15, 0.4);
         }
         .info-box { 
-            background-color: #e3f2fd; 
-            border-left: 4px solid #007bff; 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
             padding: 20px; 
             margin: 30px 0; 
             border-radius: 8px;
         }
         .info-text { 
-            color: #1976d2; 
+            color: #0897FF; 
             font-size: 14px; 
             margin: 0;
         }
@@ -1249,7 +1247,7 @@ export const petFoundNotificationTemplate = compile(`
             border-top: 1px solid #e9ecef;
         }
         .footer-text { 
-            color: #6c757d; 
+            color: #2D2D2D; 
             font-size: 14px; 
             margin-bottom: 15px;
         }
@@ -1259,7 +1257,7 @@ export const petFoundNotificationTemplate = compile(`
         .social-links a { 
             display: inline-block; 
             margin: 0 10px; 
-            color: #007bff; 
+            color: #4CB2E2; 
             text-decoration: none;
         }
     </style>
@@ -1315,9 +1313,8 @@ export const petFoundNotificationTemplate = compile(`
                 Need assistance? Our support team is here to help 24/7!
             </p>
             <div class="social-links">
-                <a href="#">📧 Email</a> | 
-                <a href="#">💬 WhatsApp</a> | 
-                <a href="#">📞 Phone</a>
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
