@@ -54,6 +54,8 @@ const validateEnv = () => {
         TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
         TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER,
         TWILIO_WHATSAPP_NUMBER: process.env.TWILIO_WHATSAPP_NUMBER,
+        TWILIO_PHONE_NUMBER_UK: process.env.TWILIO_PHONE_NUMBER_UK,
+        TWILIO_WHATSAPP_NUMBER_UK: process.env.TWILIO_WHATSAPP_NUMBER_UK,
         TWILIO_TEST_NUMBER: process.env.TWILIO_TEST_NUMBER
     };
 };

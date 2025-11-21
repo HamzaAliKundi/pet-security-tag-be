@@ -470,7 +470,7 @@ exports.orderConfirmationTemplate = (0, handlebars_1.compile)(`
         <div class="content">
             <div class="welcome-text">Thank You for Your Order, {{customerName}}!</div>
             <p class="description">
-                Your PetSecure Tag order has been confirmed and is being processed. 
+                Your Digital Tails Tag order has been confirmed and is being processed. 
                 We'll send you tracking information once your order ships.
             </p>
             
@@ -855,7 +855,7 @@ exports.qrCodeFirstScanTemplate = (0, handlebars_1.compile)(`
         <div class="content">
             <div class="welcome-text">Congratulations, {{petOwnerName}}!</div>
             <p class="description">
-                Your PetSecure Tag has been successfully activated! Someone has scanned your pet's QR code for the first time, 
+                Your Digital Tails Tag has been successfully activated! Someone has scanned your pet's QR code for the first time, 
                 which means your pet's protection service is now fully operational.
             </p>
             
@@ -1117,7 +1117,7 @@ exports.credentialsEmailTemplate = (0, handlebars_1.compile)(`
             </div>
             
             <p class="description">
-                Your PetSecure Tag order is being processed and you'll receive tracking information soon. 
+                Your Digital Tails Tag order is being processed and you'll receive tracking information soon. 
                 Thank you for choosing Digital Tails to protect your beloved pet!
             </p>
         </div>
@@ -1270,7 +1270,7 @@ exports.petFoundNotificationTemplate = (0, handlebars_1.compile)(`
         <div class="content">
             <div class="welcome-text">Great News, {{petOwnerName}}!</div>
             <p class="description">
-                Someone has found your beloved pet <strong>{{petName}}</strong> and scanned their PetSecure Tag! 
+                Someone has found your beloved pet <strong>{{petName}}</strong> and scanned their Digital Tails Tag! 
                 We've received a notification and are here to help you reunite with your furry friend.
             </p>
             
@@ -1297,7 +1297,7 @@ exports.petFoundNotificationTemplate = (0, handlebars_1.compile)(`
             </div>
             
             <p class="description">
-                Your PetSecure Tag worked perfectly! This is exactly why we're here - to ensure 
+                Your Digital Tails Tag worked perfectly! This is exactly why we're here - to ensure 
                 your pets always find their way back home safely.
             </p>
         </div>

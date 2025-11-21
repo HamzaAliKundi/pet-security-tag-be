@@ -23,7 +23,9 @@ interface EnvVars {
   TWILIO_AUTH_TOKEN: string;
   TWILIO_PHONE_NUMBER: string;
   TWILIO_WHATSAPP_NUMBER: string;
-  TWILIO_TEST_NUMBER?: string; // Optional: For testing with trial account
+  TWILIO_PHONE_NUMBER_UK?: string;
+  TWILIO_WHATSAPP_NUMBER_UK?: string;
+  TWILIO_TEST_NUMBER?: string;
 }
 
 const validateEnv = (): EnvVars => {
@@ -75,6 +77,8 @@ const validateEnv = (): EnvVars => {
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN!,
     TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER!,
     TWILIO_WHATSAPP_NUMBER: process.env.TWILIO_WHATSAPP_NUMBER!,
+    TWILIO_PHONE_NUMBER_UK: process.env.TWILIO_PHONE_NUMBER_UK,
+    TWILIO_WHATSAPP_NUMBER_UK: process.env.TWILIO_WHATSAPP_NUMBER_UK,
     TWILIO_TEST_NUMBER: process.env.TWILIO_TEST_NUMBER
   };
 };
