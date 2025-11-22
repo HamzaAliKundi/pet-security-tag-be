@@ -79,9 +79,9 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
     const { quantity, petName, totalCostEuro, tagColor, tagColors, phone, street, city, state, zipCode, country, isReplacement = false } = req.body;
     // Validate required fields
-    if (!quantity || !petName || !totalCostEuro || !tagColor || !phone || !street || !city || !state || !zipCode || !country) {
+    if (!quantity || !petName || !totalCostEuro || (!tagColor && !tagColors) || !phone || !street || !city || !state || !zipCode || !country) {
         res.status(400).json({
-            message: 'All fields are required: quantity, petName, totalCostEuro, tagColor, phone, street, city, state, zipCode, country'
+            message: 'All fields are required: quantity, petName, totalCostEuro, tagColor (or tagColors array), phone, street, city, state, zipCode, country'
         });
         return;
     }
@@ -323,28 +323,35 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                     return;
                 }
             }
-            // Create pet record automatically when payment succeeds (for new orders)
+            // Create pet records based on quantity (for new orders)
+            const createdPets = [];
+            const assignedQRCodes = [];
             try {
-                const pet = await Pet_1.default.create({
-                    userId: order.userId,
-                    userPetTagOrderId: order._id,
-                    orderType: 'UserPetTagOrder',
-                    petName: order.petName,
-                    hideName: false,
-                    age: undefined,
-                    breed: '',
-                    medication: '',
-                    allergies: '',
-                    notes: ''
-                });
-                // Assign QR code to this order
-                const qrCodeId = await (0, qrManagement_1.assignQRToOrder)(order._id.toString());
-                // Link the QR code to the pet
-                if (qrCodeId) {
-                    const QRCodeModel = (await Promise.resolve().then(() => __importStar(require('../../models/QRCode')))).default;
-                    await QRCodeModel.findByIdAndUpdate(qrCodeId, {
-                        assignedPetId: pet._id
+                for (let i = 0; i < order.quantity; i++) {
+                    // Create pet record for each tag
+                    const pet = await Pet_1.default.create({
+                        userId: order.userId,
+                        userPetTagOrderId: order._id,
+                        orderType: 'UserPetTagOrder',
+                        petName: order.quantity > 1 ? `${order.petName} #${i + 1}` : order.petName,
+                        hideName: false,
+                        age: undefined,
+                        breed: '',
+                        medication: '',
+                        allergies: '',
+                        notes: ''
                     });
+                    // Assign QR code to this pet
+                    const qrCodeId = await (0, qrManagement_1.assignQRToOrder)(order._id.toString());
+                    // Link the QR code to the pet
+                    if (qrCodeId) {
+                        const QRCodeModel = (await Promise.resolve().then(() => __importStar(require('../../models/QRCode')))).default;
+                        await QRCodeModel.findByIdAndUpdate(qrCodeId, {
+                            assignedPetId: pet._id
+                        });
+                        createdPets.push(pet);
+                        assignedQRCodes.push(qrCodeId);
+                    }
                 }
                 // Send order confirmation email (non-blocking)
                 try {
@@ -365,7 +372,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                     // Don't fail the order if email fails
                 }
                 res.status(200).json({
-                    message: 'Payment confirmed successfully and pet record created',
+                    message: 'Payment confirmed successfully and pet records created',
                     status: 200,
                     order: {
                         _id: order._id,
@@ -373,6 +380,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         quantity: order.quantity,
                         totalCostEuro: order.totalCostEuro,
                         tagColor: order.tagColor,
+                        tagColors: order.tagColors,
                         phone: order.phone,
                         street: order.street,
                         city: order.city,
@@ -383,9 +391,12 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         paymentStatus: order.paymentStatus,
                         paymentIntentId: order.paymentIntentId,
                         createdAt: order.createdAt,
-                        updatedAt: order.updatedAt
+                        updatedAt: order.updatedAt,
+                        isReplacement: order.isReplacement
                     },
-                    pet: {
+                    petsCreated: createdPets.length,
+                    qrCodesAssigned: assignedQRCodes.length,
+                    pets: createdPets.map(pet => ({
                         _id: pet._id,
                         petName: pet.petName,
                         hideName: pet.hideName,
@@ -394,19 +405,22 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         medication: pet.medication,
                         allergies: pet.allergies,
                         notes: pet.notes
-                    },
-                    qrCodeAssigned: !!qrCodeId,
-                    qrCodeId: qrCodeId
+                    }))
                 });
             }
             catch (petError) {
-                console.error('Error creating pet record:', petError);
-                // Try to assign QR code even if pet creation failed
-                const qrCodeId = await (0, qrManagement_1.assignQRToOrder)(order._id.toString());
-                // Note: Can't link to pet since pet creation failed
+                console.error('Error creating pet records:', petError);
+                // Try to assign QR codes even if pet creation failed
+                const qrCodeIds = [];
+                for (let i = 0; i < order.quantity; i++) {
+                    const qrCodeId = await (0, qrManagement_1.assignQRToOrder)(order._id.toString());
+                    if (qrCodeId) {
+                        qrCodeIds.push(qrCodeId);
+                    }
+                }
                 // Still return success for payment, but log pet creation error
                 res.status(200).json({
-                    message: 'Payment confirmed successfully but failed to create pet record',
+                    message: 'Payment confirmed successfully but failed to create pet records',
                     status: 200,
                     order: {
                         _id: order._id,
@@ -414,6 +428,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         quantity: order.quantity,
                         totalCostEuro: order.totalCostEuro,
                         tagColor: order.tagColor,
+                        tagColors: order.tagColors,
                         phone: order.phone,
                         street: order.street,
                         city: order.city,
@@ -424,10 +439,12 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         paymentStatus: order.paymentStatus,
                         paymentIntentId: order.paymentIntentId,
                         createdAt: order.createdAt,
-                        updatedAt: order.updatedAt
+                        updatedAt: order.updatedAt,
+                        isReplacement: order.isReplacement
                     },
-                    qrCodeAssigned: !!qrCodeId,
-                    qrCodeId: qrCodeId
+                    petsCreated: 0,
+                    qrCodesAssigned: qrCodeIds.length,
+                    error: 'Failed to create pet records'
                 });
             }
         }
