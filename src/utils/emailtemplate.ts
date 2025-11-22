@@ -1663,10 +1663,6 @@ export const orderCancelledTemplate = compile(`
                     <span class="order-label">Quantity:</span>
                     <span class="order-value">{{quantity}}</span>
                 </div>
-                <div class="order-row">
-                    <span class="order-label">Total Amount:</span>
-                    <span class="order-value">€{{totalAmount}}</span>
-                </div>
             </div>
             
             <div class="info-box">
