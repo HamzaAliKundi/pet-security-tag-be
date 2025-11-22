@@ -325,7 +325,7 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
             customerEmail = updatedOrder.email || '';
         }
         // Send email notifications (non-blocking)
-        if (customerEmail && (status === 'shipped' || status === 'delivered' || status === 'cancelled')) {
+        if (customerEmail && (status === 'shipped' || status === 'cancelled')) {
             try {
                 const orderNumber = updatedOrder.orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`;
                 if (status === 'shipped') {
@@ -336,14 +336,6 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
                         quantity: updatedOrder.quantity,
                         trackingNumber: updatedOrder.trackingNumber,
                         deliveryCompany: updatedOrder.deliveryCompany
-                    });
-                }
-                else if (status === 'delivered') {
-                    await (0, emailService_1.sendOrderDeliveredEmail)(customerEmail, {
-                        customerName,
-                        orderNumber,
-                        petName: updatedOrder.petName,
-                        quantity: updatedOrder.quantity
                     });
                 }
                 else if (status === 'cancelled') {

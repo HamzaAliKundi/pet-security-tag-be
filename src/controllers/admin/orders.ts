@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import User from '../../models/User';
 import PetTagOrder from '../../models/PetTagOrder'; // Added import for PetTagOrder
-import { sendOrderShippedEmail, sendOrderCancelledEmail, sendOrderDeliveredEmail } from '../../utils/emailService';
+import { sendOrderShippedEmail, sendOrderCancelledEmail } from '../../utils/emailService';
 
 // Get all orders with search, filtering, and pagination
 export const getOrders = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -363,7 +363,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
     }
 
     // Send email notifications (non-blocking)
-    if (customerEmail && (status === 'shipped' || status === 'delivered' || status === 'cancelled')) {
+    if (customerEmail && (status === 'shipped' || status === 'cancelled')) {
       try {
         const orderNumber = (updatedOrder as any).orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`;
         
@@ -375,13 +375,6 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
             quantity: updatedOrder.quantity,
             trackingNumber: updatedOrder.trackingNumber,
             deliveryCompany: updatedOrder.deliveryCompany
-          });
-        } else if (status === 'delivered') {
-          await sendOrderDeliveredEmail(customerEmail, {
-            customerName,
-            orderNumber,
-            petName: updatedOrder.petName,
-            quantity: updatedOrder.quantity
           });
         } else if (status === 'cancelled') {
           await sendOrderCancelledEmail(customerEmail, {
