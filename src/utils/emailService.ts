@@ -6,7 +6,10 @@ import {
   orderConfirmationTemplate, 
   subscriptionNotificationTemplate, 
   qrCodeFirstScanTemplate,
-  credentialsEmailTemplate 
+  credentialsEmailTemplate,
+  orderShippedTemplate,
+  orderCancelledTemplate,
+  orderDeliveredTemplate
 } from './emailtemplate';
 
 // Configure SendGrid with API key
@@ -169,6 +172,93 @@ export const sendCredentialsEmail = async (email: string, credentialsData: {
     console.log('Credentials email sent successfully to:', email);
   } catch (error) {
     console.error('Error sending credentials email:', error);
+    throw error;
+  }
+};
+
+// Send order shipped email
+export const sendOrderShippedEmail = async (email: string, orderData: {
+  customerName: string;
+  orderNumber: string;
+  petName: string;
+  quantity: number;
+  trackingNumber?: string;
+  deliveryCompany?: string;
+}): Promise<void> => {
+  const html = orderShippedTemplate(orderData);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Your Order Has Been Shipped - Digital Tails',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Order shipped email sent successfully to:', email);
+  } catch (error) {
+    console.error('Error sending order shipped email:', error);
+    throw error;
+  }
+};
+
+// Send order cancelled email
+export const sendOrderCancelledEmail = async (email: string, orderData: {
+  customerName: string;
+  orderNumber: string;
+  petName: string;
+  quantity: number;
+  totalAmount: number;
+}): Promise<void> => {
+  const html = orderCancelledTemplate(orderData);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Order Cancelled - Digital Tails',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Order cancelled email sent successfully to:', email);
+  } catch (error) {
+    console.error('Error sending order cancelled email:', error);
+    throw error;
+  }
+};
+
+// Send order delivered email
+export const sendOrderDeliveredEmail = async (email: string, orderData: {
+  customerName: string;
+  orderNumber: string;
+  petName: string;
+  quantity: number;
+}): Promise<void> => {
+  const html = orderDeliveredTemplate(orderData);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Your Order Has Been Delivered - Digital Tails',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Order delivered email sent successfully to:', email);
+  } catch (error) {
+    console.error('Error sending order delivered email:', error);
     throw error;
   }
 };

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
+exports.sendOrderDeliveredEmail = exports.sendOrderCancelledEmail = exports.sendOrderShippedEmail = exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
 const mail_1 = __importDefault(require("@sendgrid/mail"));
 const env_1 = require("../config/env");
 const emailtemplate_1 = require("./emailtemplate");
@@ -139,3 +139,69 @@ const sendCredentialsEmail = async (email, credentialsData) => {
     }
 };
 exports.sendCredentialsEmail = sendCredentialsEmail;
+// Send order shipped email
+const sendOrderShippedEmail = async (email, orderData) => {
+    const html = (0, emailtemplate_1.orderShippedTemplate)(orderData);
+    const msg = {
+        to: email,
+        from: {
+            email: env_1.env.SENDGRID_FROM_EMAIL,
+            name: env_1.env.SENDGRID_FROM_NAME
+        },
+        subject: 'Your Order Has Been Shipped - Digital Tails',
+        html
+    };
+    try {
+        await mail_1.default.send(msg);
+        console.log('Order shipped email sent successfully to:', email);
+    }
+    catch (error) {
+        console.error('Error sending order shipped email:', error);
+        throw error;
+    }
+};
+exports.sendOrderShippedEmail = sendOrderShippedEmail;
+// Send order cancelled email
+const sendOrderCancelledEmail = async (email, orderData) => {
+    const html = (0, emailtemplate_1.orderCancelledTemplate)(orderData);
+    const msg = {
+        to: email,
+        from: {
+            email: env_1.env.SENDGRID_FROM_EMAIL,
+            name: env_1.env.SENDGRID_FROM_NAME
+        },
+        subject: 'Order Cancelled - Digital Tails',
+        html
+    };
+    try {
+        await mail_1.default.send(msg);
+        console.log('Order cancelled email sent successfully to:', email);
+    }
+    catch (error) {
+        console.error('Error sending order cancelled email:', error);
+        throw error;
+    }
+};
+exports.sendOrderCancelledEmail = sendOrderCancelledEmail;
+// Send order delivered email
+const sendOrderDeliveredEmail = async (email, orderData) => {
+    const html = (0, emailtemplate_1.orderDeliveredTemplate)(orderData);
+    const msg = {
+        to: email,
+        from: {
+            email: env_1.env.SENDGRID_FROM_EMAIL,
+            name: env_1.env.SENDGRID_FROM_NAME
+        },
+        subject: 'Your Order Has Been Delivered - Digital Tails',
+        html
+    };
+    try {
+        await mail_1.default.send(msg);
+        console.log('Order delivered email sent successfully to:', email);
+    }
+    catch (error) {
+        console.error('Error sending order delivered email:', error);
+        throw error;
+    }
+};
+exports.sendOrderDeliveredEmail = sendOrderDeliveredEmail;

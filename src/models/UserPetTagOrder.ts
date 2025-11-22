@@ -17,6 +17,8 @@ export interface IUserPetTagOrder extends Document {
   paymentIntentId?: string;
   paymentStatus: 'pending' | 'succeeded' | 'failed' | 'cancelled';
   isReplacement?: boolean;
+  trackingNumber?: string;
+  deliveryCompany?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,6 +103,14 @@ const UserPetTagOrderSchema: Schema = new Schema({
   isReplacement: {
     type: Boolean,
     default: false
+  },
+  trackingNumber: {
+    type: String,
+    trim: true
+  },
+  deliveryCompany: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

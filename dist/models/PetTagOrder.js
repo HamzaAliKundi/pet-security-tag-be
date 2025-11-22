@@ -110,6 +110,14 @@ const PetTagOrderSchema = new mongoose_1.Schema({
     totalCostEuro: {
         type: Number,
         min: 0
+    },
+    trackingNumber: {
+        type: String,
+        trim: true
+    },
+    deliveryCompany: {
+        type: String,
+        trim: true
     }
 }, {
     timestamps: true

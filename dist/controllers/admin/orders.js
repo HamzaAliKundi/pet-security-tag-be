@@ -7,6 +7,7 @@ exports.getOrderStats = exports.updateOrderStatus = exports.getOrderById = expor
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder")); // Added import for PetTagOrder
+const emailService_1 = require("../../utils/emailService");
 // Get all orders with search, filtering, and pagination
 exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -262,9 +263,10 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
 });
 // Update order status
 exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res) => {
+    var _a, _b, _c, _d, _e;
     try {
         const { orderId } = req.params;
-        const { status } = req.body;
+        const { status, trackingNumber, deliveryCompany } = req.body;
         if (!status || !['pending', 'paid', 'shipped', 'delivered', 'cancelled'].includes(status)) {
             res.status(400).json({
                 message: 'Invalid status',
@@ -272,8 +274,14 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
             });
             return;
         }
-        // Check if order exists
-        const order = await UserPetTagOrder_1.default.findById(orderId);
+        // Check if order exists in UserPetTagOrder first
+        let order = await UserPetTagOrder_1.default.findById(orderId);
+        let orderType = 'UserPetTagOrder';
+        // If not found, check PetTagOrder
+        if (!order) {
+            order = await PetTagOrder_1.default.findById(orderId);
+            orderType = 'PetTagOrder';
+        }
         if (!order) {
             res.status(404).json({
                 message: 'Order not found',
@@ -281,8 +289,22 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
             });
             return;
         }
+        // Prepare update data
+        const updateData = { status };
+        if (trackingNumber) {
+            updateData.trackingNumber = trackingNumber.trim();
+        }
+        if (deliveryCompany) {
+            updateData.deliveryCompany = deliveryCompany.trim();
+        }
         // Update order status
-        const updatedOrder = await UserPetTagOrder_1.default.findByIdAndUpdate(orderId, { status }, { new: true }).populate('userId', 'firstName lastName email');
+        let updatedOrder;
+        if (orderType === 'UserPetTagOrder') {
+            updatedOrder = await UserPetTagOrder_1.default.findByIdAndUpdate(orderId, updateData, { new: true }).populate('userId', 'firstName lastName email');
+        }
+        else {
+            updatedOrder = await PetTagOrder_1.default.findByIdAndUpdate(orderId, updateData, { new: true });
+        }
         if (!updatedOrder) {
             res.status(500).json({
                 message: 'Failed to update order',
@@ -290,30 +312,112 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
             });
             return;
         }
-        const user = updatedOrder.userId;
-        const transformedOrder = {
-            id: updatedOrder._id,
-            orderId: updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`,
-            customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
-            email: user ? user.email : 'No Email',
-            items: updatedOrder.quantity,
-            total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
-            status: updatedOrder.status,
-            date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
-            tracking: updatedOrder.paymentIntentId || 'N/A',
-            petName: updatedOrder.petName,
-            tagColor: updatedOrder.tagColor || (updatedOrder.tagColors && updatedOrder.tagColors.length > 0 ? updatedOrder.tagColors[0] : 'Unknown'),
-            tagColors: updatedOrder.tagColors || (updatedOrder.tagColor ? [updatedOrder.tagColor] : []),
-            phone: updatedOrder.phone,
-            street: updatedOrder.street,
-            city: updatedOrder.city,
-            state: updatedOrder.state,
-            zipCode: updatedOrder.zipCode,
-            country: updatedOrder.country,
-            paymentStatus: updatedOrder.paymentStatus,
-            createdAt: updatedOrder.createdAt,
-            updatedAt: updatedOrder.updatedAt
-        };
+        // Get customer info for email
+        let customerName = 'Valued Customer';
+        let customerEmail = '';
+        if (orderType === 'UserPetTagOrder') {
+            const user = updatedOrder.userId;
+            customerName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Valued Customer' : 'Valued Customer';
+            customerEmail = user ? user.email : '';
+        }
+        else {
+            customerName = updatedOrder.name || 'Valued Customer';
+            customerEmail = updatedOrder.email || '';
+        }
+        // Send email notifications (non-blocking)
+        if (customerEmail && (status === 'shipped' || status === 'delivered' || status === 'cancelled')) {
+            try {
+                const orderNumber = updatedOrder.orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`;
+                if (status === 'shipped') {
+                    await (0, emailService_1.sendOrderShippedEmail)(customerEmail, {
+                        customerName,
+                        orderNumber,
+                        petName: updatedOrder.petName,
+                        quantity: updatedOrder.quantity,
+                        trackingNumber: updatedOrder.trackingNumber,
+                        deliveryCompany: updatedOrder.deliveryCompany
+                    });
+                }
+                else if (status === 'delivered') {
+                    await (0, emailService_1.sendOrderDeliveredEmail)(customerEmail, {
+                        customerName,
+                        orderNumber,
+                        petName: updatedOrder.petName,
+                        quantity: updatedOrder.quantity
+                    });
+                }
+                else if (status === 'cancelled') {
+                    await (0, emailService_1.sendOrderCancelledEmail)(customerEmail, {
+                        customerName,
+                        orderNumber,
+                        petName: updatedOrder.petName,
+                        quantity: updatedOrder.quantity,
+                        totalAmount: updatedOrder.totalCostEuro || 0
+                    });
+                }
+            }
+            catch (emailError) {
+                console.error('Failed to send status update email:', emailError);
+                // Don't fail the order update if email fails
+            }
+        }
+        // Transform order for response
+        let transformedOrder;
+        if (orderType === 'UserPetTagOrder') {
+            const user = updatedOrder.userId;
+            transformedOrder = {
+                id: updatedOrder._id,
+                orderId: updatedOrder.orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`,
+                customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+                email: user ? user.email : 'No Email',
+                items: updatedOrder.quantity,
+                total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
+                status: updatedOrder.status,
+                date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
+                tracking: updatedOrder.trackingNumber || updatedOrder.paymentIntentId || 'N/A',
+                petName: updatedOrder.petName,
+                tagColor: updatedOrder.tagColor || (updatedOrder.tagColors && updatedOrder.tagColors.length > 0 ? updatedOrder.tagColors[0] : 'Unknown'),
+                tagColors: updatedOrder.tagColors || (updatedOrder.tagColor ? [updatedOrder.tagColor] : []),
+                phone: updatedOrder.phone,
+                street: updatedOrder.street,
+                city: updatedOrder.city,
+                state: updatedOrder.state,
+                zipCode: updatedOrder.zipCode,
+                country: updatedOrder.country,
+                paymentStatus: updatedOrder.paymentStatus,
+                trackingNumber: updatedOrder.trackingNumber,
+                deliveryCompany: updatedOrder.deliveryCompany,
+                createdAt: updatedOrder.createdAt,
+                updatedAt: updatedOrder.updatedAt
+            };
+        }
+        else {
+            transformedOrder = {
+                id: updatedOrder._id,
+                orderId: updatedOrder.orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`,
+                customer: updatedOrder.name || 'Unknown Customer',
+                email: updatedOrder.email || 'No Email',
+                items: updatedOrder.quantity,
+                total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
+                status: updatedOrder.status,
+                date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
+                tracking: updatedOrder.trackingNumber || updatedOrder.paymentIntentId || 'N/A',
+                petName: updatedOrder.petName,
+                tagColor: updatedOrder.tagColor || (updatedOrder.tagColors && updatedOrder.tagColors.length > 0 ? updatedOrder.tagColors[0] : 'Unknown'),
+                tagColors: updatedOrder.tagColors || (updatedOrder.tagColor ? [updatedOrder.tagColor] : []),
+                phone: updatedOrder.phone,
+                street: ((_a = updatedOrder.shippingAddress) === null || _a === void 0 ? void 0 : _a.street) || '',
+                city: ((_b = updatedOrder.shippingAddress) === null || _b === void 0 ? void 0 : _b.city) || '',
+                state: ((_c = updatedOrder.shippingAddress) === null || _c === void 0 ? void 0 : _c.state) || '',
+                zipCode: ((_d = updatedOrder.shippingAddress) === null || _d === void 0 ? void 0 : _d.zipCode) || '',
+                country: ((_e = updatedOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.country) || '',
+                paymentStatus: updatedOrder.paymentStatus || 'pending',
+                trackingNumber: updatedOrder.trackingNumber,
+                deliveryCompany: updatedOrder.deliveryCompany,
+                createdAt: updatedOrder.createdAt,
+                updatedAt: updatedOrder.updatedAt
+            };
+        }
         res.status(200).json({
             message: 'Order status updated successfully',
             status: 200,

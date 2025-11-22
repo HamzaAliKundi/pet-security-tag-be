@@ -19,6 +19,8 @@ export interface IPetTagOrder extends Document {
     country: string;
   };
   phone?: string;
+  trackingNumber?: string;
+  deliveryCompany?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -99,6 +101,14 @@ const PetTagOrderSchema: Schema = new Schema({
   totalCostEuro: {
     type: Number,
     min: 0
+  },
+  trackingNumber: {
+    type: String,
+    trim: true
+  },
+  deliveryCompany: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

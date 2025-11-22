@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.petFoundNotificationTemplate = exports.credentialsEmailTemplate = exports.qrCodeFirstScanTemplate = exports.subscriptionNotificationTemplate = exports.orderConfirmationTemplate = exports.resetPasswordTemplate = exports.verificationEmailTemplate = void 0;
+exports.orderDeliveredTemplate = exports.orderCancelledTemplate = exports.orderShippedTemplate = exports.petFoundNotificationTemplate = exports.credentialsEmailTemplate = exports.qrCodeFirstScanTemplate = exports.subscriptionNotificationTemplate = exports.orderConfirmationTemplate = exports.resetPasswordTemplate = exports.verificationEmailTemplate = void 0;
 const handlebars_1 = require("handlebars");
 exports.verificationEmailTemplate = (0, handlebars_1.compile)(`
 <!DOCTYPE html>
@@ -1297,6 +1297,561 @@ exports.petFoundNotificationTemplate = (0, handlebars_1.compile)(`
             <p class="description">
                 Your Digital Tails Tag worked perfectly! This is exactly why we're here - to ensure 
                 your pets always find their way back home safely.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p class="footer-text">
+                <strong>Digital Tails Pet Securities</strong><br>
+                Dedicated 24/7 Award Winning Service Team
+            </p>
+            <p class="footer-text">
+                Need assistance? Our support team is here to help 24/7!
+            </p>
+            <div class="social-links">
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+            </div>
+            <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
+                © Digital Tails 2023. All Rights Reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+`);
+// Order Shipped Email Template
+exports.orderShippedTemplate = (0, handlebars_1.compile)(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Order Has Been Shipped - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #f8f9fa; 
+            line-height: 1.6; 
+            color: #2D2D2D;
+        }
+        .email-container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #ffffff; 
+            border-radius: 16px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header { 
+            background: #4CB2E2; 
+            padding: 30px 20px; 
+            text-align: center; 
+            color: white;
+        }
+        .logo { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin-bottom: 10px;
+        }
+        .tagline { 
+            font-size: 16px; 
+            opacity: 0.9;
+        }
+        .content { 
+            padding: 40px 30px; 
+            text-align: center;
+        }
+        .welcome-text { 
+            font-size: 24px; 
+            color: #4CB2E2; 
+            margin-bottom: 20px; 
+            font-weight: bold;
+        }
+        .description { 
+            color: #2D2D2D; 
+            font-size: 16px; 
+            margin-bottom: 30px; 
+            line-height: 1.8;
+        }
+        .order-details { 
+            background-color: #f8f9fa; 
+            border-radius: 12px; 
+            padding: 25px; 
+            margin: 30px 0; 
+            text-align: left;
+        }
+        .order-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 15px; 
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .order-row:last-child { 
+            border-bottom: none; 
+        }
+        .order-label { 
+            font-weight: bold; 
+            color: #2D2D2D;
+        }
+        .order-value { 
+            color: #0F2137;
+        }
+        .tracking-box { 
+            background-color: #DBEEFF; 
+            border-left: 4px solid #4CB2E2; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+            text-align: left;
+        }
+        .tracking-title { 
+            color: #0897FF; 
+            font-size: 18px; 
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .tracking-info { 
+            color: #0F2137; 
+            font-size: 16px; 
+            margin: 8px 0;
+        }
+        .tracking-number { 
+            font-weight: bold; 
+            color: #4CB2E2; 
+            font-size: 18px;
+            word-break: break-all;
+        }
+        .footer { 
+            background-color: #f8f9fa; 
+            padding: 30px; 
+            text-align: center; 
+            border-top: 1px solid #e9ecef;
+        }
+        .footer-text { 
+            color: #2D2D2D; 
+            font-size: 14px; 
+            margin-bottom: 15px;
+        }
+        .social-links { 
+            margin-top: 20px;
+        }
+        .social-links a { 
+            display: inline-block; 
+            margin: 0 10px; 
+            color: #4CB2E2; 
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">Your Order Has Been Shipped!</div>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-text">Great News, {{customerName}}!</div>
+            <p class="description">
+                Your Digital Tails pet tag order has been shipped and is on its way to you!
+            </p>
+            
+            <div class="order-details">
+                <div class="order-row">
+                    <span class="order-label">Order Number:</span>
+                    <span class="order-value">{{orderNumber}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Pet Name:</span>
+                    <span class="order-value">{{petName}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Quantity:</span>
+                    <span class="order-value">{{quantity}}</span>
+                </div>
+            </div>
+            
+            {{#if trackingNumber}}
+            <div class="tracking-box">
+                <div class="tracking-title">📦 Tracking Information</div>
+                {{#if deliveryCompany}}
+                <div class="tracking-info">
+                    <strong>Delivery Company:</strong> {{deliveryCompany}}
+                </div>
+                {{/if}}
+                <div class="tracking-info">
+                    <strong>Tracking Number:</strong>
+                    <div class="tracking-number">{{trackingNumber}}</div>
+                </div>
+                <div class="tracking-info" style="margin-top: 15px; font-size: 14px; color: #636363;">
+                    You can use this tracking number on the delivery company's website to track your package.
+                </div>
+            </div>
+            {{/if}}
+            
+            <p class="description">
+                Your order should arrive within the estimated delivery time. Once you receive your tag, 
+                simply scan it to activate your pet's profile and start protecting your furry friend!
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p class="footer-text">
+                <strong>Digital Tails Pet Securities</strong><br>
+                Dedicated 24/7 Award Winning Service Team
+            </p>
+            <p class="footer-text">
+                Need assistance? Our support team is here to help 24/7!
+            </p>
+            <div class="social-links">
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+            </div>
+            <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
+                © Digital Tails 2023. All Rights Reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+`);
+// Order Cancelled Email Template
+exports.orderCancelledTemplate = (0, handlebars_1.compile)(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Cancelled - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #f8f9fa; 
+            line-height: 1.6; 
+            color: #2D2D2D;
+        }
+        .email-container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #ffffff; 
+            border-radius: 16px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header { 
+            background: #EF4444; 
+            padding: 30px 20px; 
+            text-align: center; 
+            color: white;
+        }
+        .logo { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin-bottom: 10px;
+        }
+        .tagline { 
+            font-size: 16px; 
+            opacity: 0.9;
+        }
+        .content { 
+            padding: 40px 30px; 
+            text-align: center;
+        }
+        .welcome-text { 
+            font-size: 24px; 
+            color: #EF4444; 
+            margin-bottom: 20px; 
+            font-weight: bold;
+        }
+        .description { 
+            color: #2D2D2D; 
+            font-size: 16px; 
+            margin-bottom: 30px; 
+            line-height: 1.8;
+        }
+        .order-details { 
+            background-color: #f8f9fa; 
+            border-radius: 12px; 
+            padding: 25px; 
+            margin: 30px 0; 
+            text-align: left;
+        }
+        .order-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 15px; 
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .order-row:last-child { 
+            border-bottom: none; 
+        }
+        .order-label { 
+            font-weight: bold; 
+            color: #2D2D2D;
+        }
+        .order-value { 
+            color: #0F2137;
+        }
+        .info-box { 
+            background-color: #FEE2E2; 
+            border-left: 4px solid #EF4444; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+        }
+        .info-text { 
+            color: #991B1B; 
+            font-size: 14px; 
+            margin: 0;
+        }
+        .footer { 
+            background-color: #f8f9fa; 
+            padding: 30px; 
+            text-align: center; 
+            border-top: 1px solid #e9ecef;
+        }
+        .footer-text { 
+            color: #2D2D2D; 
+            font-size: 14px; 
+            margin-bottom: 15px;
+        }
+        .social-links { 
+            margin-top: 20px;
+        }
+        .social-links a { 
+            display: inline-block; 
+            margin: 0 10px; 
+            color: #4CB2E2; 
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">Order Cancellation Notice</div>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-text">Order Cancelled, {{customerName}}</div>
+            <p class="description">
+                We're sorry to inform you that your order has been cancelled.
+            </p>
+            
+            <div class="order-details">
+                <div class="order-row">
+                    <span class="order-label">Order Number:</span>
+                    <span class="order-value">{{orderNumber}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Pet Name:</span>
+                    <span class="order-value">{{petName}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Quantity:</span>
+                    <span class="order-value">{{quantity}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Total Amount:</span>
+                    <span class="order-value">€{{totalAmount}}</span>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <p class="info-text">
+                    <strong>ℹ️ What Happens Next:</strong><br>
+                    • If payment was processed, you will receive a full refund within 5-10 business days<br>
+                    • The refund will be credited back to your original payment method<br>
+                    • If you have any questions, please contact our support team
+                </p>
+            </div>
+            
+            <p class="description">
+                If you believe this cancellation was made in error, or if you have any questions, 
+                please don't hesitate to reach out to our support team. We're here to help!
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p class="footer-text">
+                <strong>Digital Tails Pet Securities</strong><br>
+                Dedicated 24/7 Award Winning Service Team
+            </p>
+            <p class="footer-text">
+                Need assistance? Our support team is here to help 24/7!
+            </p>
+            <div class="social-links">
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+            </div>
+            <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
+                © Digital Tails 2023. All Rights Reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+`);
+// Order Delivered Email Template
+exports.orderDeliveredTemplate = (0, handlebars_1.compile)(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Order Has Been Delivered - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #f8f9fa; 
+            line-height: 1.6; 
+            color: #2D2D2D;
+        }
+        .email-container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #ffffff; 
+            border-radius: 16px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header { 
+            background: #10B981; 
+            padding: 30px 20px; 
+            text-align: center; 
+            color: white;
+        }
+        .logo { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin-bottom: 10px;
+        }
+        .tagline { 
+            font-size: 16px; 
+            opacity: 0.9;
+        }
+        .content { 
+            padding: 40px 30px; 
+            text-align: center;
+        }
+        .welcome-text { 
+            font-size: 24px; 
+            color: #10B981; 
+            margin-bottom: 20px; 
+            font-weight: bold;
+        }
+        .description { 
+            color: #2D2D2D; 
+            font-size: 16px; 
+            margin-bottom: 30px; 
+            line-height: 1.8;
+        }
+        .order-details { 
+            background-color: #f8f9fa; 
+            border-radius: 12px; 
+            padding: 25px; 
+            margin: 30px 0; 
+            text-align: left;
+        }
+        .order-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 15px; 
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .order-row:last-child { 
+            border-bottom: none; 
+        }
+        .order-label { 
+            font-weight: bold; 
+            color: #2D2D2D;
+        }
+        .order-value { 
+            color: #0F2137;
+        }
+        .info-box { 
+            background-color: #D1FAE5; 
+            border-left: 4px solid #10B981; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+        }
+        .info-text { 
+            color: #065F46; 
+            font-size: 14px; 
+            margin: 0;
+        }
+        .footer { 
+            background-color: #f8f9fa; 
+            padding: 30px; 
+            text-align: center; 
+            border-top: 1px solid #e9ecef;
+        }
+        .footer-text { 
+            color: #2D2D2D; 
+            font-size: 14px; 
+            margin-bottom: 15px;
+        }
+        .social-links { 
+            margin-top: 20px;
+        }
+        .social-links a { 
+            display: inline-block; 
+            margin: 0 10px; 
+            color: #4CB2E2; 
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">Your Order Has Been Delivered!</div>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-text">Congratulations, {{customerName}}!</div>
+            <p class="description">
+                Your Digital Tails pet tag order has been successfully delivered!
+            </p>
+            
+            <div class="order-details">
+                <div class="order-row">
+                    <span class="order-label">Order Number:</span>
+                    <span class="order-value">{{orderNumber}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Pet Name:</span>
+                    <span class="order-value">{{petName}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Quantity:</span>
+                    <span class="order-value">{{quantity}}</span>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <p class="info-text">
+                    <strong>🎉 Next Steps:</strong><br>
+                    • Scan your Digital Tails tag to activate your pet's profile<br>
+                    • Set up your pet's information in your dashboard<br>
+                    • Start protecting your furry friend with 24/7 monitoring<br>
+                    • Your pet's safety is now in your hands!
+                </p>
+            </div>
+            
+            <p class="description">
+                Thank you for choosing Digital Tails to keep your pet safe. We're here to help you 
+                every step of the way. If you need any assistance setting up your tag, don't hesitate to reach out!
             </p>
         </div>
         

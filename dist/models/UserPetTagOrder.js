@@ -114,6 +114,14 @@ const UserPetTagOrderSchema = new mongoose_1.Schema({
     isReplacement: {
         type: Boolean,
         default: false
+    },
+    trackingNumber: {
+        type: String,
+        trim: true
+    },
+    deliveryCompany: {
+        type: String,
+        trim: true
     }
 }, {
     timestamps: true
