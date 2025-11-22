@@ -138,7 +138,7 @@ exports.verificationEmailTemplate = (0, handlebars_1.compile)(`
             </div>
             
             <p class="description">
-                Once verified, you'll be able to order your PetSecure Tag and start protecting your pet with 
+                Once verified, you'll be able to order your Digital Tails Pet Tag today and start protecting your pet with 
                 instant location alerts and 24/7 support!
             </p>
         </div>
