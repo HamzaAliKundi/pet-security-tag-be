@@ -5,7 +5,8 @@ export interface IUserPetTagOrder extends Document {
   quantity: number;
   petName: string;
   totalCostEuro: number;
-  tagColor: string;
+  tagColor: string; // Keep for backward compatibility
+  tagColors?: string[]; // Array of colors for each tag (length should match quantity)
   phone: string;
   street: string;
   city: string;
@@ -46,6 +47,10 @@ const UserPetTagOrderSchema: Schema = new Schema({
     type: String,
     required: true,
     trim: true
+  },
+  tagColors: {
+    type: [String],
+    default: undefined
   },
   phone: {
     type: String,

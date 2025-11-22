@@ -10,7 +10,7 @@ import bcrypt from 'bcryptjs';
 import { env } from '../../config/env';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email, name, petName, quantity, subscriptionType, tagColor, totalCostEuro, phone, shippingAddress, paymentMethodId } = req.body;
+  const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId } = req.body;
 
   if (!email || !name || !petName || !quantity || !subscriptionType) {
     res.status(400).json({ 
@@ -60,6 +60,22 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       });
       return;
     }
+    // Process tag colors - use tagColors array if provided, otherwise fallback to tagColor or default
+    let colorsArray: string[];
+    if (tagColors && Array.isArray(tagColors) && tagColors.length > 0) {
+      // If tagColors is provided, use it (trim to quantity if longer, pad with 'blue' if shorter)
+      if (tagColors.length >= quantity) {
+        colorsArray = tagColors.slice(0, quantity);
+      } else {
+        // If fewer colors than quantity, pad with 'blue'
+        colorsArray = [...tagColors, ...Array(quantity - tagColors.length).fill('blue')];
+      }
+    } else if (tagColor) {
+      colorsArray = Array(quantity).fill(tagColor);
+    } else {
+      colorsArray = Array(quantity).fill('blue');
+    }
+
     // Create Stripe payment intent
     const amountInCents = Math.round((totalCostEuro || 0) * 100); // Convert to cents
     const paymentResult = await createPaymentIntent({
@@ -69,7 +85,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
         userId: email, // Using email as userId for now
         petName,
         quantity: quantity.toString(),
-        tagColor: tagColor || 'blue'
+        tagColor: colorsArray.join(',') // Store all colors as comma-separated string in metadata
       }
     });
 
@@ -87,7 +103,8 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       petName,
       quantity,
       subscriptionType,
-      tagColor,
+      tagColor: quantity === 1 ? colorsArray[0] : undefined, // Keep for backward compatibility
+      tagColors: colorsArray, // Store array of colors
       totalCostEuro,
       phone,
       shippingAddress,

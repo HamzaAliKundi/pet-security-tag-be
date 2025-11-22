@@ -45,6 +45,7 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
     petName, 
     totalCostEuro, 
     tagColor, 
+    tagColors,
     phone, 
     street, 
     city, 
@@ -74,9 +75,23 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
     return;
   }
 
-  // Validate tag color
-  if (typeof tagColor !== 'string' || tagColor.trim().length === 0) {
-    res.status(400).json({ message: 'Tag color is required' });
+  // Process tag colors - use tagColors array if provided, otherwise use tagColor or default
+  let colorsArray: string[] | undefined;
+  if (tagColors && Array.isArray(tagColors) && tagColors.length > 0) {
+    // If tagColors is provided, use it (trim to quantity if longer, pad with 'blue' if shorter)
+    if (tagColors.length >= quantity) {
+      colorsArray = tagColors.slice(0, quantity);
+    } else {
+      // If fewer colors than quantity, pad with 'blue'
+      colorsArray = [...tagColors, ...Array(quantity - tagColors.length).fill('blue')];
+    }
+  } else if (tagColor && typeof tagColor === 'string' && tagColor.trim().length > 0) {
+    colorsArray = Array(quantity).fill(tagColor.trim());
+  }
+
+  // Validate tag color(s) are provided
+  if (!colorsArray || colorsArray.length !== quantity) {
+    res.status(400).json({ message: 'Tag color is required (or tagColors array)' });
     return;
   }
 
@@ -128,7 +143,7 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
         userId: userId.toString(),
         petName: petName.trim(),
         quantity,
-        tagColor: tagColor.trim(),
+        tagColor: colorsArray.join(','), // Store all colors as comma-separated string
       },
     });
 
@@ -146,7 +161,8 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
       quantity,
       petName: petName.trim(),
       totalCostEuro,
-      tagColor: tagColor.trim(),
+      tagColor: quantity === 1 ? colorsArray[0] : (tagColor ? tagColor.trim() : 'blue'), // Keep for backward compatibility
+      tagColors: colorsArray, // Store array of colors
       phone: phone.trim(),
       street: street.trim(),
       city: city.trim(),
@@ -521,6 +537,7 @@ export const updateUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
     petName, 
     totalCostEuro, 
     tagColor, 
+    tagColors,
     phone, 
     street, 
     city, 
@@ -543,9 +560,9 @@ export const updateUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
   }
 
   // Validate required fields
-  if (!quantity || !petName || !totalCostEuro || !tagColor || !phone || !street || !city || !state || !zipCode || !country) {
+  if (!quantity || !petName || !totalCostEuro || (!tagColor && !tagColors) || !phone || !street || !city || !state || !zipCode || !country) {
     res.status(400).json({ 
-      message: 'All fields are required: quantity, petName, totalCostEuro, tagColor, phone, street, city, state, zipCode, country' 
+      message: 'All fields are required: quantity, petName, totalCostEuro, tagColor (or tagColors array), phone, street, city, state, zipCode, country' 
     });
     return;
   }
@@ -562,9 +579,23 @@ export const updateUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
     return;
   }
 
-  // Validate tag color
-  if (typeof tagColor !== 'string' || tagColor.trim().length === 0) {
-    res.status(400).json({ message: 'Tag color is required' });
+  // Process tag colors - use tagColors array if provided, otherwise use tagColor or default
+  let colorsArray: string[] | undefined;
+  if (tagColors && Array.isArray(tagColors) && tagColors.length > 0) {
+    // If tagColors is provided, use it (trim to quantity if longer, pad with 'blue' if shorter)
+    if (tagColors.length >= quantity) {
+      colorsArray = tagColors.slice(0, quantity);
+    } else {
+      // If fewer colors than quantity, pad with 'blue'
+      colorsArray = [...tagColors, ...Array(quantity - tagColors.length).fill('blue')];
+    }
+  } else if (tagColor && typeof tagColor === 'string' && tagColor.trim().length > 0) {
+    colorsArray = Array(quantity).fill(tagColor.trim());
+  }
+
+  // Validate tag color(s) are provided
+  if (!colorsArray || colorsArray.length !== quantity) {
+    res.status(400).json({ message: 'Tag color is required (or tagColors array)' });
     return;
   }
 
@@ -586,7 +617,8 @@ export const updateUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
       quantity,
       petName: petName.trim(),
       totalCostEuro,
-      tagColor: tagColor.trim(),
+      tagColor: quantity === 1 ? colorsArray[0] : (tagColor ? tagColor.trim() : 'blue'), // Keep for backward compatibility
+      tagColors: colorsArray, // Store array of colors
       phone: phone.trim(),
       street: street.trim(),
       city: city.trim(),

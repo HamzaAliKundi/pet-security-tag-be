@@ -61,6 +61,10 @@ const UserPetTagOrderSchema = new mongoose_1.Schema({
         required: true,
         trim: true
     },
+    tagColors: {
+        type: [String],
+        default: undefined
+    },
     phone: {
         type: String,
         required: true,

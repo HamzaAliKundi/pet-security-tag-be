@@ -77,7 +77,7 @@ exports.getUserPetCount = (0, express_async_handler_1.default)(async (req, res) 
 exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-    const { quantity, petName, totalCostEuro, tagColor, phone, street, city, state, zipCode, country, isReplacement = false } = req.body;
+    const { quantity, petName, totalCostEuro, tagColor, tagColors, phone, street, city, state, zipCode, country, isReplacement = false } = req.body;
     // Validate required fields
     if (!quantity || !petName || !totalCostEuro || !tagColor || !phone || !street || !city || !state || !zipCode || !country) {
         res.status(400).json({
@@ -95,9 +95,24 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
         res.status(400).json({ message: 'Total cost must be a positive number' });
         return;
     }
-    // Validate tag color
-    if (typeof tagColor !== 'string' || tagColor.trim().length === 0) {
-        res.status(400).json({ message: 'Tag color is required' });
+    // Process tag colors - use tagColors array if provided, otherwise use tagColor or default
+    let colorsArray;
+    if (tagColors && Array.isArray(tagColors) && tagColors.length > 0) {
+        // If tagColors is provided, use it (trim to quantity if longer, pad with 'blue' if shorter)
+        if (tagColors.length >= quantity) {
+            colorsArray = tagColors.slice(0, quantity);
+        }
+        else {
+            // If fewer colors than quantity, pad with 'blue'
+            colorsArray = [...tagColors, ...Array(quantity - tagColors.length).fill('blue')];
+        }
+    }
+    else if (tagColor && typeof tagColor === 'string' && tagColor.trim().length > 0) {
+        colorsArray = Array(quantity).fill(tagColor.trim());
+    }
+    // Validate tag color(s) are provided
+    if (!colorsArray || colorsArray.length !== quantity) {
+        res.status(400).json({ message: 'Tag color is required (or tagColors array)' });
         return;
     }
     // Validate phone number
@@ -145,7 +160,7 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
                 userId: userId.toString(),
                 petName: petName.trim(),
                 quantity,
-                tagColor: tagColor.trim(),
+                tagColor: colorsArray.join(','), // Store all colors as comma-separated string
             },
         });
         if (!paymentResult.success) {
@@ -161,7 +176,8 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
             quantity,
             petName: petName.trim(),
             totalCostEuro,
-            tagColor: tagColor.trim(),
+            tagColor: quantity === 1 ? colorsArray[0] : (tagColor ? tagColor.trim() : 'blue'), // Keep for backward compatibility
+            tagColors: colorsArray, // Store array of colors
             phone: phone.trim(),
             street: street.trim(),
             city: city.trim(),
@@ -505,7 +521,7 @@ exports.updateUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
     const { orderId } = req.params;
-    const { quantity, petName, totalCostEuro, tagColor, phone, street, city, state, zipCode, country } = req.body;
+    const { quantity, petName, totalCostEuro, tagColor, tagColors, phone, street, city, state, zipCode, country } = req.body;
     // Check if order exists and belongs to user
     const existingOrder = await UserPetTagOrder_1.default.findOne({ _id: orderId, userId });
     if (!existingOrder) {
@@ -518,9 +534,9 @@ exports.updateUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
         return;
     }
     // Validate required fields
-    if (!quantity || !petName || !totalCostEuro || !tagColor || !phone || !street || !city || !state || !zipCode || !country) {
+    if (!quantity || !petName || !totalCostEuro || (!tagColor && !tagColors) || !phone || !street || !city || !state || !zipCode || !country) {
         res.status(400).json({
-            message: 'All fields are required: quantity, petName, totalCostEuro, tagColor, phone, street, city, state, zipCode, country'
+            message: 'All fields are required: quantity, petName, totalCostEuro, tagColor (or tagColors array), phone, street, city, state, zipCode, country'
         });
         return;
     }
@@ -534,9 +550,24 @@ exports.updateUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
         res.status(400).json({ message: 'Total cost must be a positive number' });
         return;
     }
-    // Validate tag color
-    if (typeof tagColor !== 'string' || tagColor.trim().length === 0) {
-        res.status(400).json({ message: 'Tag color is required' });
+    // Process tag colors - use tagColors array if provided, otherwise use tagColor or default
+    let colorsArray;
+    if (tagColors && Array.isArray(tagColors) && tagColors.length > 0) {
+        // If tagColors is provided, use it (trim to quantity if longer, pad with 'blue' if shorter)
+        if (tagColors.length >= quantity) {
+            colorsArray = tagColors.slice(0, quantity);
+        }
+        else {
+            // If fewer colors than quantity, pad with 'blue'
+            colorsArray = [...tagColors, ...Array(quantity - tagColors.length).fill('blue')];
+        }
+    }
+    else if (tagColor && typeof tagColor === 'string' && tagColor.trim().length > 0) {
+        colorsArray = Array(quantity).fill(tagColor.trim());
+    }
+    // Validate tag color(s) are provided
+    if (!colorsArray || colorsArray.length !== quantity) {
+        res.status(400).json({ message: 'Tag color is required (or tagColors array)' });
         return;
     }
     // Validate phone number
@@ -553,7 +584,8 @@ exports.updateUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
         quantity,
         petName: petName.trim(),
         totalCostEuro,
-        tagColor: tagColor.trim(),
+        tagColor: quantity === 1 ? colorsArray[0] : (tagColor ? tagColor.trim() : 'blue'), // Keep for backward compatibility
+        tagColors: colorsArray, // Store array of colors
         phone: phone.trim(),
         street: street.trim(),
         city: city.trim(),

@@ -8,7 +8,8 @@ export interface IPetTagOrder extends Document {
   subscriptionType: 'monthly' | 'yearly';
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
   paymentIntentId?: string;
-  tagColor?: string;
+  tagColor?: string; // Keep for backward compatibility
+  tagColors?: string[]; // Array of colors for each tag (length should match quantity)
   totalCostEuro?: number;
   shippingAddress?: {
     street: string;
@@ -90,6 +91,10 @@ const PetTagOrderSchema: Schema = new Schema({
   tagColor: {
     type: String,
     trim: true
+  },
+  tagColors: {
+    type: [String],
+    default: undefined
   },
   totalCostEuro: {
     type: Number,

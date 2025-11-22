@@ -103,6 +103,10 @@ const PetTagOrderSchema = new mongoose_1.Schema({
         type: String,
         trim: true
     },
+    tagColors: {
+        type: [String],
+        default: undefined
+    },
     totalCostEuro: {
         type: Number,
         min: 0
