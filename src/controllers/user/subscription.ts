@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
 import User from '../../models/User';
-import { createSubscriptionPaymentIntent, createStripeSubscription } from '../../utils/stripeService';
+import { createSubscriptionPaymentIntent, createStripeSubscription, updateStripeSubscription, getOrCreateCustomer, savePaymentMethodToCustomer } from '../../utils/stripeService';
 import { sendSubscriptionNotificationEmail } from '../../utils/emailService';
 
 // Get user's subscriptions
@@ -300,7 +300,10 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
     const amount = pricing[newType as keyof typeof pricing];
     const amountInCents = Math.round(amount * 100);
 
-    // Create Stripe payment intent
+    // If upgrading to lifetime, use Payment Intent (one-time payment)
+    // If upgrading monthly/yearly and original has auto-renewal, we should update Stripe Subscription
+    // For now, we'll use Payment Intent for upgrades (user pays difference)
+    // The new subscription will inherit auto-renewal preference from original
     const paymentResult = await createSubscriptionPaymentIntent({
       amount: amountInCents,
       currency: 'gbp',
@@ -333,7 +336,9 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
         currentType: subscription.type,
         newType,
         amount,
-        currency: 'GBP'
+        currency: 'GBP',
+        // Preserve auto-renewal status for monthly/yearly upgrades
+        preserveAutoRenew: subscription.autoRenew && (newType === 'monthly' || newType === 'yearly')
       }
     });
 
@@ -350,7 +355,7 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
 export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?._id;
-    const { subscriptionId, paymentIntentId, action, newType, amount } = req.body;
+    const { subscriptionId, paymentIntentId, action, newType, amount, paymentMethodId } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -407,6 +412,31 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       }
     }
 
+    // Save payment method to customer if provided (for future auto-renewals)
+    if (paymentMethodId && (subscriptionType === 'monthly' || subscriptionType === 'yearly')) {
+      try {
+        const user = await User.findById(userId);
+        if (user && user.email) {
+          // Get or create Stripe customer
+          const customerResult = await getOrCreateCustomer(user.email, user.firstName || user.email);
+          if (!('error' in customerResult)) {
+            // Save payment method to customer
+            await savePaymentMethodToCustomer(paymentMethodId, customerResult.customerId);
+            console.log(`Payment method ${paymentMethodId} saved to customer ${customerResult.customerId} for future auto-renewals`);
+          }
+        }
+      } catch (pmError) {
+        console.error('Error saving payment method to customer:', pmError);
+        // Don't fail the subscription if saving payment method fails
+      }
+    }
+
+    // Determine auto-renewal status
+    let autoRenewStatus = subscription.autoRenew;
+    if (action === 'upgrade' && subscriptionType === 'lifetime') {
+      autoRenewStatus = false; // Lifetime doesn't auto-renew
+    }
+
     // Create a new subscription record for this payment (preserve previous payment history)
     const newSubscription = await Subscription.create({
       userId: subscription.userId,
@@ -416,9 +446,10 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       startDate,
       endDate,
       paymentIntentId,
+      stripeSubscriptionId: subscription.stripeSubscriptionId, // Preserve Stripe subscription ID if exists
       amountPaid,
       currency: subscription.currency,
-      autoRenew: subscription.autoRenew
+      autoRenew: autoRenewStatus
     });
 
     // Mark the old subscription as expired (but keep it for payment history)
