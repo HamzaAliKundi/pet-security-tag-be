@@ -1,4 +1,4 @@
-import express, { Express } from 'express';
+import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -25,6 +25,11 @@ app.use(cors({
 
 app.use(helmet());
 app.use(morgan('dev'));
+
+// Stripe webhook needs raw body for signature verification
+// This must be BEFORE express.json() middleware
+app.use('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

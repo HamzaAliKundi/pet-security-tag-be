@@ -26,6 +26,9 @@ app.use((0, cors_1.default)({
 }));
 app.use((0, helmet_1.default)());
 app.use((0, morgan_1.default)('dev'));
+// Stripe webhook needs raw body for signature verification
+// This must be BEFORE express.json() middleware
+app.use('/api/v1/stripe/webhook', express_1.default.raw({ type: 'application/json' }));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 app.get('/ping', (req, res) => res.json({ message: 'server is running' }));
