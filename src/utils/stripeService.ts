@@ -217,28 +217,38 @@ export const createStripeSubscription = async (params: CreateStripeSubscriptionP
     const customerId = customerResult.customerId;
 
     // Determine price configuration
-    let priceData;
+    // For newer Stripe API versions, we need to create product and price first
+    let priceId: string;
+    
     if (params.priceId) {
       // Use existing price
-      priceData = { price: params.priceId };
+      priceId = params.priceId;
     } else {
-      // Create price on the fly
-      priceData = {
+      // Create product first
+      const product = await stripe.products.create({
+        name: `Pet Security Tag ${params.interval === 'month' ? 'Monthly' : 'Yearly'} Subscription`,
+        metadata: {
+          subscriptionType: params.metadata.subscriptionType || params.interval,
+        },
+      });
+
+      // Create price for the product
+      const price = await stripe.prices.create({
         currency: params.currency,
         unit_amount: params.amount,
         recurring: {
           interval: params.interval,
         },
-        product_data: {
-          name: `Pet Security Tag ${params.interval === 'month' ? 'Monthly' : 'Yearly'} Subscription`,
-        },
-      };
+        product: product.id,
+      });
+
+      priceId = price.id;
     }
 
     // Create subscription
     const subscriptionParams: Stripe.SubscriptionCreateParams = {
       customer: customerId,
-      items: [{ price_data: priceData as any }],
+      items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
       expand: ['latest_invoice.payment_intent'],
