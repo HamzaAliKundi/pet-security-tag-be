@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateStripeSubscription = exports.cancelStripeSubscription = exports.getStripeSubscription = exports.createStripeSubscription = exports.getOrCreateCustomer = exports.getStripePublishKey = exports.confirmPaymentIntent = exports.createSubscriptionPaymentIntent = exports.createPaymentIntent = void 0;
+exports.updateStripeSubscription = exports.cancelStripeSubscription = exports.getStripeSubscription = exports.createStripeSubscription = exports.getOrCreateCustomer = exports.getStripePublishKey = exports.confirmPaymentIntent = exports.savePaymentMethodToCustomer = exports.createSubscriptionPaymentIntent = exports.createPaymentIntent = void 0;
 const stripe_1 = __importDefault(require("stripe"));
 const env_1 = require("../config/env");
 // Initialize Stripe with secret key
@@ -37,14 +37,18 @@ const createPaymentIntent = async (params) => {
 exports.createPaymentIntent = createPaymentIntent;
 const createSubscriptionPaymentIntent = async (params) => {
     try {
-        const paymentIntent = await stripe.paymentIntents.create({
+        const paymentIntentParams = {
             amount: params.amount,
             currency: params.currency,
             metadata: params.metadata,
             automatic_payment_methods: {
                 enabled: true,
             },
-        });
+        };
+        // If customer ID is provided in metadata and we want to save the card for future use
+        // Note: setup_future_usage requires the payment method to be attached during confirmation
+        // We'll handle this in the frontend by creating a payment method first
+        const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
         return {
             success: true,
             paymentIntentId: paymentIntent.id,
@@ -60,6 +64,33 @@ const createSubscriptionPaymentIntent = async (params) => {
     }
 };
 exports.createSubscriptionPaymentIntent = createSubscriptionPaymentIntent;
+/**
+ * Attach payment method to customer and set as default
+ * Use this for upgrades/renewals when you want to save the card
+ */
+const savePaymentMethodToCustomer = async (paymentMethodId, customerId) => {
+    try {
+        // Attach payment method to customer
+        await stripe.paymentMethods.attach(paymentMethodId, {
+            customer: customerId,
+        });
+        // Set as default payment method
+        await stripe.customers.update(customerId, {
+            invoice_settings: {
+                default_payment_method: paymentMethodId,
+            },
+        });
+        return { success: true };
+    }
+    catch (error) {
+        console.error('Error saving payment method to customer:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error occurred',
+        };
+    }
+};
+exports.savePaymentMethodToCustomer = savePaymentMethodToCustomer;
 const confirmPaymentIntent = async (paymentIntentId) => {
     try {
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);

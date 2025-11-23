@@ -89,14 +89,20 @@ export const createPaymentIntent = async (params: CreatePaymentIntentParams): Pr
 
 export const createSubscriptionPaymentIntent = async (params: CreateSubscriptionPaymentIntentParams): Promise<PaymentIntentResult> => {
   try {
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: params.amount,
       currency: params.currency,
       metadata: params.metadata,
       automatic_payment_methods: {
         enabled: true,
       },
-    });
+    };
+
+    // If customer ID is provided in metadata and we want to save the card for future use
+    // Note: setup_future_usage requires the payment method to be attached during confirmation
+    // We'll handle this in the frontend by creating a payment method first
+    
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     return {
       success: true,
@@ -105,6 +111,37 @@ export const createSubscriptionPaymentIntent = async (params: CreateSubscription
     };
   } catch (error) {
     console.error('Error creating subscription payment intent:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+/**
+ * Attach payment method to customer and set as default
+ * Use this for upgrades/renewals when you want to save the card
+ */
+export const savePaymentMethodToCustomer = async (
+  paymentMethodId: string,
+  customerId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Attach payment method to customer
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+
+    // Set as default payment method
+    await stripe.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving payment method to customer:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
