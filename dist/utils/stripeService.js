@@ -203,25 +203,111 @@ const createStripeSubscription = async (params) => {
             });
         }
         const subscription = await stripe.subscriptions.create(subscriptionParams);
-        // Get the latest invoice and payment intent
-        const invoice = subscription.latest_invoice;
+        console.log(`✅ Stripe subscription created: ${subscription.id}, status: ${subscription.status}`);
+        // Get the latest invoice
+        const invoiceAny = subscription.latest_invoice;
         let clientSecret;
-        if (invoice && typeof invoice === 'object' && 'payment_intent' in invoice) {
-            const paymentIntentId = invoice.payment_intent;
-            if (typeof paymentIntentId === 'string') {
-                // If it's a string, retrieve the payment intent
+        if (invoiceAny) {
+            console.log('Invoice found, extracting payment intent...');
+            const invoiceId = typeof invoiceAny === 'string' ? invoiceAny : invoiceAny.id;
+            // Try to get payment_intent from invoice
+            let paymentIntentField = typeof invoiceAny === 'object' ? invoiceAny.payment_intent : null;
+            // If payment method is provided and invoice doesn't have payment intent, 
+            // retrieve the invoice to check its status and create a payment intent if needed
+            if (!paymentIntentField && params.paymentMethodId && invoiceId) {
                 try {
-                    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-                    clientSecret = paymentIntent.client_secret || undefined;
+                    console.log(`Retrieving invoice ${invoiceId} to check status...`);
+                    const invoice = await stripe.invoices.retrieve(invoiceId, {
+                        expand: ['payment_intent'],
+                    });
+                    // Check if invoice has a payment intent now
+                    paymentIntentField = invoice.payment_intent;
+                    // If still no payment intent and invoice is open/unpaid, create one
+                    if (!paymentIntentField && invoice.status === 'open') {
+                        console.log(`Creating payment intent for open invoice amount: ${invoice.amount_due}`);
+                        const paymentIntent = await stripe.paymentIntents.create({
+                            amount: invoice.amount_due,
+                            currency: invoice.currency,
+                            customer: customerId,
+                            payment_method: params.paymentMethodId,
+                            confirmation_method: 'automatic', // Changed to 'automatic' so frontend can confirm
+                            confirm: false,
+                            metadata: {
+                                invoice_id: invoiceId,
+                                subscription_id: subscription.id,
+                            },
+                        });
+                        paymentIntentField = paymentIntent.id;
+                        clientSecret = paymentIntent.client_secret || undefined;
+                        console.log('✅ Created payment intent for invoice:', paymentIntent.id);
+                    }
+                    else if (paymentIntentField) {
+                        console.log('✅ Invoice has payment intent:', paymentIntentField);
+                    }
                 }
-                catch (error) {
-                    console.error('Error retrieving payment intent:', error);
+                catch (invoiceError) {
+                    console.error('❌ Error retrieving invoice:', invoiceError);
                 }
             }
-            else if (paymentIntentId && typeof paymentIntentId === 'object') {
-                // If it's already expanded
-                clientSecret = paymentIntentId.client_secret || undefined;
+            if (paymentIntentField) {
+                if (typeof paymentIntentField === 'string') {
+                    // If it's a string ID, retrieve the payment intent
+                    try {
+                        console.log(`Retrieving payment intent: ${paymentIntentField}`);
+                        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentField);
+                        clientSecret = paymentIntent.client_secret || undefined;
+                        console.log(`✅ Retrieved clientSecret from payment intent: ${paymentIntentField}`);
+                    }
+                    catch (error) {
+                        console.error('❌ Error retrieving payment intent:', error);
+                    }
+                }
+                else if (typeof paymentIntentField === 'object' && paymentIntentField.client_secret) {
+                    // If it's already expanded PaymentIntent object
+                    clientSecret = paymentIntentField.client_secret;
+                    console.log('✅ Using expanded payment intent clientSecret');
+                }
             }
+            else {
+                // If still no payment intent and we have invoice ID and payment method, create one
+                if (invoiceId && params.paymentMethodId) {
+                    try {
+                        const invoice = await stripe.invoices.retrieve(invoiceId);
+                        console.log(`Creating payment intent for invoice amount: ${invoice.amount_due}`);
+                        const paymentIntent = await stripe.paymentIntents.create({
+                            amount: invoice.amount_due,
+                            currency: invoice.currency,
+                            customer: customerId,
+                            payment_method: params.paymentMethodId,
+                            confirmation_method: 'automatic', // Changed to 'automatic' so frontend can confirm
+                            confirm: false,
+                            metadata: {
+                                invoice_id: invoiceId,
+                                subscription_id: subscription.id,
+                            },
+                        });
+                        paymentIntentField = paymentIntent.id;
+                        clientSecret = paymentIntent.client_secret || undefined;
+                        console.log('✅ Created payment intent for invoice:', paymentIntent.id);
+                    }
+                    catch (createError) {
+                        console.error('❌ Error creating payment intent:', createError);
+                    }
+                }
+                else {
+                    console.warn('⚠️  No payment_intent found in invoice and cannot create one');
+                }
+            }
+        }
+        else {
+            console.warn('⚠️  No latest_invoice found in subscription');
+        }
+        if (!clientSecret) {
+            console.error('❌ Failed to extract clientSecret from subscription. Subscription ID:', subscription.id);
+            console.error('Subscription status:', subscription.status);
+        }
+        else {
+            console.log('✅ ClientSecret extracted successfully');
         }
         return {
             success: true,

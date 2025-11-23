@@ -619,6 +619,10 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       // Don't fail the verification if email fails
     }
 
+    console.log(`✅ Subscription record created in database: ${subscription._id}`);
+    console.log(`   Type: ${subscription.type}, Status: ${subscription.status}, AutoRenew: ${subscription.autoRenew}`);
+    console.log(`   Stripe Subscription ID: ${subscription.stripeSubscriptionId || 'N/A'}`);
+
     res.status(200).json({
       message: 'Subscription activated and QR code verified successfully',
       status: 200,
@@ -634,7 +638,9 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
         status: subscription.status,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
-        amountPaid: subscription.amountPaid
+        amountPaid: subscription.amountPaid,
+        autoRenew: subscription.autoRenew,
+        stripeSubscriptionId: subscription.stripeSubscriptionId
       }
     });
 
