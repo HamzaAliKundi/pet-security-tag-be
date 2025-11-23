@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
 import User from '../../models/User';
-import { createSubscriptionPaymentIntent } from '../../utils/stripeService';
+import { createSubscriptionPaymentIntent, createStripeSubscription } from '../../utils/stripeService';
 import { sendSubscriptionNotificationEmail } from '../../utils/emailService';
 
 // Get user's subscriptions

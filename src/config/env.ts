@@ -16,6 +16,7 @@ interface EnvVars {
   QR_URL: string;
   STRIPE_PUBLISH_KEY: string;
   STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SECRET?: string; // Optional: Required for webhook signature verification
   CLOUDINARY_CLOUD_NAME: string;
   CLOUDINARY_API_KEY: string;
   CLOUDINARY_API_SECRET: string;
@@ -70,6 +71,7 @@ const validateEnv = (): EnvVars => {
     QR_URL: process.env.QR_URL!,
     STRIPE_PUBLISH_KEY: process.env.STRIPE_PUBLISH_KEY!,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY!,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME!,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY!,
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET!,
