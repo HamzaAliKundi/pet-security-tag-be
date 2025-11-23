@@ -4,7 +4,7 @@ import QRCode from '../../models/QRCode';
 import Subscription from '../../models/Subscription';
 import Pet from '../../models/Pet';
 import User from '../../models/User';
-import { createPaymentIntent, createSubscriptionPaymentIntent } from '../../utils/stripeService';
+import { createPaymentIntent, createSubscriptionPaymentIntent, createStripeSubscription } from '../../utils/stripeService';
 import { sendQRCodeFirstScanEmail } from '../../utils/emailService';
 
 // Scan QR Code - Main entry point
@@ -301,7 +301,7 @@ export const autoVerifyQRCode = asyncHandler(async (req: Request, res: Response)
 export const verifyQRCodeWithSubscription = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?._id;
-    const { qrCodeId, subscriptionType, petId } = req.body;
+    const { qrCodeId, subscriptionType, petId, paymentMethodId, enableAutoRenew } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -399,6 +399,7 @@ export const verifyQRCodeWithSubscription = asyncHandler(async (req: Request, re
     };
 
     const amount = pricing[subscriptionType as keyof typeof pricing];
+    const amountInCents = Math.round(amount * 100);
     const endDate = new Date();
     
     if (subscriptionType === 'monthly') {
@@ -410,45 +411,114 @@ export const verifyQRCodeWithSubscription = asyncHandler(async (req: Request, re
       endDate.setFullYear(endDate.getFullYear() + 100);
     }
 
-    // Create Stripe payment intent for subscription
-    const amountInCents = Math.round(amount * 100);
-    const paymentResult = await createSubscriptionPaymentIntent({
-      amount: amountInCents,
-      currency: 'gbp',
-      metadata: {
-        userId: userId.toString(),
-        subscriptionType,
-        petName: (qrCode.assignedPetId as any)?.petName || 'Unknown Pet'
-      }
-    });
-
-    if (!paymentResult.success) {
-      res.status(500).json({
-        message: 'Failed to create payment intent',
-        error: paymentResult.error
+    // Get user for email
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({
+        message: 'User not found',
+        error: 'Invalid user ID'
       });
       return;
     }
 
-    res.status(200).json({
-      message: 'Subscription payment intent created',
-      status: 200,
-      payment: {
-        paymentIntentId: paymentResult.paymentIntentId,
-        clientSecret: paymentResult.clientSecret,
-        publishableKey: process.env.STRIPE_PUBLISH_KEY
-      },
-      subscription: {
-        type: subscriptionType,
-        amount,
-        currency: 'EUR',
-        endDate
-      },
-      qrCode: {
-        id: qrCode._id,
-        code: qrCode.code
+    // For lifetime subscriptions, use Payment Intent (one-time payment)
+    // For monthly/yearly with auto-renewal, use Stripe Subscription
+    const shouldUseSubscription = (subscriptionType === 'monthly' || subscriptionType === 'yearly') 
+      && enableAutoRenew !== false 
+      && paymentMethodId;
+
+    if (shouldUseSubscription) {
+      // Create Stripe Subscription for auto-renewal
+      const subscriptionResult = await createStripeSubscription({
+        customerEmail: user.email || '',
+        customerName: user.firstName || user.email || 'Customer',
+        amount: amountInCents,
+        currency: 'gbp',
+        interval: subscriptionType === 'monthly' ? 'month' : 'year',
+        paymentMethodId: paymentMethodId,
+        metadata: {
+          userId: userId.toString(),
+          subscriptionType,
+          qrCodeId: qrCodeId.toString(),
+          petName: (qrCode.assignedPetId as any)?.petName || 'Unknown Pet'
+        },
+      });
+
+      if (!subscriptionResult.success) {
+        res.status(500).json({
+          message: 'Failed to create subscription',
+          error: subscriptionResult.error
+        });
+        return;
       }
-    });
+
+      res.status(200).json({
+        message: 'Subscription created successfully',
+        status: 200,
+        subscription: {
+          subscriptionId: subscriptionResult.subscriptionId,
+          customerId: subscriptionResult.customerId,
+          clientSecret: subscriptionResult.clientSecret,
+          publishableKey: process.env.STRIPE_PUBLISH_KEY
+        },
+        payment: {
+          // For subscription, clientSecret is for the initial payment
+          clientSecret: subscriptionResult.clientSecret,
+          publishableKey: process.env.STRIPE_PUBLISH_KEY
+        },
+        subscriptionDetails: {
+          type: subscriptionType,
+          amount,
+          currency: 'GBP',
+          endDate,
+          autoRenew: true
+        },
+        qrCode: {
+          id: qrCode._id,
+          code: qrCode.code
+        }
+      });
+    } else {
+      // Use Payment Intent for lifetime or when auto-renewal is disabled
+      const paymentResult = await createSubscriptionPaymentIntent({
+        amount: amountInCents,
+        currency: 'gbp',
+        metadata: {
+          userId: userId.toString(),
+          subscriptionType,
+          petName: (qrCode.assignedPetId as any)?.petName || 'Unknown Pet'
+        }
+      });
+
+      if (!paymentResult.success) {
+        res.status(500).json({
+          message: 'Failed to create payment intent',
+          error: paymentResult.error
+        });
+        return;
+      }
+
+      res.status(200).json({
+        message: 'Subscription payment intent created',
+        status: 200,
+        payment: {
+          paymentIntentId: paymentResult.paymentIntentId,
+          clientSecret: paymentResult.clientSecret,
+          publishableKey: process.env.STRIPE_PUBLISH_KEY
+        },
+        subscription: {
+          type: subscriptionType,
+          amount,
+          currency: 'GBP',
+          endDate,
+          autoRenew: false
+        },
+        qrCode: {
+          id: qrCode._id,
+          code: qrCode.code
+        }
+      });
+    }
 
   } catch (error) {
     console.error('Error verifying QR code:', error);
@@ -463,7 +533,7 @@ export const verifyQRCodeWithSubscription = asyncHandler(async (req: Request, re
 export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?._id;
-    const { qrCodeId, paymentIntentId, subscriptionType, petId } = req.body;
+    const { qrCodeId, paymentIntentId, subscriptionType, petId, stripeSubscriptionId } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -505,6 +575,9 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       lifetime: 99.00
     };
 
+    // Determine if this is an auto-renewal subscription
+    const isAutoRenew = stripeSubscriptionId && (subscriptionType === 'monthly' || subscriptionType === 'yearly');
+
     // Create subscription record
     const subscription = await Subscription.create({
       userId,
@@ -513,10 +586,11 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       status: 'active',
       startDate,
       endDate,
-      paymentIntentId,
+      paymentIntentId: paymentIntentId || undefined,
+      stripeSubscriptionId: stripeSubscriptionId || undefined,
       amountPaid: pricing[subscriptionType as keyof typeof pricing],
       currency: 'gbp',
-      autoRenew: true
+      autoRenew: isAutoRenew
     });
 
     // Update QR code status
