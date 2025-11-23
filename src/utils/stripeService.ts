@@ -40,6 +40,7 @@ export interface CreateStripeSubscriptionParams {
   metadata: {
     userId: string;
     subscriptionId?: string; // Your internal subscription ID
+    subscriptionType?: string; // Subscription type (monthly/yearly)
     qrCodeId?: string;
     petName?: string;
   };
