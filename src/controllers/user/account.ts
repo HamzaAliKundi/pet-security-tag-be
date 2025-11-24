@@ -5,6 +5,7 @@ import Pet from '../../models/Pet';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
+import { sendAccountDeletedEmail } from '../../utils/emailService';
 
 // Get single user (Private)
 export const getSingleUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -142,6 +143,30 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response): P
   if (!existingUser) {
     res.status(404).json({ message: 'User not found' });
     return;
+  }
+
+  // Check for subscriptions before deletion
+  const subscriptions = await Subscription.find({ userId });
+  const hasSubscription = subscriptions.length > 0;
+  const hasLifetimePlan = subscriptions.some(sub => sub.type === 'lifetime');
+
+  // Prepare customer name
+  const customerName = existingUser.firstName 
+    ? `${existingUser.firstName}${existingUser.lastName ? ' ' + existingUser.lastName : ''}`
+    : existingUser.email.split('@')[0] || 'Customer';
+
+  // Send account deletion email (non-blocking)
+  if (existingUser.email) {
+    try {
+      await sendAccountDeletedEmail(existingUser.email, {
+        customerName,
+        hasSubscription,
+        hasLifetimePlan
+      });
+    } catch (emailError) {
+      console.error('Failed to send account deletion email:', emailError);
+      // Don't fail the account deletion if email fails
+    }
   }
 
   // Reset any QR codes linked to this user

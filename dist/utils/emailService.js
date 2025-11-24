@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendOrderDeliveredEmail = exports.sendOrderCancelledEmail = exports.sendOrderShippedEmail = exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
+exports.sendAccountDeletedEmail = exports.sendOrderDeliveredEmail = exports.sendOrderCancelledEmail = exports.sendOrderShippedEmail = exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
 const mail_1 = __importDefault(require("@sendgrid/mail"));
 const env_1 = require("../config/env");
 const emailtemplate_1 = require("./emailtemplate");
@@ -205,3 +205,25 @@ const sendOrderDeliveredEmail = async (email, orderData) => {
     }
 };
 exports.sendOrderDeliveredEmail = sendOrderDeliveredEmail;
+// Send account deletion email
+const sendAccountDeletedEmail = async (email, accountData) => {
+    const html = (0, emailtemplate_1.accountDeletedTemplate)(accountData);
+    const msg = {
+        to: email,
+        from: {
+            email: env_1.env.SENDGRID_FROM_EMAIL,
+            name: env_1.env.SENDGRID_FROM_NAME
+        },
+        subject: 'Your Digital Tails Account Has Been Removed',
+        html
+    };
+    try {
+        await mail_1.default.send(msg);
+        console.log('Account deletion email sent successfully to:', email);
+    }
+    catch (error) {
+        console.error('Error sending account deletion email:', error);
+        throw error;
+    }
+};
+exports.sendAccountDeletedEmail = sendAccountDeletedEmail;

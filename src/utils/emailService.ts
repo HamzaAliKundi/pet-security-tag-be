@@ -9,7 +9,8 @@ import {
   credentialsEmailTemplate,
   orderShippedTemplate,
   orderCancelledTemplate,
-  orderDeliveredTemplate
+  orderDeliveredTemplate,
+  accountDeletedTemplate
 } from './emailtemplate';
 
 // Configure SendGrid with API key
@@ -259,6 +260,33 @@ export const sendOrderDeliveredEmail = async (email: string, orderData: {
     console.log('Order delivered email sent successfully to:', email);
   } catch (error) {
     console.error('Error sending order delivered email:', error);
+    throw error;
+  }
+};
+
+// Send account deletion email
+export const sendAccountDeletedEmail = async (email: string, accountData: {
+  customerName: string;
+  hasSubscription?: boolean;
+  hasLifetimePlan?: boolean;
+}): Promise<void> => {
+  const html = accountDeletedTemplate(accountData);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Your Digital Tails Account Has Been Removed',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Account deletion email sent successfully to:', email);
+  } catch (error) {
+    console.error('Error sending account deletion email:', error);
     throw error;
   }
 };

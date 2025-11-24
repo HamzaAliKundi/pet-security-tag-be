@@ -1878,3 +1878,182 @@ export const orderDeliveredTemplate = compile(`
 </body>
 </html>
 `);
+
+// Account Deletion Email Template
+export const accountDeletedTemplate = compile(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Account Has Been Removed - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            background-color: #f8f9fa; 
+            line-height: 1.6; 
+            color: #2D2D2D;
+        }
+        .email-container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #ffffff; 
+            border-radius: 16px; 
+            overflow: hidden; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header { 
+            background: #6B7280; 
+            padding: 30px 20px; 
+            text-align: center; 
+            color: white;
+        }
+        .logo { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin-bottom: 10px;
+        }
+        .tagline { 
+            font-size: 16px; 
+            opacity: 0.9;
+        }
+        .content { 
+            padding: 40px 30px; 
+            text-align: left;
+        }
+        .welcome-text { 
+            font-size: 24px; 
+            color: #2D2D2D; 
+            margin-bottom: 20px; 
+            font-weight: bold;
+        }
+        .description { 
+            color: #2D2D2D; 
+            font-size: 16px; 
+            margin-bottom: 20px; 
+            line-height: 1.8;
+        }
+        .info-box { 
+            background-color: #F3F4F6; 
+            border-left: 4px solid #6B7280; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+        }
+        .info-text { 
+            color: #374151; 
+            font-size: 14px; 
+            margin: 0;
+            line-height: 1.8;
+        }
+        .warning-box { 
+            background-color: #FEF3C7; 
+            border-left: 4px solid #F59E0B; 
+            padding: 20px; 
+            margin: 30px 0; 
+            border-radius: 8px;
+        }
+        .warning-text { 
+            color: #92400E; 
+            font-size: 14px; 
+            margin: 0;
+            line-height: 1.8;
+        }
+        .footer { 
+            background-color: #f8f9fa; 
+            padding: 30px; 
+            text-align: center; 
+            border-top: 1px solid #e9ecef;
+        }
+        .footer-text { 
+            color: #2D2D2D; 
+            font-size: 14px; 
+            margin-bottom: 15px;
+        }
+        .social-links { 
+            margin-top: 20px;
+        }
+        .social-links a { 
+            display: inline-block; 
+            margin: 0 10px; 
+            color: #4CB2E2; 
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">Your Account Has Been Removed</div>
+        </div>
+        
+        <div class="content">
+            <div class="welcome-text">Hi {{customerName}},</div>
+            <p class="description">
+                We're sorry to see you go. If you have any feedback to help us improve, please feel free to email us or send us a message on any of our social media pages we'd really appreciate hearing from you.
+            </p>
+            
+            <div class="info-box">
+                <p class="info-text">
+                    <strong>Account Deletion Confirmation:</strong><br>
+                    This email confirms that all your data and account details have been permanently removed from our website and system.
+                </p>
+            </div>
+            
+            {{#if hasSubscription}}
+            <div class="info-box">
+                <p class="info-text">
+                    <strong>Subscription Cancellation:</strong><br>
+                    If you were on a monthly or yearly subscription, your payment plan has now been cancelled.
+                </p>
+            </div>
+            {{/if}}
+            
+            {{#if hasLifetimePlan}}
+            <div class="warning-box">
+                <p class="warning-text">
+                    <strong>⚠️ Lifetime Plan Refund Policy:</strong><br>
+                    Please note: If you were on a lifetime plan, refunds are not available after 14 days from the date of purchase. You can read more about this on our Refund Policy page.
+                </p>
+            </div>
+            {{/if}}
+            
+            <div class="warning-box">
+                <p class="warning-text">
+                    <strong>⚠️ Important Notice:</strong><br>
+                    Please be aware that your pets will no longer be protected by our service.
+                </p>
+            </div>
+            
+            <p class="description">
+                Thank you for having been part of Digital Tails.
+            </p>
+            
+            <p class="description" style="margin-top: 30px;">
+                Best regards,<br>
+                <strong>Digital Tails Team</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p class="footer-text">
+                <strong>Digital Tails Pet Securities</strong><br>
+                Dedicated 24/7 Award Winning Service Team
+            </p>
+            <p class="footer-text">
+                Need assistance? Our support team is here to help 24/7!
+            </p>
+            <div class="social-links">
+                <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+            </div>
+            <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
+                © Digital Tails 2023. All Rights Reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+`);
