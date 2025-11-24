@@ -222,7 +222,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             customerName: user.firstName || 'Valued Customer',
             email: user.email,
             password: generatedPassword,
-            loginUrl: `${env.FRONTEND_URL}/login`
+            loginUrl: `${env.FRONTEND_URL}`
           });
         } catch (emailError) {
           console.error('Failed to send credentials email:', emailError);

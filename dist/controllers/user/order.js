@@ -240,7 +240,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         customerName: user.firstName || 'Valued Customer',
                         email: user.email,
                         password: generatedPassword,
-                        loginUrl: `${env_1.env.FRONTEND_URL}/login`
+                        loginUrl: `${env_1.env.FRONTEND_URL}`
                     });
                 }
                 catch (emailError) {
