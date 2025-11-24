@@ -31,7 +31,7 @@ app.use((0, morgan_1.default)('dev'));
 app.use('/api/v1/stripe/webhook', express_1.default.raw({ type: 'application/json' }));
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-app.get('/ping', (req, res) => res.json({ message: 'server is running.' }));
+app.get('/ping', (req, res) => res.json({ message: 'server is running...' }));
 app.use('/api/v1', routes_1.default);
 app.use(errorHandler_1.errorHandler);
 app.listen(env_1.env.PORT, () => console.log(`Server is running on port ${env_1.env.PORT}`));
