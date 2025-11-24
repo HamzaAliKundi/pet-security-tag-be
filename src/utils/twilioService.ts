@@ -156,10 +156,10 @@ export const sendLocationViaSMS = async (params: LocationShareParams): Promise<{
     
     if (params.latitude && params.longitude) {
       // GPS location
-      message = `Good news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 GPS Location: ${params.locationUrl}`;
+      message = `Pet found alert 🚨\n\nGood news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 GPS Location: ${params.locationUrl}`;
     } else {
       // Manual location
-      message = `Good news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 Location: ${params.locationUrl}`;
+      message = `Pet found alert 🚨\n\nGood news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 Location: ${params.locationUrl}`;
     }
 
     console.log(`📱 Sending SMS to: ${params.phoneNumber}`);
@@ -235,10 +235,10 @@ export const sendLocationViaWhatsApp = async (params: LocationShareParams): Prom
     
     if (params.latitude && params.longitude) {
       // GPS location
-      message = `Good news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 *GPS Location:* ${params.locationUrl}`;
+      message = `Pet found alert 🚨\n\nGood news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 *GPS Location:* ${params.locationUrl}`;
     } else {
       // Manual location
-      message = `Good news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 *Location:* ${params.locationUrl}`;
+      message = `Pet found alert 🚨\n\nGood news! Your pet has been located, and their tag was scanned at the location shown. Expect a call or message from the person who found them soon. 🐾\n\n📍 *Location:* ${params.locationUrl}`;
     }
 
     console.log(`💬 Sending WhatsApp to: ${params.phoneNumber}`);
