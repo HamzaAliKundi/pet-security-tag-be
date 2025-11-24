@@ -145,7 +145,7 @@ exports.verificationEmailTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -326,7 +326,7 @@ exports.resetPasswordTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -515,7 +515,7 @@ exports.orderConfirmationTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -700,7 +700,7 @@ exports.subscriptionNotificationTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -902,7 +902,7 @@ exports.qrCodeFirstScanTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1122,7 +1122,7 @@ exports.credentialsEmailTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1302,7 +1302,7 @@ exports.petFoundNotificationTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1500,7 +1500,7 @@ exports.orderShippedTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1676,7 +1676,7 @@ exports.orderCancelledTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1853,7 +1853,7 @@ exports.orderDeliveredTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -2031,7 +2031,7 @@ exports.accountDeletedTemplate = (0, handlebars_1.compile)(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">

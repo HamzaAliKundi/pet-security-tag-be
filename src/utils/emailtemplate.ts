@@ -143,7 +143,7 @@ export const verificationEmailTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -325,7 +325,7 @@ export const resetPasswordTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -515,7 +515,7 @@ export const orderConfirmationTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -701,7 +701,7 @@ export const subscriptionNotificationTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -904,7 +904,7 @@ export const qrCodeFirstScanTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1125,7 +1125,7 @@ export const credentialsEmailTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1306,7 +1306,7 @@ export const petFoundNotificationTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1505,7 +1505,7 @@ export const orderShippedTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1682,7 +1682,7 @@ export const orderCancelledTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -1860,7 +1860,7 @@ export const orderDeliveredTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
@@ -2039,7 +2039,7 @@ export const accountDeletedTemplate = compile(`
         
         <div class="footer">
             <p class="footer-text">
-                <strong>Digital Tails Pet Securities</strong><br>
+                <strong>Digital Tails</strong><br>
                 Dedicated 24/7 Award Winning Service Team
             </p>
             <p class="footer-text">
