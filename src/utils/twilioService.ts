@@ -70,21 +70,27 @@ const detectCountryCode = (phoneNumber: string): string | null => {
 };
 
 /**
- * Gets the appropriate Twilio phone number based on recipient's country code
+ * Gets the appropriate Twilio phone number or alphanumeric sender ID based on recipient's country code
  * @param recipientPhoneNumber - Recipient's phone number
- * @returns Appropriate sender phone number
+ * @returns Appropriate sender phone number or alphanumeric sender ID
  */
 const getSenderPhoneNumber = (recipientPhoneNumber: string): string => {
   const countryCode = detectCountryCode(recipientPhoneNumber);
   
   console.log(`🔍 Detecting sender number for: ${recipientPhoneNumber}`);
   console.log(`   Detected country code: ${countryCode || 'unknown'}`);
+  console.log(`   UK alphanumeric sender ID available: ${env.TWILIO_ALPHANUMERIC_SENDER_ID_UK ? 'YES' : 'NO'}`);
+  console.log(`   UK alphanumeric sender ID value: ${env.TWILIO_ALPHANUMERIC_SENDER_ID_UK || 'NOT SET'}`);
   console.log(`   UK number available: ${env.TWILIO_PHONE_NUMBER_UK ? 'YES' : 'NO'}`);
   console.log(`   UK number value: ${env.TWILIO_PHONE_NUMBER_UK || 'NOT SET'}`);
   console.log(`   US number (default): ${env.TWILIO_PHONE_NUMBER}`);
   
-  // UK numbers (country code 44)
+  // UK numbers (country code 44) - Use alphanumeric sender ID if available, otherwise fallback to phone number
   if (countryCode === '44') {
+    if (env.TWILIO_ALPHANUMERIC_SENDER_ID_UK) {
+      console.log(`   ✅ Selected UK alphanumeric sender ID: ${env.TWILIO_ALPHANUMERIC_SENDER_ID_UK}`);
+      return env.TWILIO_ALPHANUMERIC_SENDER_ID_UK;
+    }
     const selectedNumber = env.TWILIO_PHONE_NUMBER_UK || env.TWILIO_PHONE_NUMBER;
     console.log(`   ✅ Selected UK number: ${selectedNumber}`);
     if (!env.TWILIO_PHONE_NUMBER_UK) {
@@ -94,7 +100,7 @@ const getSenderPhoneNumber = (recipientPhoneNumber: string): string => {
   }
   
   // US/Canada numbers (country code 1) or default
-  // Default to US number for all other countries
+  // Note: Alphanumeric sender IDs are not supported in US/Canada, must use phone numbers
   console.log(`   ✅ Selected US/default number: ${env.TWILIO_PHONE_NUMBER}`);
   return env.TWILIO_PHONE_NUMBER;
 };

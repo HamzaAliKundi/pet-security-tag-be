@@ -26,6 +26,7 @@ interface EnvVars {
   TWILIO_WHATSAPP_NUMBER: string;
   TWILIO_PHONE_NUMBER_UK?: string;
   TWILIO_WHATSAPP_NUMBER_UK?: string;
+  TWILIO_ALPHANUMERIC_SENDER_ID_UK?: string; // Alphanumeric sender ID for UK (e.g., "DigitalTails")
   TWILIO_TEST_NUMBER?: string;
 }
 
@@ -81,6 +82,7 @@ const validateEnv = (): EnvVars => {
     TWILIO_WHATSAPP_NUMBER: process.env.TWILIO_WHATSAPP_NUMBER!,
     TWILIO_PHONE_NUMBER_UK: process.env.TWILIO_PHONE_NUMBER_UK,
     TWILIO_WHATSAPP_NUMBER_UK: process.env.TWILIO_WHATSAPP_NUMBER_UK,
+    TWILIO_ALPHANUMERIC_SENDER_ID_UK: process.env.TWILIO_ALPHANUMERIC_SENDER_ID_UK,
     TWILIO_TEST_NUMBER: process.env.TWILIO_TEST_NUMBER
   };
 };
