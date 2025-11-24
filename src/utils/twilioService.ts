@@ -70,6 +70,85 @@ const detectCountryCode = (phoneNumber: string): string | null => {
 };
 
 /**
+ * Canadian area codes list (NANP - North American Numbering Plan)
+ * These are the area codes used in Canada (country code +1)
+ * Complete list verified from user-provided data
+ */
+const CANADIAN_AREA_CODES = [
+  '204', // Manitoba
+  '226', // Ontario
+  '236', // British Columbia
+  '249', // Ontario
+  '250', // British Columbia
+  '289', // Ontario
+  '306', // Saskatchewan
+  '343', // Ontario
+  '365', // Ontario
+  '403', // Alberta
+  '416', // Ontario
+  '418', // Quebec
+  '431', // Manitoba
+  '437', // Ontario
+  '438', // Quebec
+  '450', // Quebec
+  '506', // New Brunswick
+  '514', // Quebec
+  '519', // Ontario
+  '548', // Ontario
+  '579', // Quebec
+  '581', // Quebec
+  '587', // Alberta
+  '604', // British Columbia
+  '613', // Ontario
+  '639', // Saskatchewan
+  '647', // Ontario
+  '672', // British Columbia
+  '705', // Ontario
+  '709', // Newfoundland and Labrador
+  '742', // Ontario
+  '753', // Ontario
+  '778', // British Columbia
+  '780', // Alberta
+  '782', // Nova Scotia
+  '807', // Ontario
+  '819', // Quebec
+  '825', // Alberta
+  '867', // Northwest Territories, Nunavut, Yukon
+  '873', // Quebec
+  '902', // Prince Edward Island, Nova Scotia
+  '905'  // Ontario
+];
+
+/**
+ * Detects if a +1 phone number is from Canada based on area code
+ * @param phoneNumber - Phone number in E.164 format (e.g., +16132654168)
+ * @returns true if Canadian, false if US or unknown
+ */
+const isCanadianNumber = (phoneNumber: string): boolean => {
+  // Remove any spaces, dashes, or parentheses
+  const cleaned = phoneNumber.replace(/[\s\-()]/g, '');
+  
+  // Must start with +1
+  if (!cleaned.startsWith('+1')) {
+    return false;
+  }
+  
+  // Extract area code (next 3 digits after +1)
+  if (cleaned.length < 5) {
+    return false; // Not enough digits
+  }
+  
+  const areaCode = cleaned.substring(2, 5); // Extract 3 digits after +1
+  
+  // Check if area code is in Canadian list
+  const isCanadian = CANADIAN_AREA_CODES.includes(areaCode);
+  
+  console.log(`   🔍 Area code detection: ${areaCode} → ${isCanadian ? 'Canada' : 'USA'}`);
+  
+  return isCanadian;
+};
+
+/**
  * Gets the appropriate Twilio phone number based on recipient's country code
  * @param recipientPhoneNumber - Recipient's phone number
  * @returns Appropriate sender phone number
@@ -79,12 +158,11 @@ const getSenderPhoneNumber = (recipientPhoneNumber: string): string => {
   
   console.log(`🔍 Detecting sender number for: ${recipientPhoneNumber}`);
   console.log(`   Detected country code: ${countryCode || 'unknown'}`);
-  console.log(`   UK number available: ${env.TWILIO_PHONE_NUMBER_UK ? 'YES' : 'NO'}`);
-  console.log(`   UK number value: ${env.TWILIO_PHONE_NUMBER_UK || 'NOT SET'}`);
-  console.log(`   US number (default): ${env.TWILIO_PHONE_NUMBER}`);
   
   // UK numbers (country code 44)
   if (countryCode === '44') {
+    console.log(`   UK number available: ${env.TWILIO_PHONE_NUMBER_UK ? 'YES' : 'NO'}`);
+    console.log(`   UK number value: ${env.TWILIO_PHONE_NUMBER_UK || 'NOT SET'}`);
     const selectedNumber = env.TWILIO_PHONE_NUMBER_UK || env.TWILIO_PHONE_NUMBER;
     console.log(`   ✅ Selected UK number: ${selectedNumber}`);
     if (!env.TWILIO_PHONE_NUMBER_UK) {
@@ -93,7 +171,27 @@ const getSenderPhoneNumber = (recipientPhoneNumber: string): string => {
     return selectedNumber;
   }
   
-  // US/Canada numbers (country code 1) or default
+  // US/Canada numbers (country code 1) - need to differentiate
+  if (countryCode === '1') {
+    const isCanadian = isCanadianNumber(recipientPhoneNumber);
+    
+    if (isCanadian) {
+      // Check if Canadian number is configured
+      const canadianNumber = env.TWILIO_PHONE_NUMBER_CA || env.TWILIO_PHONE_NUMBER;
+      console.log(`   Canadian number available: ${env.TWILIO_PHONE_NUMBER_CA ? 'YES' : 'NO'}`);
+      console.log(`   Canadian number value: ${env.TWILIO_PHONE_NUMBER_CA || 'NOT SET'}`);
+      console.log(`   ✅ Selected Canadian number: ${canadianNumber}`);
+      if (!env.TWILIO_PHONE_NUMBER_CA) {
+        console.warn(`   ⚠️  WARNING: TWILIO_PHONE_NUMBER_CA not set in .env! Falling back to US number.`);
+      }
+      return canadianNumber;
+    } else {
+      // US number
+      console.log(`   ✅ Selected US number: ${env.TWILIO_PHONE_NUMBER}`);
+      return env.TWILIO_PHONE_NUMBER;
+    }
+  }
+  
   // Default to US number for all other countries
   console.log(`   ✅ Selected US/default number: ${env.TWILIO_PHONE_NUMBER}`);
   return env.TWILIO_PHONE_NUMBER;
@@ -109,12 +207,11 @@ const getSenderWhatsAppNumber = (recipientPhoneNumber: string): string => {
   
   console.log(`🔍 Detecting sender WhatsApp number for: ${recipientPhoneNumber}`);
   console.log(`   Detected country code: ${countryCode || 'unknown'}`);
-  console.log(`   UK WhatsApp number available: ${env.TWILIO_WHATSAPP_NUMBER_UK ? 'YES' : 'NO'}`);
-  console.log(`   UK WhatsApp number value: ${env.TWILIO_WHATSAPP_NUMBER_UK || 'NOT SET'}`);
-  console.log(`   US WhatsApp number (default): ${env.TWILIO_WHATSAPP_NUMBER}`);
   
   // UK numbers (country code 44)
   if (countryCode === '44') {
+    console.log(`   UK WhatsApp number available: ${env.TWILIO_WHATSAPP_NUMBER_UK ? 'YES' : 'NO'}`);
+    console.log(`   UK WhatsApp number value: ${env.TWILIO_WHATSAPP_NUMBER_UK || 'NOT SET'}`);
     const selectedNumber = env.TWILIO_WHATSAPP_NUMBER_UK || env.TWILIO_WHATSAPP_NUMBER;
     console.log(`   ✅ Selected UK WhatsApp number: ${selectedNumber}`);
     if (!env.TWILIO_WHATSAPP_NUMBER_UK) {
@@ -123,7 +220,27 @@ const getSenderWhatsAppNumber = (recipientPhoneNumber: string): string => {
     return selectedNumber;
   }
   
-  // US/Canada numbers (country code 1) or default
+  // US/Canada numbers (country code 1) - need to differentiate
+  if (countryCode === '1') {
+    const isCanadian = isCanadianNumber(recipientPhoneNumber);
+    
+    if (isCanadian) {
+      // Check if Canadian WhatsApp number is configured
+      const canadianWhatsAppNumber = env.TWILIO_WHATSAPP_NUMBER_CA || env.TWILIO_WHATSAPP_NUMBER;
+      console.log(`   Canadian WhatsApp number available: ${env.TWILIO_WHATSAPP_NUMBER_CA ? 'YES' : 'NO'}`);
+      console.log(`   Canadian WhatsApp number value: ${env.TWILIO_WHATSAPP_NUMBER_CA || 'NOT SET'}`);
+      console.log(`   ✅ Selected Canadian WhatsApp number: ${canadianWhatsAppNumber}`);
+      if (!env.TWILIO_WHATSAPP_NUMBER_CA) {
+        console.warn(`   ⚠️  WARNING: TWILIO_WHATSAPP_NUMBER_CA not set in .env! Falling back to US number.`);
+      }
+      return canadianWhatsAppNumber;
+    } else {
+      // US WhatsApp number
+      console.log(`   ✅ Selected US WhatsApp number: ${env.TWILIO_WHATSAPP_NUMBER}`);
+      return env.TWILIO_WHATSAPP_NUMBER;
+    }
+  }
+  
   // Default to US number for all other countries
   console.log(`   ✅ Selected US/default WhatsApp number: ${env.TWILIO_WHATSAPP_NUMBER}`);
   return env.TWILIO_WHATSAPP_NUMBER;
