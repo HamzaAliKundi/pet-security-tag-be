@@ -11,7 +11,8 @@ import {
   verifyQRCodeWithSubscription,
   autoVerifyQRCode,
   confirmSubscriptionPayment,
-  getPetProfileByQR
+  getPetProfileByQR,
+  checkQRAvailability
 } from '../controllers/qrcode/qrScanning';
 
 // Location sharing controller
@@ -20,6 +21,9 @@ import { shareLocation } from '../controllers/qrcode/locationShare';
 const router = Router();
 
 // Public routes (no authentication required)
+// Check QR code availability
+router.get('/check-availability', checkQRAvailability);
+
 // QR scanning route - when someone scans a QR code
 router.get('/scan/:code', scanQRCode);
 

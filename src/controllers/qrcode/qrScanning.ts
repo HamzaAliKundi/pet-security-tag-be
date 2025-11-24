@@ -7,6 +7,31 @@ import User from '../../models/User';
 import { createPaymentIntent, createSubscriptionPaymentIntent, createStripeSubscription } from '../../utils/stripeService';
 import { sendQRCodeFirstScanEmail } from '../../utils/emailService';
 
+// Check QR code availability (Public route)
+export const checkQRAvailability = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Count QR codes that are available (hasGiven is false)
+    const availableCount = await QRCode.countDocuments({ hasGiven: false });
+    
+    // Check if there are any available QR codes
+    const isAvailable = availableCount > 0;
+    
+    res.status(200).json({
+      message: 'QR code availability checked',
+      status: 200,
+      isAvailable,
+      availableCount
+    });
+  } catch (error) {
+    console.error('Error checking QR code availability:', error);
+    res.status(500).json({
+      message: 'Failed to check QR code availability',
+      error: 'Internal server error',
+      status: 500
+    });
+  }
+});
+
 // Scan QR Code - Main entry point
 export const scanQRCode = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {

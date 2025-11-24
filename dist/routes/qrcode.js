@@ -10,6 +10,8 @@ const qrScanning_1 = require("../controllers/qrcode/qrScanning");
 const locationShare_1 = require("../controllers/qrcode/locationShare");
 const router = (0, express_1.Router)();
 // Public routes (no authentication required)
+// Check QR code availability
+router.get('/check-availability', qrScanning_1.checkQRAvailability);
 // QR scanning route - when someone scans a QR code
 router.get('/scan/:code', qrScanning_1.scanQRCode);
 // Get QR verification details (for showing subscription page)

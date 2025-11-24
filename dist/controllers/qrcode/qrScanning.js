@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPetProfileByQR = exports.confirmSubscriptionPayment = exports.verifyQRCodeWithSubscription = exports.autoVerifyQRCode = exports.getQRVerificationDetails = exports.scanQRCode = void 0;
+exports.getPetProfileByQR = exports.confirmSubscriptionPayment = exports.verifyQRCodeWithSubscription = exports.autoVerifyQRCode = exports.getQRVerificationDetails = exports.scanQRCode = exports.checkQRAvailability = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const QRCode_1 = __importDefault(require("../../models/QRCode"));
 const Subscription_1 = __importDefault(require("../../models/Subscription"));
@@ -11,6 +11,29 @@ const Pet_1 = __importDefault(require("../../models/Pet"));
 const User_1 = __importDefault(require("../../models/User"));
 const stripeService_1 = require("../../utils/stripeService");
 const emailService_1 = require("../../utils/emailService");
+// Check QR code availability (Public route)
+exports.checkQRAvailability = (0, express_async_handler_1.default)(async (req, res) => {
+    try {
+        // Count QR codes that are available (hasGiven is false)
+        const availableCount = await QRCode_1.default.countDocuments({ hasGiven: false });
+        // Check if there are any available QR codes
+        const isAvailable = availableCount > 0;
+        res.status(200).json({
+            message: 'QR code availability checked',
+            status: 200,
+            isAvailable,
+            availableCount
+        });
+    }
+    catch (error) {
+        console.error('Error checking QR code availability:', error);
+        res.status(500).json({
+            message: 'Failed to check QR code availability',
+            error: 'Internal server error',
+            status: 500
+        });
+    }
+});
 // Scan QR Code - Main entry point
 exports.scanQRCode = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
