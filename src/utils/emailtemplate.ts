@@ -151,7 +151,7 @@ export const verificationEmailTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -333,7 +333,7 @@ export const resetPasswordTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -502,7 +502,7 @@ export const orderConfirmationTemplate = compile(`
                     <strong>📦 What's Next:</strong><br>
                     • Your order is being processed and will ship within 1-2 business days<br>
                     • You'll receive tracking information via email once shipped<br>
-                    • Once you receive your tag, activate it through your dashboard<br>
+                    • When your tag arrives, give it a quick scan to get it activated.<br>
                     • Your pet will be protected 24/7 with our monitoring service
                 </p>
             </div>
@@ -523,7 +523,7 @@ export const orderConfirmationTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -709,7 +709,7 @@ export const subscriptionNotificationTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -889,6 +889,7 @@ export const qrCodeFirstScanTemplate = compile(`
             <div class="info-box">
                 <p class="info-text">
                     <strong>🔔 What Happens Next:</strong><br>
+
                     • Anyone who finds your pet can contact you directly<br>
                     • Your pet's location and contact info are always up to date<br>
                     • 24/7 monitoring ensures your pet is always protected
@@ -911,7 +912,7 @@ export const qrCodeFirstScanTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -1132,7 +1133,7 @@ export const credentialsEmailTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -1313,7 +1314,7 @@ export const petFoundNotificationTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -1513,7 +1514,7 @@ export const orderShippedTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -1690,7 +1691,7 @@ export const orderCancelledTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -1868,7 +1869,7 @@ export const orderDeliveredTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
@@ -2043,7 +2044,7 @@ export const accountDeletedTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447928239287">💬 WhatsApp</a>
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2023. All Rights Reserved.
