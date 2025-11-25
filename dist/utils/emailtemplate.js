@@ -887,7 +887,6 @@ exports.qrCodeFirstScanTemplate = (0, handlebars_1.compile)(`
             <div class="info-box">
                 <p class="info-text">
                     <strong>🔔 What Happens Next:</strong><br>
-                    • You'll receive instant email notifications when your pet's tag is scanned<br>
                     • Anyone who finds your pet can contact you directly<br>
                     • Your pet's location and contact info are always up to date<br>
                     • 24/7 monitoring ensures your pet is always protected
