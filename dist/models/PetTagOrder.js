@@ -118,6 +118,10 @@ const PetTagOrderSchema = new mongoose_1.Schema({
     deliveryCompany: {
         type: String,
         trim: true
+    },
+    termsAccepted: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

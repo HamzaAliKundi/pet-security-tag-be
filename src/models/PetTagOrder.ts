@@ -21,6 +21,7 @@ export interface IPetTagOrder extends Document {
   phone?: string;
   trackingNumber?: string;
   deliveryCompany?: string;
+  termsAccepted?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -109,6 +110,10 @@ const PetTagOrderSchema: Schema = new Schema({
   deliveryCompany: {
     type: String,
     trim: true
+  },
+  termsAccepted: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

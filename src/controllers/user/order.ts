@@ -10,11 +10,18 @@ import bcrypt from 'bcryptjs';
 import { env } from '../../config/env';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId } = req.body;
+  const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
 
   if (!email || !name || !petName || !quantity || !subscriptionType) {
     res.status(400).json({ 
       message: 'All fields are required: email, name, petName, quantity, subscriptionType' 
+    });
+    return;
+  }
+
+  if (!termsAccepted) {
+    res.status(400).json({ 
+      message: 'You must accept the Terms and Privacy policies to proceed' 
     });
     return;
   }
@@ -109,7 +116,8 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       phone,
       shippingAddress,
       paymentIntentId: paymentResult.paymentIntentId,
-      status: 'pending'
+      status: 'pending',
+      termsAccepted: termsAccepted || false
     });
 
     res.status(201).json({

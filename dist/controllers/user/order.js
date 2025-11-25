@@ -47,10 +47,16 @@ const emailService_1 = require("../../utils/emailService");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const env_1 = require("../../config/env");
 exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
-    const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId } = req.body;
+    const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
     if (!email || !name || !petName || !quantity || !subscriptionType) {
         res.status(400).json({
             message: 'All fields are required: email, name, petName, quantity, subscriptionType'
+        });
+        return;
+    }
+    if (!termsAccepted) {
+        res.status(400).json({
+            message: 'You must accept the Terms and Privacy policies to proceed'
         });
         return;
     }
@@ -140,7 +146,8 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
             phone,
             shippingAddress,
             paymentIntentId: paymentResult.paymentIntentId,
-            status: 'pending'
+            status: 'pending',
+            termsAccepted: termsAccepted || false
         });
         res.status(201).json({
             message: 'Order created successfully',
