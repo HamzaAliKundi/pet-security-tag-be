@@ -1456,7 +1456,8 @@ exports.orderShippedTemplate = (0, handlebars_1.compile)(`
         <div class="content">
             <div class="welcome-text">Great News, {{customerName}}!</div>
             <p class="description">
-                Your Digital Tails pet tag order has been shipped and is on its way to you!
+                Paws up! 🐾 Your pet's new smart tag is officially on the way.<br><br>
+                Your order is all set, and your furry buddy will be rocking their new protection tag very soon!
             </p>
             
             <div class="order-details">
@@ -1994,23 +1995,19 @@ exports.accountDeletedTemplate = (0, handlebars_1.compile)(`
                 </p>
             </div>
             
-            {{#if hasSubscription}}
             <div class="info-box">
                 <p class="info-text">
                     <strong>Subscription Cancellation:</strong><br>
                     If you were on a monthly or yearly subscription, your payment plan has now been cancelled.
                 </p>
             </div>
-            {{/if}}
             
-            {{#if hasLifetimePlan}}
             <div class="warning-box">
                 <p class="warning-text">
                     <strong>⚠️ Lifetime Plan Refund Policy:</strong><br>
                     Please note: If you were on a lifetime plan, refunds are not available after 14 days from the date of purchase. You can read more about this on our Refund Policy page.
                 </p>
             </div>
-            {{/if}}
             
             <div class="warning-box">
                 <p class="warning-text">
