@@ -137,6 +137,67 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
       return;
     }
 
+    // Check invoice billing_reason to determine if this is initial payment or renewal
+    const billingReason = invoiceAny.billing_reason;
+    const invoiceAmount = invoice.amount_paid ? invoice.amount_paid / 100 : 0;
+    
+    // Skip if this is the initial subscription creation invoice
+    // The subscription record is already created by confirmSubscriptionPayment
+    if (billingReason === 'subscription_create' || billingReason === 'subscription_start') {
+      console.log(`Skipping initial subscription invoice (billing_reason: ${billingReason}). Subscription already created by frontend confirmation.`);
+      
+      // Just update the existing subscription with payment intent ID if not set
+      if (invoiceAny.payment_intent && !subscription.paymentIntentId) {
+        const paymentIntentId = typeof invoiceAny.payment_intent === 'string' 
+          ? invoiceAny.payment_intent 
+          : invoiceAny.payment_intent.id;
+        subscription.paymentIntentId = paymentIntentId;
+        await subscription.save();
+        console.log(`Updated subscription ${subscription._id} with payment intent ${paymentIntentId}`);
+      }
+      return;
+    }
+
+    // Skip if invoice amount is 0 (setup invoice, trial period, etc.)
+    // Only process actual payment invoices
+    if (invoiceAmount === 0) {
+      console.log(`Skipping invoice with 0 amount (billing_reason: ${billingReason}). This is likely a setup or trial invoice.`);
+      return;
+    }
+
+    // Check if there's already a subscription with the same paymentIntentId (duplicate prevention)
+    if (invoiceAny.payment_intent) {
+      const paymentIntentId = typeof invoiceAny.payment_intent === 'string' 
+        ? invoiceAny.payment_intent 
+        : invoiceAny.payment_intent.id;
+      
+      // Check for ANY subscription with this paymentIntentId (not just different IDs)
+      const existingWithPaymentIntent = await Subscription.findOne({
+        paymentIntentId: paymentIntentId
+      });
+      
+      if (existingWithPaymentIntent) {
+        console.log(`Subscription with payment intent ${paymentIntentId} already exists (ID: ${existingWithPaymentIntent._id}). Skipping duplicate creation.`);
+        
+        // If the existing subscription has 0 amount and this invoice has actual amount, update it
+        if (existingWithPaymentIntent.amountPaid === 0 && invoiceAmount > 0) {
+          console.log(`Updating subscription ${existingWithPaymentIntent._id} with actual amount ${invoiceAmount}`);
+          existingWithPaymentIntent.amountPaid = invoiceAmount;
+          existingWithPaymentIntent.currency = invoice.currency || existingWithPaymentIntent.currency;
+          await existingWithPaymentIntent.save();
+        }
+        return;
+      }
+    }
+
+    // Check if subscription was just created (within last 5 minutes) - likely initial payment
+    const subscriptionAge = Date.now() - subscription.startDate.getTime();
+    const fiveMinutes = 5 * 60 * 1000;
+    if (subscriptionAge < fiveMinutes && subscription.status === 'active') {
+      console.log(`Subscription ${subscription._id} was just created (${Math.round(subscriptionAge / 1000)}s ago). Skipping initial payment webhook.`);
+      return;
+    }
+
     // Check if subscription is already active (avoid duplicate renewals)
     if (subscription.status === 'active' && new Date(subscription.endDate) > new Date()) {
       console.log(`Subscription ${subscription._id} is already active, skipping renewal`);

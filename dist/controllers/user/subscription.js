@@ -157,17 +157,29 @@ exports.renewSubscription = (0, express_async_handler_1.default)(async (req, res
             });
             return;
         }
-        // Calculate renewal amount
-        const pricing = {
-            monthly: 2.75,
-            yearly: 19.99
-        };
-        const amount = pricing[subscription.type];
-        const amountInCents = Math.round(amount * 100);
+        // Use original subscription's currency and amount for renewal (maintain consistency)
+        // If subscription doesn't have currency, fallback to default pricing
+        let finalAmount;
+        let finalCurrency;
+        if (subscription.currency && subscription.amountPaid) {
+            // Use the original subscription's currency and amount
+            finalAmount = subscription.amountPaid;
+            finalCurrency = subscription.currency.toLowerCase();
+        }
+        else {
+            // Fallback to default pricing (backward compatibility)
+            const defaultPricing = {
+                monthly: 2.75,
+                yearly: 28.99
+            };
+            finalAmount = defaultPricing[subscription.type];
+            finalCurrency = 'gbp';
+        }
+        const amountInCents = Math.round(finalAmount * 100);
         // Create Stripe payment intent
         const paymentResult = await (0, stripeService_1.createSubscriptionPaymentIntent)({
             amount: amountInCents,
-            currency: 'gbp',
+            currency: finalCurrency,
             metadata: {
                 userId: userId.toString(),
                 subscriptionType: subscription.type,
@@ -193,8 +205,8 @@ exports.renewSubscription = (0, express_async_handler_1.default)(async (req, res
             subscription: {
                 id: subscription._id,
                 type: subscription.type,
-                amount,
-                currency: 'GBP'
+                amount: finalAmount,
+                currency: finalCurrency.toUpperCase()
             }
         });
     }
@@ -211,7 +223,7 @@ exports.upgradeSubscription = (0, express_async_handler_1.default)(async (req, r
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-        const { subscriptionId, newType } = req.body;
+        const { subscriptionId, newType, amount, currency } = req.body;
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -263,21 +275,41 @@ exports.upgradeSubscription = (0, express_async_handler_1.default)(async (req, r
             });
             return;
         }
-        // Calculate upgrade amount
-        const pricing = {
-            monthly: 2.75,
-            yearly: 19.99,
-            lifetime: 99.00
-        };
-        const amount = pricing[newType];
-        const amountInCents = Math.round(amount * 100);
+        // Use price from frontend (IP-based) or fallback to default pricing
+        let finalAmount;
+        let finalCurrency;
+        if (amount && currency) {
+            // Validate amount is reasonable (prevent manipulation)
+            const minAmount = 0.01;
+            const maxAmount = 1000;
+            if (amount < minAmount || amount > maxAmount) {
+                res.status(400).json({
+                    message: 'Invalid amount',
+                    error: `Amount must be between ${minAmount} and ${maxAmount}`
+                });
+                return;
+            }
+            finalAmount = amount;
+            finalCurrency = currency.toLowerCase();
+        }
+        else {
+            // Fallback to default pricing if not provided (backward compatibility)
+            const defaultPricing = {
+                monthly: 2.75,
+                yearly: 28.99,
+                lifetime: 129.99
+            };
+            finalAmount = defaultPricing[newType];
+            finalCurrency = 'gbp';
+        }
+        const amountInCents = Math.round(finalAmount * 100);
         // If upgrading to lifetime, use Payment Intent (one-time payment)
         // If upgrading monthly/yearly and original has auto-renewal, we should update Stripe Subscription
         // For now, we'll use Payment Intent for upgrades (user pays difference)
         // The new subscription will inherit auto-renewal preference from original
         const paymentResult = await (0, stripeService_1.createSubscriptionPaymentIntent)({
             amount: amountInCents,
-            currency: 'gbp',
+            currency: finalCurrency,
             metadata: {
                 userId: userId.toString(),
                 subscriptionType: newType,
@@ -304,8 +336,8 @@ exports.upgradeSubscription = (0, express_async_handler_1.default)(async (req, r
                 id: subscription._id,
                 currentType: subscription.type,
                 newType,
-                amount,
-                currency: 'GBP',
+                amount: finalAmount,
+                currency: finalCurrency.toUpperCase(),
                 // Preserve auto-renewal status for monthly/yearly upgrades
                 preserveAutoRenew: subscription.autoRenew && (newType === 'monthly' || newType === 'yearly')
             }
@@ -324,7 +356,7 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-        const { subscriptionId, paymentIntentId, action, newType, amount, paymentMethodId } = req.body;
+        const { subscriptionId, paymentIntentId, action, newType, amount, currency, paymentMethodId } = req.body;
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -352,10 +384,11 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             });
             return;
         }
-        // Calculate new end date using amount from frontend
+        // Use amount and currency from frontend, or fallback to subscription's original values
         const startDate = new Date();
         const endDate = new Date();
         const amountPaid = amount; // Use amount from frontend request
+        const finalCurrency = currency ? currency.toLowerCase() : (subscription.currency || 'gbp');
         const subscriptionType = action === 'upgrade' && newType ? newType : subscription.type;
         if (action === 'renewal') {
             // Extend current subscription
@@ -413,7 +446,7 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             paymentIntentId,
             stripeSubscriptionId: subscription.stripeSubscriptionId, // Preserve Stripe subscription ID if exists
             amountPaid,
-            currency: subscription.currency,
+            currency: finalCurrency,
             autoRenew: autoRenewStatus
         });
         // Mark the old subscription as expired (but keep it for payment history)
