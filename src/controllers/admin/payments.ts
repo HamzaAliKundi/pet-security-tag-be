@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import PetTagOrder from '../../models/PetTagOrder';
+import Subscription from '../../models/Subscription';
 import User from '../../models/User';
 
 // Get all payments with search, filtering, and pagination
@@ -20,26 +21,33 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build search query
-    let searchQuery: any = {};
+    // Build search query for orders
+    let orderSearchQuery: any = {};
+    let subscriptionSearchQuery: any = {};
     
     if (search) {
-      searchQuery.$or = [
+      orderSearchQuery.$or = [
         { paymentIntentId: { $regex: search, $options: 'i' } },
         { petName: { $regex: search, $options: 'i' } }
       ];
+      subscriptionSearchQuery.$or = [
+        { paymentIntentId: { $regex: search, $options: 'i' } },
+        { stripeSubscriptionId: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    // Build status filter
+    // Build status filter for orders
     if (status && status !== 'all') {
       if (status === 'Paid') {
-        searchQuery.paymentStatus = 'succeeded';
+        orderSearchQuery.paymentStatus = 'succeeded';
+        subscriptionSearchQuery.status = 'active';
       } else if (status === 'Pending') {
-        searchQuery.paymentStatus = 'pending';
+        orderSearchQuery.paymentStatus = 'pending';
       } else if (status === 'Failed') {
-        searchQuery.paymentStatus = 'failed';
+        orderSearchQuery.paymentStatus = 'failed';
       } else if (status === 'Refunded') {
-        searchQuery.paymentStatus = 'cancelled';
+        orderSearchQuery.paymentStatus = 'cancelled';
+        subscriptionSearchQuery.status = 'cancelled';
       }
     }
 
@@ -47,19 +55,26 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute queries for both models
-    const [userPayments, petPayments] = await Promise.all([
-      UserPetTagOrder.find(searchQuery)
+    // Execute queries for all three models
+    const [userPayments, petPayments, subscriptions] = await Promise.all([
+      UserPetTagOrder.find(orderSearchQuery)
         .populate('userId', 'firstName lastName email')
         .sort(sortObj)
         .lean(),
-      PetTagOrder.find(searchQuery)
+      PetTagOrder.find(orderSearchQuery)
+        .sort(sortObj)
+        .lean(),
+      Subscription.find({
+        ...subscriptionSearchQuery,
+        amountPaid: { $gt: 0 } // Only include subscriptions with actual payment (exclude duplicates with 0)
+      })
+        .populate('userId', 'firstName lastName email')
         .sort(sortObj)
         .lean()
     ]);
 
     // Combine and sort all payments
-    let allPayments: any[] = [...userPayments, ...petPayments];
+    let allPayments: any[] = [...userPayments, ...petPayments, ...subscriptions];
     
     // Sort combined payments
     allPayments.sort((a, b) => {
@@ -112,8 +127,40 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
 
     // Transform payments data to match frontend requirements
     const transformedPayments = paginatedPayments.map((payment) => {
-      // Check if it's a UserPetTagOrder (has userId) or PetTagOrder (has email/name)
-      if (payment.userId) {
+      // Check if it's a Subscription (has type field)
+      if (payment.type && ['monthly', 'yearly', 'lifetime'].includes(payment.type)) {
+        // Subscription
+        const user = payment.userId as any;
+        const subscriptionTypeLabels: { [key: string]: string } = {
+          monthly: 'Monthly Subscription',
+          yearly: 'Yearly Subscription',
+          lifetime: 'Lifetime Subscription'
+        };
+        return {
+          id: payment._id,
+          invoice: payment.paymentIntentId || payment.stripeSubscriptionId || `SUB-${payment._id.toString().slice(-6).toUpperCase()}`,
+          customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+          date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
+          amount: `€${(payment.amountPaid || 0).toFixed(2)}`,
+          status: payment.status === 'active' ? 'Paid' : 
+                  payment.status === 'cancelled' ? 'Refunded' : 'Failed',
+          method: 'Card',
+          petName: subscriptionTypeLabels[payment.type] || 'Subscription',
+          tagColor: 'N/A',
+          phone: user?.email || 'No Email',
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: '',
+          quantity: 1,
+          paymentStatus: payment.status === 'active' ? 'succeeded' : payment.status,
+          paymentType: 'Subscription',
+          subscriptionType: payment.type,
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt
+        };
+      } else if (payment.userId && !payment.type) {
         // UserPetTagOrder
         const user = payment.userId as any;
         return {
@@ -194,7 +241,7 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
   try {
     const { paymentId } = req.params;
 
-    // Search in both models
+    // Search in all three models
     let payment = await UserPetTagOrder.findById(paymentId)
       .populate('userId', 'firstName lastName email')
       .lean();
@@ -208,6 +255,14 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
     }
 
     if (!payment) {
+      // If not found, search in Subscription
+      payment = await Subscription.findById(paymentId)
+        .populate('userId', 'firstName lastName email')
+        .lean();
+      paymentType = 'Subscription';
+    }
+
+    if (!payment) {
       res.status(404).json({
         message: 'Payment not found',
         error: 'Payment does not exist'
@@ -217,7 +272,40 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
 
     let transformedPayment;
 
-    if (paymentType === 'UserPetTagOrder') {
+    if (paymentType === 'Subscription') {
+      // Subscription
+      const subscriptionPayment = payment as any;
+      const user = subscriptionPayment.userId as any;
+      const subscriptionTypeLabels: { [key: string]: string } = {
+        monthly: 'Monthly Subscription',
+        yearly: 'Yearly Subscription',
+        lifetime: 'Lifetime Subscription'
+      };
+      transformedPayment = {
+        id: subscriptionPayment._id,
+        invoice: subscriptionPayment.paymentIntentId || subscriptionPayment.stripeSubscriptionId || `SUB-${subscriptionPayment._id.toString().slice(-6).toUpperCase()}`,
+        customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+        date: new Date(subscriptionPayment.createdAt).toLocaleDateString('en-GB'),
+        amount: `€${(subscriptionPayment.amountPaid || 0).toFixed(2)}`,
+        status: subscriptionPayment.status === 'active' ? 'Paid' : 
+                subscriptionPayment.status === 'cancelled' ? 'Refunded' : 'Failed',
+        method: 'Card',
+        petName: subscriptionTypeLabels[subscriptionPayment.type] || 'Subscription',
+        tagColor: 'N/A',
+        phone: user?.email || 'No Email',
+        street: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        country: '',
+        quantity: 1,
+        paymentStatus: subscriptionPayment.status === 'active' ? 'succeeded' : subscriptionPayment.status,
+        paymentType: 'Subscription',
+        subscriptionType: subscriptionPayment.type,
+        createdAt: subscriptionPayment.createdAt,
+        updatedAt: subscriptionPayment.updatedAt
+      };
+    } else if (paymentType === 'UserPetTagOrder') {
       // UserPetTagOrder
       const user = payment.userId as any;
       transformedPayment = {
@@ -253,7 +341,7 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
         customer: petPayment.name || 'No Name',
         date: new Date(petPayment.createdAt).toLocaleDateString('en-GB'),
         amount: `€${(petPayment.totalCostEuro || 0).toFixed(2)}`,
-                 status: 'Paid', // PetTagOrder orders are considered paid
+        status: 'Paid', // PetTagOrder orders are considered paid
         method: 'Card',
         petName: petPayment.petName || 'Unknown Pet',
         tagColor: petPayment.tagColor || 'Unknown',
@@ -288,13 +376,14 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
 // Get payment statistics
 export const getPaymentStats = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
-    // Get counts from both models
-    const [userTotalTransactions, petTotalTransactions] = await Promise.all([
+    // Get counts from all three models
+    const [userTotalTransactions, petTotalTransactions, subscriptionTransactions] = await Promise.all([
       UserPetTagOrder.countDocuments(),
-      PetTagOrder.countDocuments()
+      PetTagOrder.countDocuments(),
+      Subscription.countDocuments({ amountPaid: { $gt: 0 } }) // Only count subscriptions with actual payment
     ]);
     
-    const totalTransactions = userTotalTransactions + petTotalTransactions;
+    const totalTransactions = userTotalTransactions + petTotalTransactions + subscriptionTransactions;
     
     // Calculate total revenue from successful payments (UserPetTagOrder has paymentStatus)
     const userRevenueData = await UserPetTagOrder.aggregate([
@@ -321,9 +410,25 @@ export const getPaymentStats = asyncHandler(async (req: Request, res: Response):
       }
     ]);
     
+    // Subscription revenue (only those with amountPaid > 0)
+    const subscriptionRevenueData = await Subscription.aggregate([
+      {
+        $match: {
+          amountPaid: { $gt: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$amountPaid' }
+        }
+      }
+    ]);
+    
     const userRevenue = userRevenueData.length > 0 ? userRevenueData[0].totalRevenue : 0;
     const petRevenue = petRevenueData.length > 0 ? petRevenueData[0].totalRevenue : 0;
-    const totalRevenue = userRevenue + petRevenue;
+    const subscriptionRevenue = subscriptionRevenueData.length > 0 ? subscriptionRevenueData[0].totalRevenue : 0;
+    const totalRevenue = userRevenue + petRevenue + subscriptionRevenue;
     
     // Calculate pending amount (UserPetTagOrder has paymentStatus)
     const userPendingData = await UserPetTagOrder.aggregate([
@@ -340,8 +445,13 @@ export const getPaymentStats = asyncHandler(async (req: Request, res: Response):
       }
     ]);
     
-    // PetTagOrder doesn't have paymentStatus, so we'll count all as pending
+    // PetTagOrder has status field - only count non-paid as pending
     const petPendingData = await PetTagOrder.aggregate([
+      {
+        $match: {
+          status: { $ne: 'paid' } // Only count non-paid orders as pending
+        }
+      },
       {
         $group: {
           _id: null,

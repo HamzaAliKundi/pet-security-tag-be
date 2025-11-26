@@ -9,6 +9,7 @@ const User_1 = __importDefault(require("../../models/User"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
+const Subscription_1 = __importDefault(require("../../models/Subscription"));
 // Get admin overview statistics
 exports.getOverview = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -24,8 +25,8 @@ exports.getOverview = (0, express_async_handler_1.default)(async (req, res) => {
             PetTagOrder_1.default.countDocuments()
         ]);
         const totalOrders = userTotalOrders + petTotalOrders;
-        // Get count of total revenue from both models
-        const [userRevenueData, petRevenueData] = await Promise.all([
+        // Get count of total revenue from all three models
+        const [userRevenueData, petRevenueData, subscriptionRevenueData] = await Promise.all([
             UserPetTagOrder_1.default.aggregate([
                 {
                     $match: {
@@ -41,16 +42,35 @@ exports.getOverview = (0, express_async_handler_1.default)(async (req, res) => {
             ]),
             PetTagOrder_1.default.aggregate([
                 {
+                    $match: {
+                        status: 'paid' // Only count paid orders
+                    }
+                },
+                {
                     $group: {
                         _id: null,
                         totalRevenue: { $sum: '$totalCostEuro' }
+                    }
+                }
+            ]),
+            Subscription_1.default.aggregate([
+                {
+                    $match: {
+                        amountPaid: { $gt: 0 } // Only count subscriptions with actual payment (exclude duplicates)
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalRevenue: { $sum: '$amountPaid' }
                     }
                 }
             ])
         ]);
         const userRevenue = userRevenueData.length > 0 ? userRevenueData[0].totalRevenue : 0;
         const petRevenue = petRevenueData.length > 0 ? petRevenueData[0].totalRevenue : 0;
-        const totalRevenue = userRevenue + petRevenue;
+        const subscriptionRevenue = subscriptionRevenueData.length > 0 ? subscriptionRevenueData[0].totalRevenue : 0;
+        const totalRevenue = userRevenue + petRevenue + subscriptionRevenue;
         // Get count of successful orders from both models
         const [userSuccessfulOrders, petSuccessfulOrders] = await Promise.all([
             UserPetTagOrder_1.default.countDocuments({ paymentStatus: 'succeeded' }),

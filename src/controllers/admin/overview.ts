@@ -4,6 +4,7 @@ import User from '../../models/User';
 import Pet from '../../models/Pet';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import PetTagOrder from '../../models/PetTagOrder';
+import Subscription from '../../models/Subscription';
 
 // Get admin overview statistics
 export const getOverview = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -25,8 +26,8 @@ export const getOverview = asyncHandler(async (req: Request, res: Response): Pro
     
     const totalOrders = userTotalOrders + petTotalOrders;
     
-    // Get count of total revenue from both models
-    const [userRevenueData, petRevenueData] = await Promise.all([
+    // Get count of total revenue from all three models
+    const [userRevenueData, petRevenueData, subscriptionRevenueData] = await Promise.all([
       UserPetTagOrder.aggregate([
         {
           $match: {
@@ -42,9 +43,27 @@ export const getOverview = asyncHandler(async (req: Request, res: Response): Pro
       ]),
       PetTagOrder.aggregate([
         {
+          $match: {
+            status: 'paid' // Only count paid orders
+          }
+        },
+        {
           $group: {
             _id: null,
             totalRevenue: { $sum: '$totalCostEuro' }
+          }
+        }
+      ]),
+      Subscription.aggregate([
+        {
+          $match: {
+            amountPaid: { $gt: 0 } // Only count subscriptions with actual payment (exclude duplicates)
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amountPaid' }
           }
         }
       ])
@@ -52,7 +71,8 @@ export const getOverview = asyncHandler(async (req: Request, res: Response): Pro
     
     const userRevenue = userRevenueData.length > 0 ? userRevenueData[0].totalRevenue : 0;
     const petRevenue = petRevenueData.length > 0 ? petRevenueData[0].totalRevenue : 0;
-    const totalRevenue = userRevenue + petRevenue;
+    const subscriptionRevenue = subscriptionRevenueData.length > 0 ? subscriptionRevenueData[0].totalRevenue : 0;
+    const totalRevenue = userRevenue + petRevenue + subscriptionRevenue;
     
     // Get count of successful orders from both models
     const [userSuccessfulOrders, petSuccessfulOrders] = await Promise.all([
