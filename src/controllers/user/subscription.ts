@@ -172,19 +172,31 @@ export const renewSubscription = asyncHandler(async (req: Request, res: Response
       return;
     }
 
-    // Calculate renewal amount
-    const pricing = {
-      monthly: 2.75,
-      yearly: 19.99
-    };
+    // Use original subscription's currency and amount for renewal (maintain consistency)
+    // If subscription doesn't have currency, fallback to default pricing
+    let finalAmount: number;
+    let finalCurrency: string;
 
-    const amount = pricing[subscription.type as keyof typeof pricing];
-    const amountInCents = Math.round(amount * 100);
+    if (subscription.currency && subscription.amountPaid) {
+      // Use the original subscription's currency and amount
+      finalAmount = subscription.amountPaid;
+      finalCurrency = subscription.currency.toLowerCase();
+    } else {
+      // Fallback to default pricing (backward compatibility)
+      const defaultPricing = {
+        monthly: 2.75,
+        yearly: 28.99
+      };
+      finalAmount = defaultPricing[subscription.type as keyof typeof defaultPricing];
+      finalCurrency = 'gbp';
+    }
+
+    const amountInCents = Math.round(finalAmount * 100);
 
     // Create Stripe payment intent
     const paymentResult = await createSubscriptionPaymentIntent({
       amount: amountInCents,
-      currency: 'gbp',
+      currency: finalCurrency,
       metadata: {
         userId: userId.toString(),
         subscriptionType: subscription.type,
@@ -212,8 +224,8 @@ export const renewSubscription = asyncHandler(async (req: Request, res: Response
       subscription: {
         id: subscription._id,
         type: subscription.type,
-        amount,
-        currency: 'GBP'
+        amount: finalAmount,
+        currency: finalCurrency.toUpperCase()
       }
     });
 
@@ -230,7 +242,7 @@ export const renewSubscription = asyncHandler(async (req: Request, res: Response
 export const upgradeSubscription = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?._id;
-    const { subscriptionId, newType } = req.body;
+    const { subscriptionId, newType, amount, currency } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -290,15 +302,35 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
       return;
     }
 
-    // Calculate upgrade amount
-    const pricing = {
-      monthly: 2.75,
-      yearly: 19.99,
-      lifetime: 99.00
-    };
+    // Use price from frontend (IP-based) or fallback to default pricing
+    let finalAmount: number;
+    let finalCurrency: string;
 
-    const amount = pricing[newType as keyof typeof pricing];
-    const amountInCents = Math.round(amount * 100);
+    if (amount && currency) {
+      // Validate amount is reasonable (prevent manipulation)
+      const minAmount = 0.01;
+      const maxAmount = 1000;
+      if (amount < minAmount || amount > maxAmount) {
+        res.status(400).json({
+          message: 'Invalid amount',
+          error: `Amount must be between ${minAmount} and ${maxAmount}`
+        });
+        return;
+      }
+      finalAmount = amount;
+      finalCurrency = currency.toLowerCase();
+    } else {
+      // Fallback to default pricing if not provided (backward compatibility)
+      const defaultPricing = {
+        monthly: 2.75,
+        yearly: 28.99,
+        lifetime: 129.99
+      };
+      finalAmount = defaultPricing[newType as keyof typeof defaultPricing];
+      finalCurrency = 'gbp';
+    }
+
+    const amountInCents = Math.round(finalAmount * 100);
 
     // If upgrading to lifetime, use Payment Intent (one-time payment)
     // If upgrading monthly/yearly and original has auto-renewal, we should update Stripe Subscription
@@ -306,7 +338,7 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
     // The new subscription will inherit auto-renewal preference from original
     const paymentResult = await createSubscriptionPaymentIntent({
       amount: amountInCents,
-      currency: 'gbp',
+      currency: finalCurrency,
       metadata: {
         userId: userId.toString(),
         subscriptionType: newType,
@@ -335,8 +367,8 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
         id: subscription._id,
         currentType: subscription.type,
         newType,
-        amount,
-        currency: 'GBP',
+        amount: finalAmount,
+        currency: finalCurrency.toUpperCase(),
         // Preserve auto-renewal status for monthly/yearly upgrades
         preserveAutoRenew: subscription.autoRenew && (newType === 'monthly' || newType === 'yearly')
       }
@@ -355,7 +387,7 @@ export const upgradeSubscription = asyncHandler(async (req: Request, res: Respon
 export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?._id;
-    const { subscriptionId, paymentIntentId, action, newType, amount, paymentMethodId } = req.body;
+    const { subscriptionId, paymentIntentId, action, newType, amount, currency, paymentMethodId } = req.body;
 
     if (!userId) {
       res.status(401).json({
@@ -388,10 +420,11 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       return;
     }
 
-    // Calculate new end date using amount from frontend
+    // Use amount and currency from frontend, or fallback to subscription's original values
     const startDate = new Date();
     const endDate = new Date();
     const amountPaid = amount; // Use amount from frontend request
+    const finalCurrency = currency ? currency.toLowerCase() : (subscription.currency || 'gbp');
     const subscriptionType = action === 'upgrade' && newType ? newType : subscription.type;
     
     if (action === 'renewal') {
@@ -448,7 +481,7 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       paymentIntentId,
       stripeSubscriptionId: subscription.stripeSubscriptionId, // Preserve Stripe subscription ID if exists
       amountPaid,
-      currency: subscription.currency,
+      currency: finalCurrency,
       autoRenew: autoRenewStatus
     });
 

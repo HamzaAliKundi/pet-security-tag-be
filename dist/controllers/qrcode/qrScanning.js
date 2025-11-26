@@ -281,7 +281,7 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
     var _a, _b, _c;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-        const { qrCodeId, subscriptionType, petId, paymentMethodId, enableAutoRenew } = req.body;
+        const { qrCodeId, subscriptionType, petId, paymentMethodId, enableAutoRenew, amount, currency } = req.body;
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -305,11 +305,39 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
             });
             return;
         }
+        // First check if there's already a subscription for this specific QR code
+        const existingSubscriptionForQR = await Subscription_1.default.findOne({
+            userId,
+            qrCodeId: qrCode._id,
+            status: 'active',
+            endDate: { $gt: new Date() }
+        });
+        if (existingSubscriptionForQR) {
+            // Subscription already exists for this QR code, just verify it
+            qrCode.hasVerified = true;
+            qrCode.status = 'verified';
+            qrCode.assignedPetId = petId || qrCode.assignedPetId;
+            await qrCode.save();
+            res.status(200).json({
+                message: 'QR code already has an active subscription',
+                status: 200,
+                qrCode: {
+                    id: qrCode._id,
+                    code: qrCode.code,
+                    status: qrCode.status,
+                    hasVerified: qrCode.hasVerified
+                },
+                subscription: existingSubscriptionForQR,
+                note: 'This QR code is already linked to an active subscription'
+            });
+            return;
+        }
         // Check if user has ANY existing active subscription (not just for this QR)
         const existingActiveSubscription = await Subscription_1.default.findOne({
             userId,
             status: 'active',
-            endDate: { $gt: new Date() }
+            endDate: { $gt: new Date() },
+            amountPaid: { $gt: 0 } // Only use subscriptions with actual payment (not the £0 ones)
         });
         if (existingActiveSubscription) {
             // Auto-verify if user has any active subscription
@@ -335,19 +363,8 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
                 console.error('Failed to send QR code first scan email:', emailError);
                 // Don't fail the verification if email fails
             }
-            // Create a new subscription record linking this QR to the user's active subscription
-            const newSubscription = await Subscription_1.default.create({
-                userId,
-                qrCodeId: qrCode._id,
-                type: existingActiveSubscription.type,
-                status: 'active',
-                startDate: new Date(),
-                endDate: existingActiveSubscription.endDate, // Use the same end date as existing subscription
-                paymentIntentId: existingActiveSubscription.paymentIntentId,
-                amountPaid: 0, // No additional payment required
-                currency: existingActiveSubscription.currency,
-                autoRenew: existingActiveSubscription.autoRenew
-            });
+            // Link this QR code to the existing subscription (don't create a new subscription record)
+            // Just update the QR code to be verified, the subscription already covers it
             res.status(200).json({
                 message: 'QR code verified with existing active subscription',
                 status: 200,
@@ -357,20 +374,39 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
                     status: qrCode.status,
                     hasVerified: qrCode.hasVerified
                 },
-                subscription: newSubscription,
-                existingSubscription: existingActiveSubscription,
-                note: 'Tag verified automatically using your existing subscription'
+                subscription: existingActiveSubscription,
+                note: 'Tag verified automatically using your existing subscription. No additional payment required.'
             });
             return;
         }
-        // Calculate subscription pricing
-        const pricing = {
-            monthly: 2.75,
-            yearly: 19.99,
-            lifetime: 99.00
-        };
-        const amount = pricing[subscriptionType];
-        const amountInCents = Math.round(amount * 100);
+        // Use price from frontend (IP-based) or fallback to default pricing
+        let finalAmount;
+        let finalCurrency;
+        if (amount && currency) {
+            // Validate amount is reasonable (prevent manipulation)
+            const minAmount = 0.01;
+            const maxAmount = 1000;
+            if (amount < minAmount || amount > maxAmount) {
+                res.status(400).json({
+                    message: 'Invalid amount',
+                    error: `Amount must be between ${minAmount} and ${maxAmount}`
+                });
+                return;
+            }
+            finalAmount = amount;
+            finalCurrency = currency.toLowerCase();
+        }
+        else {
+            // Fallback to default pricing if not provided (backward compatibility)
+            const defaultPricing = {
+                monthly: 2.75,
+                yearly: 28.99,
+                lifetime: 129.99
+            };
+            finalAmount = defaultPricing[subscriptionType];
+            finalCurrency = 'gbp';
+        }
+        const amountInCents = Math.round(finalAmount * 100);
         const endDate = new Date();
         if (subscriptionType === 'monthly') {
             endDate.setMonth(endDate.getMonth() + 1);
@@ -402,7 +438,7 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
                 customerEmail: user.email || '',
                 customerName: user.firstName || user.email || 'Customer',
                 amount: amountInCents,
-                currency: 'gbp',
+                currency: finalCurrency,
                 interval: subscriptionType === 'monthly' ? 'month' : 'year',
                 paymentMethodId: paymentMethodId,
                 metadata: {
@@ -435,8 +471,8 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
                 },
                 subscriptionDetails: {
                     type: subscriptionType,
-                    amount,
-                    currency: 'GBP',
+                    amount: finalAmount,
+                    currency: finalCurrency.toUpperCase(),
                     endDate,
                     autoRenew: true
                 },
@@ -450,7 +486,7 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
             // Use Payment Intent for lifetime or when auto-renewal is disabled
             const paymentResult = await (0, stripeService_1.createSubscriptionPaymentIntent)({
                 amount: amountInCents,
-                currency: 'gbp',
+                currency: finalCurrency,
                 metadata: {
                     userId: userId.toString(),
                     subscriptionType,
@@ -474,8 +510,8 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
                 },
                 subscription: {
                     type: subscriptionType,
-                    amount,
-                    currency: 'GBP',
+                    amount: finalAmount,
+                    currency: finalCurrency.toUpperCase(),
                     endDate,
                     autoRenew: false
                 },
@@ -499,7 +535,7 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-        const { qrCodeId, paymentIntentId, subscriptionType, petId, stripeSubscriptionId } = req.body;
+        const { qrCodeId, paymentIntentId, subscriptionType, petId, stripeSubscriptionId, amount, currency } = req.body;
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -531,27 +567,88 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             // Set end date to 100 years from now for lifetime subscription
             endDate.setFullYear(endDate.getFullYear() + 100);
         }
-        const pricing = {
-            monthly: 2.75,
-            yearly: 19.99,
-            lifetime: 99.00
-        };
+        // Use price from frontend or fallback to default pricing
+        let finalAmount;
+        let finalCurrency;
+        if (amount && currency) {
+            // Validate amount is reasonable
+            const minAmount = 0.01;
+            const maxAmount = 1000;
+            if (amount < minAmount || amount > maxAmount) {
+                res.status(400).json({
+                    message: 'Invalid amount',
+                    error: `Amount must be between ${minAmount} and ${maxAmount}`
+                });
+                return;
+            }
+            finalAmount = amount;
+            finalCurrency = currency.toLowerCase();
+        }
+        else {
+            // Fallback to default pricing if not provided (backward compatibility)
+            const defaultPricing = {
+                monthly: 2.75,
+                yearly: 28.99,
+                lifetime: 129.99
+            };
+            finalAmount = defaultPricing[subscriptionType];
+            finalCurrency = 'gbp';
+        }
         // Determine if this is an auto-renewal subscription
         const isAutoRenew = stripeSubscriptionId && (subscriptionType === 'monthly' || subscriptionType === 'yearly');
-        // Create subscription record
-        const subscription = await Subscription_1.default.create({
-            userId,
-            qrCodeId,
-            type: subscriptionType,
-            status: 'active',
-            startDate,
-            endDate,
-            paymentIntentId: paymentIntentId || undefined,
-            stripeSubscriptionId: stripeSubscriptionId || undefined,
-            amountPaid: pricing[subscriptionType],
-            currency: 'gbp',
-            autoRenew: isAutoRenew
-        });
+        // Check if subscription already exists with same paymentIntentId or stripeSubscriptionId
+        let subscription;
+        if (paymentIntentId) {
+            subscription = await Subscription_1.default.findOne({
+                paymentIntentId: paymentIntentId,
+                userId: userId
+            });
+        }
+        if (!subscription && stripeSubscriptionId) {
+            subscription = await Subscription_1.default.findOne({
+                stripeSubscriptionId: stripeSubscriptionId,
+                userId: userId,
+                status: 'active'
+            });
+        }
+        if (subscription) {
+            // Subscription already exists, update it instead of creating duplicate
+            console.log(`Subscription already exists with ID: ${subscription._id}. Updating instead of creating duplicate.`);
+            // Update existing subscription
+            subscription.qrCodeId = qrCodeId;
+            subscription.type = subscriptionType;
+            subscription.status = 'active';
+            subscription.startDate = startDate;
+            subscription.endDate = endDate;
+            subscription.amountPaid = finalAmount;
+            subscription.currency = finalCurrency;
+            subscription.autoRenew = isAutoRenew;
+            if (paymentIntentId) {
+                subscription.paymentIntentId = paymentIntentId;
+            }
+            if (stripeSubscriptionId) {
+                subscription.stripeSubscriptionId = stripeSubscriptionId;
+            }
+            await subscription.save();
+            console.log(`✅ Updated existing subscription record: ${subscription._id}`);
+        }
+        else {
+            // Create new subscription record
+            subscription = await Subscription_1.default.create({
+                userId,
+                qrCodeId,
+                type: subscriptionType,
+                status: 'active',
+                startDate,
+                endDate,
+                paymentIntentId: paymentIntentId || undefined,
+                stripeSubscriptionId: stripeSubscriptionId || undefined,
+                amountPaid: finalAmount,
+                currency: finalCurrency,
+                autoRenew: isAutoRenew
+            });
+            console.log(`✅ Created new subscription record: ${subscription._id}`);
+        }
         // Update QR code status
         qrCode.hasVerified = true;
         qrCode.status = 'verified';
