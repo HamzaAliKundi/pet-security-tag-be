@@ -43,7 +43,7 @@ const SubscriptionSchema = new mongoose_1.Schema({
     qrCodeId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'QRCode',
-        required: true
+        required: false // Optional - subscription covers all user's tags, first QR code is linked as reference
     },
     type: {
         type: String,

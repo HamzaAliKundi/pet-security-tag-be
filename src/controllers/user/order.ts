@@ -4,7 +4,7 @@ import PetTagOrder from '../../models/PetTagOrder';
 import User from '../../models/User';
 import Pet from '../../models/Pet';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
-import { assignQRToPublicOrder } from '../qrcode/qrManagement';
+// NOTE: assignQRToPublicOrder import removed - QR codes are now assigned when user scans the tag, not at order confirmation
 import { sendOrderConfirmationEmail, sendCredentialsEmail } from '../../utils/emailService';
 import bcrypt from 'bcryptjs';
 import { env } from '../../config/env';
@@ -239,8 +239,8 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
       }
 
       // Create pet records based on quantity
+      // NOTE: QR codes are NOT assigned at this point - they will be assigned when the user scans the tag
       const createdPets = [];
-      const assignedQRCodes = [];
       
       try {
         for (let i = 0; i < order.quantity; i++) {
@@ -258,19 +258,10 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             notes: ''
           });
 
-          // Assign QR code to this pet
-          const qrCodeId = await assignQRToPublicOrder(order._id.toString(), user._id.toString());
+          // QR codes will be assigned when the user scans the tag and pays for subscription
+          // This allows admin to send any physical tag without worrying about matching QR codes
           
-          // Link the QR code to the pet
-          if (qrCodeId) {
-            const QRCodeModel = (await import('../../models/QRCode')).default;
-            await QRCodeModel.findByIdAndUpdate(qrCodeId, {
-              assignedPetId: pet._id
-            });
-            
-            createdPets.push(pet);
-            assignedQRCodes.push(qrCodeId);
-          }
+          createdPets.push(pet);
         }
 
         // Send order confirmation email (non-blocking)
@@ -289,7 +280,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         }
 
         res.status(200).json({
-          message: 'Payment confirmed successfully and account created',
+          message: 'Payment confirmed successfully and account created. QR codes will be assigned when you scan your tags and activate subscriptions.',
           status: 200,
           isNewUser,
           order: {
@@ -324,9 +315,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             medication: pet.medication,
             allergies: pet.allergies,
             notes: pet.notes
-          })),
-          qrCodesAssigned: assignedQRCodes.length,
-          qrCodeIds: assignedQRCodes
+          }))
         });
       } catch (petError) {
         console.error('Error creating pet records:', petError);
@@ -368,9 +357,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             medication: pet.medication,
             allergies: pet.allergies,
             notes: pet.notes
-          })),
-          qrCodesAssigned: assignedQRCodes.length,
-          qrCodeIds: assignedQRCodes
+          }))
         });
       }
     } else {

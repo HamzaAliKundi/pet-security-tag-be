@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -42,7 +9,7 @@ const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
 const User_1 = __importDefault(require("../../models/User"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
 const stripeService_1 = require("../../utils/stripeService");
-const qrManagement_1 = require("../qrcode/qrManagement");
+// NOTE: assignQRToPublicOrder import removed - QR codes are now assigned when user scans the tag, not at order confirmation
 const emailService_1 = require("../../utils/emailService");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const env_1 = require("../../config/env");
@@ -256,8 +223,8 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                 }
             }
             // Create pet records based on quantity
+            // NOTE: QR codes are NOT assigned at this point - they will be assigned when the user scans the tag
             const createdPets = [];
-            const assignedQRCodes = [];
             try {
                 for (let i = 0; i < order.quantity; i++) {
                     // Create pet record for each tag
@@ -273,17 +240,9 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         allergies: '',
                         notes: ''
                     });
-                    // Assign QR code to this pet
-                    const qrCodeId = await (0, qrManagement_1.assignQRToPublicOrder)(order._id.toString(), user._id.toString());
-                    // Link the QR code to the pet
-                    if (qrCodeId) {
-                        const QRCodeModel = (await Promise.resolve().then(() => __importStar(require('../../models/QRCode')))).default;
-                        await QRCodeModel.findByIdAndUpdate(qrCodeId, {
-                            assignedPetId: pet._id
-                        });
-                        createdPets.push(pet);
-                        assignedQRCodes.push(qrCodeId);
-                    }
+                    // QR codes will be assigned when the user scans the tag and pays for subscription
+                    // This allows admin to send any physical tag without worrying about matching QR codes
+                    createdPets.push(pet);
                 }
                 // Send order confirmation email (non-blocking)
                 try {
@@ -301,7 +260,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                     // Don't fail the order if email fails
                 }
                 res.status(200).json({
-                    message: 'Payment confirmed successfully and account created',
+                    message: 'Payment confirmed successfully and account created. QR codes will be assigned when you scan your tags and activate subscriptions.',
                     status: 200,
                     isNewUser,
                     order: {
@@ -336,9 +295,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         medication: pet.medication,
                         allergies: pet.allergies,
                         notes: pet.notes
-                    })),
-                    qrCodesAssigned: assignedQRCodes.length,
-                    qrCodeIds: assignedQRCodes
+                    }))
                 });
             }
             catch (petError) {
@@ -380,9 +337,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         medication: pet.medication,
                         allergies: pet.allergies,
                         notes: pet.notes
-                    })),
-                    qrCodesAssigned: assignedQRCodes.length,
-                    qrCodeIds: assignedQRCodes
+                    }))
                 });
             }
         }

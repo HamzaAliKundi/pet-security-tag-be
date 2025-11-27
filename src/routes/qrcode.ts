@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 
 // QR Management controllers (only non-admin functions)
 // Admin QR functions are now in admin routes
@@ -27,8 +27,8 @@ router.get('/check-availability', checkQRAvailability);
 // QR scanning route - when someone scans a QR code
 router.get('/scan/:code', scanQRCode);
 
-// Get QR verification details (for showing subscription page)
-router.get('/verify-details/:code', getQRVerificationDetails);
+// Get QR verification details (for showing subscription page) - optional auth to detect logged-in user
+router.get('/verify-details/:code', optionalAuthMiddleware, getQRVerificationDetails);
 
 // Get pet profile for public view (when finder scans verified QR)
 router.get('/pet-profile/:petId', getPetProfileByQR);

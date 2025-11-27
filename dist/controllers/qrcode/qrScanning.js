@@ -36,7 +36,7 @@ exports.checkQRAvailability = (0, express_async_handler_1.default)(async (req, r
 });
 // Scan QR Code - Main entry point
 exports.scanQRCode = (0, express_async_handler_1.default)(async (req, res) => {
-    var _a;
+    var _a, _b, _c, _d, _e, _f;
     try {
         const { code } = req.params;
         // Find QR code by code
@@ -56,27 +56,70 @@ exports.scanQRCode = (0, express_async_handler_1.default)(async (req, res) => {
             $inc: { scannedCount: 1 },
             lastScannedAt: new Date()
         });
+        // Check if QR code is assigned
+        // If not assigned, it needs to be assigned when user logs in and pays for subscription
+        if (!qrCode.assignedUserId || qrCode.status === 'unassigned') {
+            // QR code is not assigned yet - redirect to verification flow
+            res.status(200).json({
+                message: 'QR code needs to be assigned and verified',
+                status: 200,
+                action: 'redirect_to_verification',
+                qrCodeId: qrCode._id,
+                code: qrCode.code,
+                redirectUrl: `/qr/verify/${qrCode.code}`
+            });
+            return;
+        }
         // Check if QR is verified and has active subscription
         if (qrCode.hasVerified && qrCode.status === 'verified') {
-            // Check for active subscription
-            const activeSubscription = await Subscription_1.default.findOne({
+            // Check for active subscription by userId (one subscription covers all tags)
+            // First try to find subscription linked to this QR code (for backward compatibility)
+            let activeSubscription = await Subscription_1.default.findOne({
                 qrCodeId: qrCode._id,
                 status: 'active',
                 endDate: { $gt: new Date() }
             });
+            // If not found by qrCodeId, check by userId (since one subscription covers all tags)
+            if (!activeSubscription && qrCode.assignedUserId) {
+                activeSubscription = await Subscription_1.default.findOne({
+                    userId: qrCode.assignedUserId,
+                    status: 'active',
+                    endDate: { $gt: new Date() },
+                    amountPaid: { $gt: 0 } // Only use subscriptions with actual payment
+                });
+            }
             if (activeSubscription) {
-                let petId = (_a = qrCode.assignedPetId) === null || _a === void 0 ? void 0 : _a._id;
+                let petId = null;
+                // Get petId from assignedPetId (could be ObjectId or populated object)
+                if (qrCode.assignedPetId) {
+                    petId = ((_b = (_a = qrCode.assignedPetId) === null || _a === void 0 ? void 0 : _a._id) === null || _b === void 0 ? void 0 : _b.toString()) || ((_c = qrCode.assignedPetId) === null || _c === void 0 ? void 0 : _c.toString());
+                }
                 // If no direct pet link, try to find pet by order
                 if (!petId && qrCode.assignedOrderId) {
                     const pet = await Pet_1.default.findOne({ userPetTagOrderId: qrCode.assignedOrderId });
                     if (pet) {
-                        petId = pet._id;
+                        petId = pet._id.toString();
                         // Update QR code to link to this pet for future scans
                         await QRCode_1.default.findByIdAndUpdate(qrCode._id, { assignedPetId: pet._id });
                     }
                 }
+                // If still no petId, try to find any pet for this user that has this QR code assigned
+                if (!petId && qrCode.assignedUserId) {
+                    const userId = ((_e = (_d = qrCode.assignedUserId) === null || _d === void 0 ? void 0 : _d._id) === null || _e === void 0 ? void 0 : _e.toString()) || ((_f = qrCode.assignedUserId) === null || _f === void 0 ? void 0 : _f.toString());
+                    const pet = await Pet_1.default.findOne({ userId });
+                    if (pet) {
+                        // Check if this QR code is assigned to this pet
+                        const qrForPet = await QRCode_1.default.findOne({
+                            assignedPetId: pet._id,
+                            _id: qrCode._id
+                        });
+                        if (qrForPet) {
+                            petId = pet._id.toString();
+                        }
+                    }
+                }
                 if (petId) {
-                    // Redirect to public profile page for finder
+                    // Redirect to public profile page for finder - QR is verified and subscription is active
                     res.status(200).json({
                         message: 'QR code verified - redirect to pet profile',
                         status: 200,
@@ -86,6 +129,31 @@ exports.scanQRCode = (0, express_async_handler_1.default)(async (req, res) => {
                     });
                     return;
                 }
+                else {
+                    console.error(`QR code ${qrCode.code} is verified but no petId found`);
+                    // Even if we can't find petId, redirect to verification so user can see the issue
+                    res.status(200).json({
+                        message: 'QR code verified but pet information incomplete',
+                        status: 200,
+                        action: 'redirect_to_verification',
+                        qrCodeId: qrCode._id,
+                        code: qrCode.code,
+                        redirectUrl: `/qr/verify/${qrCode.code}`
+                    });
+                    return;
+                }
+            }
+            else {
+                // QR is verified but subscription is expired - redirect to dashboard for renewal
+                res.status(200).json({
+                    message: 'QR code verified but subscription expired',
+                    status: 200,
+                    action: 'redirect_to_verification',
+                    qrCodeId: qrCode._id,
+                    code: qrCode.code,
+                    redirectUrl: `/qr/verify/${qrCode.code}`
+                });
+                return;
             }
         }
         // If not verified or no active subscription, redirect to verification flow
@@ -108,7 +176,7 @@ exports.scanQRCode = (0, express_async_handler_1.default)(async (req, res) => {
 });
 // Get QR verification details for frontend
 exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (req, res) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     try {
         const { code } = req.params;
         const currentUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id; // Get current logged-in user from JWT token
@@ -125,11 +193,17 @@ exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (r
         }
         // Check if already verified
         if (qrCode.hasVerified) {
-            const activeSubscription = await Subscription_1.default.findOne({
-                qrCodeId: qrCode._id,
-                status: 'active',
-                endDate: { $gt: new Date() }
-            });
+            // Check for active subscription by userId (since one subscription covers all tags)
+            const userIdToCheck = ((_c = (_b = qrCode.assignedUserId) === null || _b === void 0 ? void 0 : _b._id) === null || _c === void 0 ? void 0 : _c.toString()) || (currentUserId === null || currentUserId === void 0 ? void 0 : currentUserId.toString());
+            let activeSubscription = null;
+            if (userIdToCheck) {
+                activeSubscription = await Subscription_1.default.findOne({
+                    userId: userIdToCheck,
+                    status: 'active',
+                    endDate: { $gt: new Date() },
+                    amountPaid: { $gt: 0 }
+                });
+            }
             res.status(200).json({
                 message: 'QR code already verified',
                 status: 200,
@@ -139,7 +213,7 @@ exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (r
                     id: qrCode._id,
                     code: qrCode.code,
                     status: qrCode.status,
-                    assignedPetName: ((_b = qrCode.assignedPetId) === null || _b === void 0 ? void 0 : _b.petName) || ((_c = qrCode.assignedOrderId) === null || _c === void 0 ? void 0 : _c.petName),
+                    assignedPetName: ((_d = qrCode.assignedPetId) === null || _d === void 0 ? void 0 : _d.petName) || ((_e = qrCode.assignedOrderId) === null || _e === void 0 ? void 0 : _e.petName),
                     assignedUser: qrCode.assignedUserId
                 },
                 subscription: activeSubscription
@@ -150,34 +224,35 @@ exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (r
         let userHasActiveSubscription = false;
         let existingSubscription = null;
         let canAutoVerify = false;
-        // First check if the QR code is assigned to a user and they have active subscription
-        if (qrCode.assignedUserId) {
+        let verifiedQRCodesCount = 0;
+        // Determine which userId to check (assigned user or current logged-in user)
+        const userIdToCheck = ((_f = qrCode.assignedUserId) === null || _f === void 0 ? void 0 : _f.toString()) || (currentUserId === null || currentUserId === void 0 ? void 0 : currentUserId.toString());
+        if (userIdToCheck) {
+            // Check if user has active subscription
             existingSubscription = await Subscription_1.default.findOne({
-                userId: qrCode.assignedUserId,
+                userId: userIdToCheck,
                 status: 'active',
-                endDate: { $gt: new Date() }
+                endDate: { $gt: new Date() },
+                amountPaid: { $gt: 0 } // Only use subscriptions with actual payment
             });
             userHasActiveSubscription = !!existingSubscription;
-            canAutoVerify = userHasActiveSubscription;
-        }
-        // If no assigned user or no active subscription for assigned user,
-        // check if current logged-in user has active subscription
-        if (!canAutoVerify && currentUserId) {
-            const currentUserSubscription = await Subscription_1.default.findOne({
-                userId: currentUserId,
-                status: 'active',
-                endDate: { $gt: new Date() }
-            });
-            if (currentUserSubscription) {
-                userHasActiveSubscription = true;
-                existingSubscription = currentUserSubscription;
-                canAutoVerify = true;
+            // If user has active subscription, count how many QR codes are already verified
+            if (existingSubscription) {
+                verifiedQRCodesCount = await QRCode_1.default.countDocuments({
+                    assignedUserId: userIdToCheck,
+                    status: 'verified',
+                    hasVerified: true
+                });
+                // Can auto-verify if user has subscription AND has less than 5 verified QR codes
+                canAutoVerify = verifiedQRCodesCount < 5;
+                console.log(`User ${userIdToCheck} has active subscription. Verified QR codes: ${verifiedQRCodesCount}/5. Can auto-verify: ${canAutoVerify}`);
             }
         }
         console.log('QR Verification Details Response:', {
             isVerified: false,
             hasActiveSubscription: userHasActiveSubscription,
             canAutoVerify: canAutoVerify,
+            verifiedQRCodesCount: verifiedQRCodesCount,
             currentUserId: currentUserId,
             qrCodeAssignedUserId: qrCode.assignedUserId,
             requiresLogin: !qrCode.assignedUserId && !currentUserId
@@ -187,11 +262,13 @@ exports.getQRVerificationDetails = (0, express_async_handler_1.default)(async (r
             status: 200,
             isVerified: false,
             hasActiveSubscription: userHasActiveSubscription,
+            verifiedQRCodesCount: verifiedQRCodesCount,
+            maxQRCodes: 5,
             qrCode: {
                 id: qrCode._id,
                 code: qrCode.code,
                 status: qrCode.status,
-                assignedPetName: ((_d = qrCode.assignedPetId) === null || _d === void 0 ? void 0 : _d.petName) || ((_e = qrCode.assignedOrderId) === null || _e === void 0 ? void 0 : _e.petName),
+                assignedPetName: ((_g = qrCode.assignedPetId) === null || _g === void 0 ? void 0 : _g.petName) || ((_h = qrCode.assignedOrderId) === null || _h === void 0 ? void 0 : _h.petName),
                 assignedUser: qrCode.assignedUserId
             },
             subscription: existingSubscription,
@@ -229,23 +306,77 @@ exports.autoVerifyQRCode = (0, express_async_handler_1.default)(async (req, res)
             });
             return;
         }
-        // Check if user has any active subscription
-        const existingActiveSubscription = await Subscription_1.default.findOne({
+        // Check if user has active subscription and count verified QR codes
+        const activeSubscription = await Subscription_1.default.findOne({
             userId,
             status: 'active',
-            endDate: { $gt: new Date() }
+            endDate: { $gt: new Date() },
+            amountPaid: { $gt: 0 } // Only use subscriptions with actual payment
         });
-        if (!existingActiveSubscription) {
+        if (!activeSubscription) {
             res.status(400).json({
-                message: 'No active subscription found',
-                error: 'User does not have an active subscription'
+                message: 'No active subscription found. Please subscribe to verify this QR code.',
+                error: 'No active subscription'
             });
             return;
         }
-        // Auto-verify the QR code
+        // Count verified QR codes for this user
+        const verifiedQRCodesCount = await QRCode_1.default.countDocuments({
+            assignedUserId: userId,
+            status: 'verified',
+            hasVerified: true
+        });
+        // Check if user has reached the limit of 5 QR codes
+        if (verifiedQRCodesCount >= 5) {
+            res.status(400).json({
+                message: 'Maximum limit reached. You can only have 5 verified QR codes per subscription.',
+                error: 'QR_CODE_LIMIT_EXCEEDED',
+                verifiedCount: verifiedQRCodesCount,
+                maxAllowed: 5
+            });
+            return;
+        }
+        // NEW FLOW: Assign QR code if not already assigned
+        // This happens when user scans the tag and has active subscription
+        if (!qrCode.assignedUserId || qrCode.status === 'unassigned') {
+            // Find a pet for this user that doesn't have a QR code assigned yet
+            let petToAssign = null;
+            const userPets = await Pet_1.default.find({ userId });
+            for (const pet of userPets) {
+                const existingQR = await QRCode_1.default.findOne({ assignedPetId: pet._id, hasVerified: true });
+                if (!existingQR) {
+                    petToAssign = pet;
+                    break;
+                }
+            }
+            if (petToAssign) {
+                // Assign QR code to this pet and user's order
+                qrCode.assignedUserId = userId;
+                qrCode.assignedPetId = petToAssign._id;
+                qrCode.assignedOrderId = petToAssign.userPetTagOrderId;
+                qrCode.status = 'assigned';
+                qrCode.hasGiven = true;
+                console.log(`✅ QR code ${qrCode.code} auto-assigned to pet ${petToAssign.petName} (${petToAssign._id})`);
+            }
+            else {
+                // If no pet found, assign to user without pet link
+                qrCode.assignedUserId = userId;
+                qrCode.status = 'assigned';
+                qrCode.hasGiven = true;
+                console.log(`✅ QR code ${qrCode.code} auto-assigned to user ${userId} (no pet link yet)`);
+            }
+        }
+        else if (qrCode.assignedUserId && qrCode.assignedUserId.toString() !== userId.toString()) {
+            // QR code is already assigned to a different user
+            res.status(400).json({
+                message: 'This QR code is already assigned to another user',
+                error: 'QR code already assigned'
+            });
+            return;
+        }
+        // Auto-verify the QR code (covered by existing subscription)
         qrCode.hasVerified = true;
         qrCode.status = 'verified';
-        qrCode.assignedUserId = qrCode.assignedUserId || userId;
         await qrCode.save();
         // Send first scan notification email (non-blocking)
         try {
@@ -265,21 +396,15 @@ exports.autoVerifyQRCode = (0, express_async_handler_1.default)(async (req, res)
             console.error('Failed to send QR code first scan email:', emailError);
             // Don't fail the verification if email fails
         }
-        // Create a new subscription record linking this QR to the user's active subscription
-        const newSubscription = await Subscription_1.default.create({
-            userId,
-            qrCodeId: qrCode._id,
-            type: existingActiveSubscription.type,
-            status: 'active',
-            startDate: new Date(),
-            endDate: existingActiveSubscription.endDate,
-            paymentIntentId: existingActiveSubscription.paymentIntentId,
-            amountPaid: 0, // No additional payment required
-            currency: existingActiveSubscription.currency,
-            autoRenew: existingActiveSubscription.autoRenew
+        // No need to create duplicate subscription - existing subscription covers all tags
+        // Count verified QR codes for message
+        const verifiedCount = await QRCode_1.default.countDocuments({
+            assignedUserId: userId,
+            status: 'verified',
+            hasVerified: true
         });
         res.status(200).json({
-            message: 'QR code auto-verified with existing subscription',
+            message: `Tag verified automatically using your existing subscription (${verifiedCount}/5 tags active)`,
             status: 200,
             qrCode: {
                 id: qrCode._id,
@@ -287,8 +412,10 @@ exports.autoVerifyQRCode = (0, express_async_handler_1.default)(async (req, res)
                 status: qrCode.status,
                 hasVerified: qrCode.hasVerified
             },
-            subscription: newSubscription,
-            existingSubscription: existingActiveSubscription
+            subscription: activeSubscription,
+            verifiedQRCodesCount: verifiedCount,
+            maxQRCodes: 5,
+            note: 'This tag is covered by your existing subscription. No additional payment required.'
         });
     }
     catch (error) {
@@ -304,7 +431,7 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
     var _a, _b, _c;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-        const { qrCodeId, subscriptionType, petId, paymentMethodId, enableAutoRenew, amount, currency } = req.body;
+        let { qrCodeId, subscriptionType, petId, paymentMethodId, enableAutoRenew, amount, currency } = req.body;
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -328,34 +455,61 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
             });
             return;
         }
-        // First check if there's already a subscription for this specific QR code
-        const existingSubscriptionForQR = await Subscription_1.default.findOne({
-            userId,
-            qrCodeId: qrCode._id,
-            status: 'active',
-            endDate: { $gt: new Date() }
-        });
-        if (existingSubscriptionForQR) {
-            // Subscription already exists for this QR code, just verify it
-            qrCode.hasVerified = true;
-            qrCode.status = 'verified';
-            qrCode.assignedPetId = petId || qrCode.assignedPetId;
-            await qrCode.save();
-            res.status(200).json({
-                message: 'QR code already has an active subscription',
-                status: 200,
-                qrCode: {
-                    id: qrCode._id,
-                    code: qrCode.code,
-                    status: qrCode.status,
-                    hasVerified: qrCode.hasVerified
-                },
-                subscription: existingSubscriptionForQR,
-                note: 'This QR code is already linked to an active subscription'
+        // Check if QR code is already assigned to a different user
+        if (qrCode.assignedUserId && qrCode.assignedUserId.toString() !== userId.toString()) {
+            res.status(400).json({
+                message: 'This QR code is already assigned to another user',
+                error: 'QR code already assigned'
             });
             return;
         }
-        // Check if user has ANY existing active subscription (not just for this QR)
+        // NEW FLOW: Assign QR code if not already assigned (before checking subscriptions)
+        if (!qrCode.assignedUserId || qrCode.status === 'unassigned') {
+            // Find a pet for this user that doesn't have a QR code assigned yet
+            let petToAssign = null;
+            if (petId) {
+                // Check if the provided pet is owned by this user and doesn't have QR code
+                const pet = await Pet_1.default.findById(petId);
+                if (pet && pet.userId.toString() === userId.toString()) {
+                    const existingQR = await QRCode_1.default.findOne({ assignedPetId: pet._id });
+                    if (!existingQR) {
+                        petToAssign = pet;
+                    }
+                }
+            }
+            // If no pet specified or pet already has QR code, find first pet without QR code
+            if (!petToAssign) {
+                const userPets = await Pet_1.default.find({ userId });
+                for (const pet of userPets) {
+                    const existingQR = await QRCode_1.default.findOne({ assignedPetId: pet._id });
+                    if (!existingQR) {
+                        petToAssign = pet;
+                        break;
+                    }
+                }
+            }
+            if (petToAssign) {
+                // Assign QR code to this pet and user's order
+                qrCode.assignedUserId = userId;
+                qrCode.assignedPetId = petToAssign._id;
+                qrCode.assignedOrderId = petToAssign.userPetTagOrderId;
+                qrCode.status = 'assigned';
+                qrCode.hasGiven = true;
+                console.log(`✅ QR code ${qrCode.code} assigned to pet ${petToAssign.petName} (${petToAssign._id}) via verifyQRWithSubscription`);
+                // Update petId for later use
+                petId = petToAssign._id.toString();
+            }
+            else {
+                // If no pet found, still assign to user but without pet link
+                qrCode.assignedUserId = userId;
+                qrCode.status = 'assigned';
+                qrCode.hasGiven = true;
+                console.log(`✅ QR code ${qrCode.code} assigned to user ${userId} (no pet link yet) via verifyQRWithSubscription`);
+            }
+        }
+        // CRITICAL: Check if user has ANY existing active subscription BEFORE creating payment intent
+        // One subscription covers all tags (up to 5), so we check by userId, not by qrCodeId
+        // If they do, auto-verify instead of charging again
         const existingActiveSubscription = await Subscription_1.default.findOne({
             userId,
             status: 'active',
@@ -363,10 +517,28 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
             amountPaid: { $gt: 0 } // Only use subscriptions with actual payment (not the £0 ones)
         });
         if (existingActiveSubscription) {
-            // Auto-verify if user has any active subscription
+            // Count verified QR codes for this user
+            const verifiedQRCodesCount = await QRCode_1.default.countDocuments({
+                assignedUserId: userId,
+                status: 'verified',
+                hasVerified: true
+            });
+            // Check if user has reached the limit of 5 QR codes
+            if (verifiedQRCodesCount >= 5) {
+                res.status(400).json({
+                    message: 'Maximum limit reached. You can only have 5 verified QR codes per subscription.',
+                    error: 'QR_CODE_LIMIT_EXCEEDED',
+                    verifiedCount: verifiedQRCodesCount,
+                    maxAllowed: 5
+                });
+                return;
+            }
+            // Auto-verify if user has active subscription and hasn't reached limit
             qrCode.hasVerified = true;
             qrCode.status = 'verified';
-            qrCode.assignedPetId = petId || qrCode.assignedPetId;
+            if (petId) {
+                qrCode.assignedPetId = petId;
+            }
             await qrCode.save();
             // Send first scan notification email (non-blocking)
             try {
@@ -386,10 +558,9 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
                 console.error('Failed to send QR code first scan email:', emailError);
                 // Don't fail the verification if email fails
             }
-            // Link this QR code to the existing subscription (don't create a new subscription record)
-            // Just update the QR code to be verified, the subscription already covers it
+            // No need to create duplicate subscription - existing subscription covers all tags
             res.status(200).json({
-                message: 'QR code verified with existing active subscription',
+                message: `Tag verified automatically using your existing subscription (${verifiedQRCodesCount + 1}/5 tags active). No additional payment required.`,
                 status: 200,
                 qrCode: {
                     id: qrCode._id,
@@ -398,7 +569,9 @@ exports.verifyQRCodeWithSubscription = (0, express_async_handler_1.default)(asyn
                     hasVerified: qrCode.hasVerified
                 },
                 subscription: existingActiveSubscription,
-                note: 'Tag verified automatically using your existing subscription. No additional payment required.'
+                verifiedQRCodesCount: verifiedQRCodesCount + 1,
+                maxQRCodes: 5,
+                note: 'This tag is covered by your existing subscription. No additional payment required.'
             });
             return;
         }
@@ -558,7 +731,7 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
     var _a;
     try {
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-        const { qrCodeId, paymentIntentId, subscriptionType, petId, stripeSubscriptionId, amount, currency } = req.body;
+        let { qrCodeId, paymentIntentId, subscriptionType, petId, stripeSubscriptionId, amount, currency } = req.body;
         if (!userId) {
             res.status(401).json({
                 message: 'Authentication required',
@@ -572,6 +745,126 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
             res.status(404).json({
                 message: 'QR code not found',
                 error: 'Invalid QR code ID'
+            });
+            return;
+        }
+        // NEW FLOW: Assign QR code if not already assigned
+        // This happens when user scans the tag and pays for subscription
+        if (!qrCode.assignedUserId || qrCode.status === 'unassigned') {
+            // Find a pet for this user that doesn't have a QR code assigned yet
+            // Priority: Use petId if provided, otherwise find first unassigned pet
+            let petToAssign = null;
+            if (petId) {
+                // Check if the provided pet is owned by this user and doesn't have QR code
+                const pet = await Pet_1.default.findById(petId);
+                if (pet && pet.userId.toString() === userId.toString()) {
+                    const existingQR = await QRCode_1.default.findOne({ assignedPetId: pet._id });
+                    if (!existingQR) {
+                        petToAssign = pet;
+                    }
+                }
+            }
+            // If no pet specified or pet already has QR code, find first pet without QR code
+            if (!petToAssign) {
+                const userPets = await Pet_1.default.find({ userId });
+                for (const pet of userPets) {
+                    const existingQR = await QRCode_1.default.findOne({ assignedPetId: pet._id });
+                    if (!existingQR) {
+                        petToAssign = pet;
+                        break;
+                    }
+                }
+            }
+            if (petToAssign) {
+                // Assign QR code to this pet and user's order
+                qrCode.assignedUserId = userId;
+                qrCode.assignedPetId = petToAssign._id;
+                qrCode.assignedOrderId = petToAssign.userPetTagOrderId;
+                qrCode.status = 'assigned';
+                qrCode.hasGiven = true;
+                console.log(`✅ QR code ${qrCode.code} assigned to pet ${petToAssign.petName} (${petToAssign._id})`);
+                // Update petId for later use
+                petId = petToAssign._id.toString();
+            }
+            else {
+                // If no pet found, still assign to user but without pet link (will link later)
+                qrCode.assignedUserId = userId;
+                qrCode.status = 'assigned';
+                qrCode.hasGiven = true;
+                console.log(`✅ QR code ${qrCode.code} assigned to user ${userId} (no pet link yet)`);
+            }
+        }
+        else if (qrCode.assignedUserId && qrCode.assignedUserId.toString() !== userId.toString()) {
+            // QR code is already assigned to a different user
+            res.status(400).json({
+                message: 'This QR code is already assigned to another user',
+                error: 'QR code already assigned'
+            });
+            return;
+        }
+        // CRITICAL: Check if user has ANY existing active subscription BEFORE processing payment
+        // If they do, auto-verify instead of charging again
+        const existingActiveSubscription = await Subscription_1.default.findOne({
+            userId,
+            status: 'active',
+            endDate: { $gt: new Date() },
+            amountPaid: { $gt: 0 } // Only use subscriptions with actual payment
+        });
+        if (existingActiveSubscription) {
+            // Count verified QR codes for this user
+            const verifiedQRCodesCount = await QRCode_1.default.countDocuments({
+                assignedUserId: userId,
+                status: 'verified',
+                hasVerified: true
+            });
+            // Check if user has reached the limit of 5 QR codes
+            if (verifiedQRCodesCount >= 5) {
+                res.status(400).json({
+                    message: 'Maximum limit reached. You can only have 5 verified QR codes per subscription.',
+                    error: 'QR_CODE_LIMIT_EXCEEDED',
+                    verifiedCount: verifiedQRCodesCount,
+                    maxAllowed: 5
+                });
+                return;
+            }
+            // Auto-verify if user has active subscription and hasn't reached limit
+            // No payment needed - existing subscription covers this tag
+            qrCode.hasVerified = true;
+            qrCode.status = 'verified';
+            if (petId) {
+                qrCode.assignedPetId = petId;
+            }
+            await qrCode.save();
+            // Send first scan notification email (non-blocking)
+            try {
+                const user = await User_1.default.findById(userId);
+                const pet = await Pet_1.default.findById(qrCode.assignedPetId);
+                if (user && user.email && pet) {
+                    await (0, emailService_1.sendQRCodeFirstScanEmail)(user.email, {
+                        petOwnerName: user.firstName || 'Pet Owner',
+                        petName: pet.petName,
+                        qrCode: qrCode.code,
+                        scanDate: new Date().toLocaleDateString('en-GB'),
+                        scanLocation: 'Unknown Location'
+                    });
+                }
+            }
+            catch (emailError) {
+                console.error('Failed to send QR code first scan email:', emailError);
+            }
+            res.status(200).json({
+                message: `Tag verified automatically using your existing subscription (${verifiedQRCodesCount + 1}/5 tags active). No additional payment was charged.`,
+                status: 200,
+                qrCode: {
+                    id: qrCode._id,
+                    code: qrCode.code,
+                    status: qrCode.status,
+                    hasVerified: qrCode.hasVerified
+                },
+                subscription: existingActiveSubscription,
+                verifiedQRCodesCount: verifiedQRCodesCount + 1,
+                maxQRCodes: 5,
+                note: 'This tag is covered by your existing subscription. No additional payment was charged.'
             });
             return;
         }
@@ -756,12 +1049,22 @@ exports.getPetProfileByQR = (0, express_async_handler_1.default)(async (req, res
             });
             return;
         }
-        // Check active subscription
-        const activeSubscription = await Subscription_1.default.findOne({
+        // Check active subscription by userId (one subscription covers all tags)
+        // First try to find subscription linked to this QR code (for backward compatibility)
+        let activeSubscription = await Subscription_1.default.findOne({
             qrCodeId: qrCode._id,
             status: 'active',
             endDate: { $gt: new Date() }
         });
+        // If not found by qrCodeId, check by userId (since one subscription covers all tags)
+        if (!activeSubscription && qrCode.assignedUserId) {
+            activeSubscription = await Subscription_1.default.findOne({
+                userId: qrCode.assignedUserId,
+                status: 'active',
+                endDate: { $gt: new Date() },
+                amountPaid: { $gt: 0 } // Only use subscriptions with actual payment
+            });
+        }
         if (!activeSubscription) {
             res.status(403).json({
                 message: 'Pet profile not accessible',

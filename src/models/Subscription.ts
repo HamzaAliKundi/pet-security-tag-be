@@ -2,7 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ISubscription extends Document {
   userId: string;
-  qrCodeId: string;
+  qrCodeId?: string; // Optional - first QR code linked to subscription, but subscription covers all user's tags (up to 5)
   type: 'monthly' | 'yearly' | 'lifetime';
   status: 'active' | 'expired' | 'cancelled';
   startDate: Date;
@@ -25,7 +25,7 @@ const SubscriptionSchema: Schema = new Schema({
   qrCodeId: {
     type: Schema.Types.ObjectId,
     ref: 'QRCode',
-    required: true
+    required: false // Optional - subscription covers all user's tags, first QR code is linked as reference
   },
   type: {
     type: String,

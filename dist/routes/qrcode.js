@@ -14,8 +14,8 @@ const router = (0, express_1.Router)();
 router.get('/check-availability', qrScanning_1.checkQRAvailability);
 // QR scanning route - when someone scans a QR code
 router.get('/scan/:code', qrScanning_1.scanQRCode);
-// Get QR verification details (for showing subscription page)
-router.get('/verify-details/:code', qrScanning_1.getQRVerificationDetails);
+// Get QR verification details (for showing subscription page) - optional auth to detect logged-in user
+router.get('/verify-details/:code', auth_1.optionalAuthMiddleware, qrScanning_1.getQRVerificationDetails);
 // Get pet profile for public view (when finder scans verified QR)
 router.get('/pet-profile/:petId', qrScanning_1.getPetProfileByQR);
 // Share location with pet owner (public route)

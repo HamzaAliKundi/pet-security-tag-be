@@ -4,7 +4,7 @@ import UserPetTagOrder from '../../models/UserPetTagOrder';
 import Pet from '../../models/Pet';
 import QRCode from '../../models/QRCode';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
-import { assignQRToOrder } from '../qrcode/qrManagement';
+// NOTE: assignQRToOrder import removed - QR codes are now assigned when user scans the tag, not at order confirmation
 import { sendOrderConfirmationEmail } from '../../utils/emailService';
 import User from '../../models/User';
 
@@ -258,20 +258,17 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
           await QRCodeModel.findOneAndUpdate(
             { assignedPetId: existingPet._id },
             { 
-              status: 'revoked',
-              revokedAt: new Date(),
-              revokedReason: 'replacement_order'
+              status: 'unassigned',
+              assignedUserId: null,
+              assignedOrderId: null,
+              assignedPetId: null,
+              hasGiven: false,
+              hasVerified: false
             }
           );
 
-          // Assign new QR code to the existing pet
-          const qrCodeId = await assignQRToOrder(order._id.toString());
-          
-          if (qrCodeId) {
-            await QRCodeModel.findByIdAndUpdate(qrCodeId, {
-              assignedPetId: existingPet._id
-            });
-          }
+          // NOTE: New QR code will NOT be assigned here - it will be assigned when user scans the tag
+          // This allows admin to send any physical tag without worrying about matching QR codes
 
           // Update the existing pet's order reference to the new replacement order
           existingPet.userPetTagOrderId = order._id;
@@ -279,7 +276,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
           await existingPet.save();
 
           res.status(200).json({
-            message: 'Replacement order confirmed successfully. Existing QR code revoked and new QR code assigned.',
+            message: 'Replacement order confirmed successfully. Old QR code revoked. New QR code will be assigned when you scan your tag.',
             status: 200,
             order: {
               _id: order._id,
@@ -323,8 +320,8 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
       }
 
       // Create pet records based on quantity (for new orders)
+      // NOTE: QR codes are NOT assigned at this point - they will be assigned when the user scans the tag
       const createdPets = [];
-      const assignedQRCodes = [];
       
       try {
         for (let i = 0; i < order.quantity; i++) {
@@ -342,19 +339,10 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             notes: ''
           });
 
-          // Assign QR code to this pet
-          const qrCodeId = await assignQRToOrder(order._id.toString());
+          // QR codes will be assigned when the user scans the tag and pays for subscription
+          // This allows admin to send any physical tag without worrying about matching QR codes
           
-          // Link the QR code to the pet
-          if (qrCodeId) {
-            const QRCodeModel = (await import('../../models/QRCode')).default;
-            await QRCodeModel.findByIdAndUpdate(qrCodeId, {
-              assignedPetId: pet._id
-            });
-            
-            createdPets.push(pet);
-            assignedQRCodes.push(qrCodeId);
-          }
+          createdPets.push(pet);
         }
 
         // Send order confirmation email (non-blocking)
@@ -376,7 +364,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         }
 
         res.status(200).json({
-          message: 'Payment confirmed successfully and pet records created',
+          message: 'Payment confirmed successfully and pet records created. QR codes will be assigned when you scan your tags and activate subscriptions.',
           status: 200,
           order: {
             _id: order._id,
@@ -399,7 +387,6 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             isReplacement: order.isReplacement
           },
           petsCreated: createdPets.length,
-          qrCodesAssigned: assignedQRCodes.length,
           pets: createdPets.map(pet => ({
             _id: pet._id,
             petName: pet.petName,
@@ -413,15 +400,6 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         });
       } catch (petError) {
         console.error('Error creating pet records:', petError);
-        
-        // Try to assign QR codes even if pet creation failed
-        const qrCodeIds = [];
-        for (let i = 0; i < order.quantity; i++) {
-          const qrCodeId = await assignQRToOrder(order._id.toString());
-          if (qrCodeId) {
-            qrCodeIds.push(qrCodeId);
-          }
-        }
         
         // Still return success for payment, but log pet creation error
         res.status(200).json({
@@ -448,8 +426,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             isReplacement: order.isReplacement
           },
           petsCreated: 0,
-          qrCodesAssigned: qrCodeIds.length,
-          error: 'Failed to create pet records'
+          error: 'Failed to create pet records. QR codes will be assigned when you scan your tags and activate subscriptions.'
         });
       }
     } else {
@@ -841,51 +818,29 @@ export const confirmReplacementPayment = asyncHandler(async (req: Request, res: 
 
       console.log('Old QR Code found:', oldQRCodeId);
 
-      // First, find a NEW available QR code (different from the old one)
-      const newAvailableQR = await QRCode.findOne({
-        hasGiven: false,
-        status: 'unassigned',
-        _id: { $ne: oldQRCodeId } // Make sure it's NOT the old QR code
-      });
-
-      if (!newAvailableQR) {
-        console.error('No new available QR codes found for replacement');
-        res.status(400).json({ 
-          message: 'No available QR codes found for replacement order. Please contact support.' 
+      // Revoke the old QR code (make it unassigned again)
+      if (oldQRCodeId) {
+        await QRCode.findByIdAndUpdate(oldQRCodeId, {
+          status: 'unassigned',
+          assignedPetId: null,
+          assignedOrderId: null,
+          assignedUserId: null,
+          hasGiven: false,
+          hasVerified: false
         });
-        return;
+
+        console.log('Old QR Code revoked:', oldQRCodeId);
       }
 
-      console.log('New QR Code found:', newAvailableQR._id);
-
-      // Now revoke the old QR code
-      await QRCode.findByIdAndUpdate(oldQRCodeId, {
-        status: 'unassigned',
-        assignedPetId: null,
-        assignedOrderId: null,
-        hasGiven: false,
-        hasVerified: false
-      });
-
-      console.log('Old QR Code revoked:', oldQRCodeId);
-
-      // Assign the new QR code to the replacement order (same as new order - not verified yet)
-      newAvailableQR.hasGiven = true;
-      newAvailableQR.assignedUserId = order.userId as any;
-      newAvailableQR.assignedOrderId = order._id as any;
-      newAvailableQR.assignedPetId = existingPet._id as any;
-      newAvailableQR.status = 'assigned'; // Initial status, not verified yet
-      newAvailableQR.hasVerified = false; // User needs to verify like a new tag
-      await newAvailableQR.save();
-
-      console.log('New QR Code assigned to pet:', newAvailableQR._id, 'Status:', newAvailableQR.status, 'Verified:', newAvailableQR.hasVerified);
+      // NOTE: New QR code will NOT be assigned here - it will be assigned when user scans the tag
+      // This allows admin to send any physical tag without worrying about matching QR codes
 
       // Update the existing pet's order reference to the new replacement order
       existingPet.userPetTagOrderId = order._id;
       await existingPet.save();
 
       res.status(200).json({
-        message: 'Replacement order confirmed successfully. Old QR code revoked and new QR code assigned.',
+        message: 'Replacement order confirmed successfully. Old QR code revoked. New QR code will be assigned when you scan your tag.',
         status: 200,
         order: {
           _id: order._id,
