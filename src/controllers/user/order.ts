@@ -292,6 +292,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             subscriptionType: order.subscriptionType,
             status: order.status,
             tagColor: order.tagColor,
+            tagColors: order.tagColors, // Include tagColors array
             totalCostEuro: order.totalCostEuro,
             phone: order.phone,
             shippingAddress: order.shippingAddress,

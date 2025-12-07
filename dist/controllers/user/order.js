@@ -272,6 +272,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         subscriptionType: order.subscriptionType,
                         status: order.status,
                         tagColor: order.tagColor,
+                        tagColors: order.tagColors, // Include tagColors array
                         totalCostEuro: order.totalCostEuro,
                         phone: order.phone,
                         shippingAddress: order.shippingAddress,
