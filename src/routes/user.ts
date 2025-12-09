@@ -35,6 +35,7 @@ import {
   upgradeSubscription,
   confirmSubscriptionPayment
 } from '../controllers/user/subscription';
+import { getLoyaltyInfo, getReferralLink } from '../controllers/user/loyalty';
 import { upload } from '../utils/imageUploadService';
 
 const router = Router();
@@ -79,5 +80,9 @@ router.get('/subscriptions/stats', authMiddleware, getSubscriptionStats);
 router.post('/subscriptions/renew', authMiddleware, renewSubscription);
 router.post('/subscriptions/upgrade', authMiddleware, upgradeSubscription);
 router.post('/subscriptions/confirm-payment', authMiddleware, confirmSubscriptionPayment);
+
+// Loyalty endpoints (Private)
+router.get('/loyalty', authMiddleware, getLoyaltyInfo);
+router.get('/loyalty/referral-link', authMiddleware, getReferralLink);
 
 export default router; 

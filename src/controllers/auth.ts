@@ -1,27 +1,83 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User';
+import Referral from '../models/Referral';
 import { env } from '../config/env';
 import asyncHandler from 'express-async-handler';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../utils/emailService';
 import { generateForgotPasswordToken, generateToken, generateVerificationToken, verifyToken } from '../utils/jwt';
+import { generateReferralCode } from '../utils/referralCode';
+import { checkAndCreateRewardRedemption } from '../utils/rewardRedemption';
 
 export const register = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email, password, firstName, lastName } = req.body;
+  const { email, password, firstName, lastName, referralCode: incomingReferralCode } = req.body;
 
   const existingUser = await User.findOne({ email });
-  if (existingUser) res.status(400).json({ message: 'User already exists' });
+  if (existingUser) {
+    res.status(400).json({ message: 'User already exists' });
+    return;
+  }
 
   const salt = await bcrypt.genSalt(env.SALT_ROUNDS);
   const hashedPassword = await bcrypt.hash(password, salt);
+
+  // Generate unique referral code for new user
+  let userReferralCode = generateReferralCode();
+  let isUniqueCode = false;
+  while (!isUniqueCode) {
+    const existingCode = await User.findOne({ referralCode: userReferralCode });
+    if (!existingCode) {
+      isUniqueCode = true;
+    } else {
+      userReferralCode = generateReferralCode();
+    }
+  }
+
+  // Handle referral code if provided
+  let referredByUserId = null;
+  if (incomingReferralCode) {
+    const referrer = await User.findOne({ referralCode: incomingReferralCode });
+    if (referrer && referrer._id) {
+      referredByUserId = referrer._id;
+    }
+  }
 
   const user = await User.create({
     email,
     password: hashedPassword,
     firstName,
     lastName,
-    isEmailVerified: false
+    isEmailVerified: false,
+    referralCode: userReferralCode,
+    loyaltyPoints: referredByUserId ? 100 : 0, // New user gets 100 points if referred
+    referredBy: referredByUserId
   });
+
+  // Award points to referrer and create referral record
+  if (referredByUserId) {
+    try {
+      const referrer = await User.findById(referredByUserId);
+      if (referrer) {
+        // Award 100 points to referrer
+        referrer.loyaltyPoints = (referrer.loyaltyPoints || 0) + 100;
+        await referrer.save();
+
+        // Check for reward redemptions after awarding points
+        await checkAndCreateRewardRedemption(referrer._id.toString());
+
+        // Create referral record
+        await Referral.create({
+          referrerId: referrer._id,
+          referredUserId: user._id,
+          pointsAwarded: 100,
+          referralCodeUsed: incomingReferralCode
+        });
+      }
+    } catch (referralError) {
+      console.error('Error processing referral:', referralError);
+      // Don't fail registration if referral processing fails
+    }
+  }
 
   const token = generateVerificationToken(user);
   

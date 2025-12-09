@@ -8,6 +8,7 @@ const auth_1 = require("../middleware/auth");
 const account_1 = require("../controllers/user/account");
 const pet_1 = require("../controllers/user/pet");
 const subscription_1 = require("../controllers/user/subscription");
+const loyalty_1 = require("../controllers/user/loyalty");
 const imageUploadService_1 = require("../utils/imageUploadService");
 const router = (0, express_1.Router)();
 // Pet tag order endpoints (public)
@@ -44,4 +45,7 @@ router.get('/subscriptions/stats', auth_1.authMiddleware, subscription_1.getSubs
 router.post('/subscriptions/renew', auth_1.authMiddleware, subscription_1.renewSubscription);
 router.post('/subscriptions/upgrade', auth_1.authMiddleware, subscription_1.upgradeSubscription);
 router.post('/subscriptions/confirm-payment', auth_1.authMiddleware, subscription_1.confirmSubscriptionPayment);
+// Loyalty endpoints (Private)
+router.get('/loyalty', auth_1.authMiddleware, loyalty_1.getLoyaltyInfo);
+router.get('/loyalty/referral-link', auth_1.authMiddleware, loyalty_1.getReferralLink);
 exports.default = router;

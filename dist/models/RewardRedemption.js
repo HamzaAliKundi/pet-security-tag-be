@@ -34,85 +34,43 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const UserSchema = new mongoose_1.Schema({
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true
-    },
-    password: {
-        type: String,
+const RewardRedemptionSchema = new mongoose_1.Schema({
+    userId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
         required: true
     },
-    firstName: {
-        type: String,
-        required: true,
-        trim: true
+    rewardTier: {
+        type: Number,
+        enum: [1, 2],
+        required: true
     },
-    lastName: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    role: {
-        type: String,
-        default: 'user'
+    pointsAtRedemption: {
+        type: Number,
+        required: true
     },
     status: {
         type: String,
-        enum: ['active', 'inactive', 'suspended'],
-        default: 'active'
+        enum: ['pending', 'shipped', 'completed'],
+        default: 'pending'
     },
-    isEmailVerified: {
-        type: Boolean,
-        default: false
+    adminNotes: {
+        type: String,
+        trim: true
     },
-    lastLogin: {
+    redeemedAt: {
+        type: Date,
+        default: Date.now
+    },
+    shippedAt: {
         type: Date
     },
-    phone: {
-        type: String,
-        trim: true
-    },
-    street: {
-        type: String,
-        trim: true
-    },
-    city: {
-        type: String,
-        trim: true
-    },
-    state: {
-        type: String,
-        trim: true
-    },
-    zipCode: {
-        type: String,
-        trim: true
-    },
-    country: {
-        type: String,
-        trim: true
-    },
-    referralCode: {
-        type: String,
-        unique: true,
-        sparse: true,
-        trim: true
-    },
-    loyaltyPoints: {
-        type: Number,
-        default: 0,
-        min: 0
-    },
-    referredBy: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'User',
-        default: null
+    completedAt: {
+        type: Date
     }
 }, {
     timestamps: true
 });
-exports.default = mongoose_1.default.model('User', UserSchema);
+// Index to ensure one pending redemption per tier per user
+RewardRedemptionSchema.index({ userId: 1, rewardTier: 1, status: 1 });
+exports.default = mongoose_1.default.model('RewardRedemption', RewardRedemptionSchema);

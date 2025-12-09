@@ -7,6 +7,7 @@ exports.getUserStats = exports.deleteUser = exports.updateUserStatus = exports.g
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const User_1 = __importDefault(require("../../models/User"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
+const RewardRedemption_1 = __importDefault(require("../../models/RewardRedemption"));
 // Get all users with search, filtering, and pagination
 exports.getUsers = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -32,23 +33,48 @@ exports.getUsers = (0, express_async_handler_1.default)(async (req, res) => {
         sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
         // Execute query with pagination
         const users = await User_1.default.find(searchQuery)
-            .select('firstName lastName email status createdAt lastLogin')
+            .select('firstName lastName email status createdAt lastLogin referralCode loyaltyPoints')
             .sort(sortObj)
             .skip(skip)
             .limit(limitNum)
             .lean();
         // Get total count for pagination
         const totalUsers = await User_1.default.countDocuments(searchQuery);
-        // Get pet count for each user
+        // Get pet count, loyalty points, and reward status for each user
         const usersWithPets = await Promise.all(users.map(async (user) => {
             const petCount = await Pet_1.default.countDocuments({ userId: user._id });
+            // Get latest pending or shipped reward redemption
+            // Prioritize Tier 2 over Tier 1 if both exist
+            const latestRewardTier2 = await RewardRedemption_1.default.findOne({
+                userId: user._id,
+                rewardTier: 2,
+                status: { $in: ['pending', 'shipped'] }
+            }).sort({ createdAt: -1 });
+            const latestRewardTier1 = await RewardRedemption_1.default.findOne({
+                userId: user._id,
+                rewardTier: 1,
+                status: { $in: ['pending', 'shipped'] }
+            }).sort({ createdAt: -1 });
+            // Prioritize Tier 2 if it exists, otherwise show Tier 1
+            const latestReward = latestRewardTier2 || latestRewardTier1;
+            let rewardStatus = null;
+            if (latestReward) {
+                if (latestReward.rewardTier === 1) {
+                    rewardStatus = latestReward.status === 'pending' ? 'Voucher Pending' : 'Voucher Shipped';
+                }
+                else if (latestReward.rewardTier === 2) {
+                    rewardStatus = latestReward.status === 'pending' ? 'Gift Pending' : 'Gift Shipped';
+                }
+            }
             return {
                 ...user,
                 id: user._id,
                 name: `${user.firstName} ${user.lastName}`,
                 pets: petCount,
                 joinDate: user.createdAt,
-                lastLogin: user.lastLogin || 'Never'
+                lastLogin: user.lastLogin || 'Never',
+                loyaltyPoints: user.loyaltyPoints || 0,
+                rewardStatus
             };
         }));
         res.status(200).json({

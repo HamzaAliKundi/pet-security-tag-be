@@ -6,24 +6,76 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.resetPassword = exports.sendForgotPasswordEmail = exports.verifyEmail = exports.login = exports.register = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = __importDefault(require("../models/User"));
+const Referral_1 = __importDefault(require("../models/Referral"));
 const env_1 = require("../config/env");
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const emailService_1 = require("../utils/emailService");
 const jwt_1 = require("../utils/jwt");
+const referralCode_1 = require("../utils/referralCode");
+const rewardRedemption_1 = require("../utils/rewardRedemption");
 exports.register = (0, express_async_handler_1.default)(async (req, res) => {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, referralCode: incomingReferralCode } = req.body;
     const existingUser = await User_1.default.findOne({ email });
-    if (existingUser)
+    if (existingUser) {
         res.status(400).json({ message: 'User already exists' });
+        return;
+    }
     const salt = await bcryptjs_1.default.genSalt(env_1.env.SALT_ROUNDS);
     const hashedPassword = await bcryptjs_1.default.hash(password, salt);
+    // Generate unique referral code for new user
+    let userReferralCode = (0, referralCode_1.generateReferralCode)();
+    let isUniqueCode = false;
+    while (!isUniqueCode) {
+        const existingCode = await User_1.default.findOne({ referralCode: userReferralCode });
+        if (!existingCode) {
+            isUniqueCode = true;
+        }
+        else {
+            userReferralCode = (0, referralCode_1.generateReferralCode)();
+        }
+    }
+    // Handle referral code if provided
+    let referredByUserId = null;
+    if (incomingReferralCode) {
+        const referrer = await User_1.default.findOne({ referralCode: incomingReferralCode });
+        if (referrer && referrer._id) {
+            referredByUserId = referrer._id;
+        }
+    }
     const user = await User_1.default.create({
         email,
         password: hashedPassword,
         firstName,
         lastName,
-        isEmailVerified: false
+        isEmailVerified: false,
+        referralCode: userReferralCode,
+        loyaltyPoints: referredByUserId ? 100 : 0, // New user gets 100 points if referred
+        referredBy: referredByUserId
     });
+    // Award points to referrer and create referral record
+    if (referredByUserId) {
+        try {
+            const referrer = await User_1.default.findById(referredByUserId);
+            if (referrer) {
+                // Award 100 points to referrer
+                referrer.loyaltyPoints = (referrer.loyaltyPoints || 0) + 100;
+                await referrer.save();
+                // Check for reward redemptions after awarding points
+                await (0, rewardRedemption_1.checkAndCreateRewardRedemption)(referrer._id.toString());
+                // Create referral record
+                await Referral_1.default.create({
+                    referrerId: referrer._id,
+                    referredUserId: user._id,
+                    pointsAwarded: 100,
+                    referralCodeUsed: incomingReferralCode
+                });
+            }
+        }
+        catch (referralError) {
+            console.error('Error processing referral:', referralError);
+            // Don't fail registration if referral processing fails
+        }
+    }
     const token = (0, jwt_1.generateVerificationToken)(user);
     // Send verification email (non-blocking)
     try {

@@ -3,11 +3,14 @@ import asyncHandler from 'express-async-handler';
 import PetTagOrder from '../../models/PetTagOrder';
 import User from '../../models/User';
 import Pet from '../../models/Pet';
+import Referral from '../../models/Referral';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
 // NOTE: assignQRToPublicOrder import removed - QR codes are now assigned when user scans the tag, not at order confirmation
 import { sendOrderConfirmationEmail, sendCredentialsEmail } from '../../utils/emailService';
 import bcrypt from 'bcryptjs';
 import { env } from '../../config/env';
+import { generateReferralCode } from '../../utils/referralCode';
+import { checkAndCreateRewardRedemption } from '../../utils/rewardRedemption';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
@@ -214,6 +217,28 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         
         const { firstName, lastName } = splitName(order.name);
         
+        // Generate unique referral code for new user
+        let userReferralCode = generateReferralCode();
+        let isUniqueCode = false;
+        while (!isUniqueCode) {
+          const existingCode = await User.findOne({ referralCode: userReferralCode });
+          if (!existingCode) {
+            isUniqueCode = true;
+          } else {
+            userReferralCode = generateReferralCode();
+          }
+        }
+
+        // Get referral code from query params if provided
+        const referralCodeFromQuery = req.query.referralCode as string;
+        let referredByUserId = null;
+        if (referralCodeFromQuery) {
+          const referrer = await User.findOne({ referralCode: referralCodeFromQuery });
+          if (referrer && referrer._id) {
+            referredByUserId = referrer._id;
+          }
+        }
+        
         user = await User.create({
           email: order.email.toLowerCase(),
           password: hashedPassword,
@@ -221,8 +246,37 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
           lastName,
           isEmailVerified: true, // Auto-verify the account
           role: 'user',
-          status: 'active'
+          status: 'active',
+          referralCode: userReferralCode,
+          loyaltyPoints: referredByUserId ? 100 : 0, // New user gets 100 points if referred
+          referredBy: referredByUserId
         });
+
+        // Award points to referrer and create referral record
+        if (referredByUserId) {
+          try {
+            const referrer = await User.findById(referredByUserId);
+            if (referrer) {
+              // Award 100 points to referrer
+              referrer.loyaltyPoints = (referrer.loyaltyPoints || 0) + 100;
+              await referrer.save();
+
+              // Check for reward redemptions after awarding points
+              await checkAndCreateRewardRedemption(referrer._id.toString());
+
+              // Create referral record
+              await Referral.create({
+                referrerId: referrer._id,
+                referredUserId: user._id,
+                pointsAwarded: 100,
+                referralCodeUsed: referralCodeFromQuery
+              });
+            }
+          } catch (referralError) {
+            console.error('Error processing referral:', referralError);
+            // Don't fail order if referral processing fails
+          }
+        }
 
         // Send credentials email (non-blocking)
         try {

@@ -8,11 +8,14 @@ const express_async_handler_1 = __importDefault(require("express-async-handler")
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
 const User_1 = __importDefault(require("../../models/User"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
+const Referral_1 = __importDefault(require("../../models/Referral"));
 const stripeService_1 = require("../../utils/stripeService");
 // NOTE: assignQRToPublicOrder import removed - QR codes are now assigned when user scans the tag, not at order confirmation
 const emailService_1 = require("../../utils/emailService");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const env_1 = require("../../config/env");
+const referralCode_1 = require("../../utils/referralCode");
+const rewardRedemption_1 = require("../../utils/rewardRedemption");
 exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
     const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
     if (!email || !name || !petName || !quantity || !subscriptionType) {
@@ -199,6 +202,27 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                 const salt = await bcryptjs_1.default.genSalt(env_1.env.SALT_ROUNDS);
                 const hashedPassword = await bcryptjs_1.default.hash(generatedPassword, salt);
                 const { firstName, lastName } = splitName(order.name);
+                // Generate unique referral code for new user
+                let userReferralCode = (0, referralCode_1.generateReferralCode)();
+                let isUniqueCode = false;
+                while (!isUniqueCode) {
+                    const existingCode = await User_1.default.findOne({ referralCode: userReferralCode });
+                    if (!existingCode) {
+                        isUniqueCode = true;
+                    }
+                    else {
+                        userReferralCode = (0, referralCode_1.generateReferralCode)();
+                    }
+                }
+                // Get referral code from query params if provided
+                const referralCodeFromQuery = req.query.referralCode;
+                let referredByUserId = null;
+                if (referralCodeFromQuery) {
+                    const referrer = await User_1.default.findOne({ referralCode: referralCodeFromQuery });
+                    if (referrer && referrer._id) {
+                        referredByUserId = referrer._id;
+                    }
+                }
                 user = await User_1.default.create({
                     email: order.email.toLowerCase(),
                     password: hashedPassword,
@@ -206,8 +230,35 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                     lastName,
                     isEmailVerified: true, // Auto-verify the account
                     role: 'user',
-                    status: 'active'
+                    status: 'active',
+                    referralCode: userReferralCode,
+                    loyaltyPoints: referredByUserId ? 100 : 0, // New user gets 100 points if referred
+                    referredBy: referredByUserId
                 });
+                // Award points to referrer and create referral record
+                if (referredByUserId) {
+                    try {
+                        const referrer = await User_1.default.findById(referredByUserId);
+                        if (referrer) {
+                            // Award 100 points to referrer
+                            referrer.loyaltyPoints = (referrer.loyaltyPoints || 0) + 100;
+                            await referrer.save();
+                            // Check for reward redemptions after awarding points
+                            await (0, rewardRedemption_1.checkAndCreateRewardRedemption)(referrer._id.toString());
+                            // Create referral record
+                            await Referral_1.default.create({
+                                referrerId: referrer._id,
+                                referredUserId: user._id,
+                                pointsAwarded: 100,
+                                referralCodeUsed: referralCodeFromQuery
+                            });
+                        }
+                    }
+                    catch (referralError) {
+                        console.error('Error processing referral:', referralError);
+                        // Don't fail order if referral processing fails
+                    }
+                }
                 // Send credentials email (non-blocking)
                 try {
                     await (0, emailService_1.sendCredentialsEmail)(user.email, {

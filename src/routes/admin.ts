@@ -40,6 +40,12 @@ import {
   getContact,
   updateContactStatus
 } from '../controllers/user/contact';
+import {
+  updateUserLoyaltyPoints,
+  getUserLoyaltyInfo,
+  updateRewardRedemptionStatus,
+  getPendingRewardRedemptions
+} from '../controllers/admin/loyalty';
 
 
 const router = Router();
@@ -59,6 +65,8 @@ router.get('/users/:userId', getUserById);
 router.put('/users/:userId/status', updateUserStatus);
 router.delete('/users/:userId', deleteUser);
 router.get('/users/stats', getUserStats);
+router.get('/users/:userId/loyalty', getUserLoyaltyInfo);
+router.put('/users/:userId/loyalty-points', updateUserLoyaltyPoints);
 
 // Admin pet management endpoints
 router.get('/pets', getPets);
@@ -90,5 +98,9 @@ router.delete('/qr-codes/:qrId', deleteQRCode);
 router.get('/contacts', getAllContacts);
 router.get('/contacts/:contactId', getContact);
 router.put('/contacts/:contactId/status', updateContactStatus);
+
+// Admin reward redemption endpoints
+router.get('/reward-redemptions/pending', getPendingRewardRedemptions);
+router.put('/reward-redemptions/:redemptionId/status', updateRewardRedemptionStatus);
 
 export default router;

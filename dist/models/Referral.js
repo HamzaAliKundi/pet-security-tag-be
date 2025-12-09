@@ -34,85 +34,28 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const UserSchema = new mongoose_1.Schema({
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        lowercase: true
-    },
-    password: {
-        type: String,
-        required: true
-    },
-    firstName: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    lastName: {
-        type: String,
-        required: true,
-        trim: true
-    },
-    role: {
-        type: String,
-        default: 'user'
-    },
-    status: {
-        type: String,
-        enum: ['active', 'inactive', 'suspended'],
-        default: 'active'
-    },
-    isEmailVerified: {
-        type: Boolean,
-        default: false
-    },
-    lastLogin: {
-        type: Date
-    },
-    phone: {
-        type: String,
-        trim: true
-    },
-    street: {
-        type: String,
-        trim: true
-    },
-    city: {
-        type: String,
-        trim: true
-    },
-    state: {
-        type: String,
-        trim: true
-    },
-    zipCode: {
-        type: String,
-        trim: true
-    },
-    country: {
-        type: String,
-        trim: true
-    },
-    referralCode: {
-        type: String,
-        unique: true,
-        sparse: true,
-        trim: true
-    },
-    loyaltyPoints: {
-        type: Number,
-        default: 0,
-        min: 0
-    },
-    referredBy: {
+const ReferralSchema = new mongoose_1.Schema({
+    referrerId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
-        default: null
+        required: true
+    },
+    referredUserId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        unique: true // A user can only be referred once
+    },
+    pointsAwarded: {
+        type: Number,
+        required: true,
+        default: 100
+    },
+    referralCodeUsed: {
+        type: String,
+        required: true
     }
 }, {
     timestamps: true
 });
-exports.default = mongoose_1.default.model('User', UserSchema);
+exports.default = mongoose_1.default.model('Referral', ReferralSchema);

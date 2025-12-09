@@ -15,6 +15,9 @@ export interface IUser extends Document {
   state?: string;
   zipCode?: string;
   country?: string;
+  referralCode?: string;
+  loyaltyPoints?: number;
+  referredBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -80,6 +83,22 @@ const UserSchema: Schema = new Schema({
   country: {
     type: String,
     trim: true
+  },
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
+  loyaltyPoints: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  referredBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   }
 }, {
   timestamps: true

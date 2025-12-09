@@ -10,6 +10,7 @@ const orders_1 = require("../controllers/admin/orders");
 const payments_1 = require("../controllers/admin/payments");
 const qrManagement_1 = require("../controllers/qrcode/qrManagement");
 const contact_1 = require("../controllers/user/contact");
+const loyalty_1 = require("../controllers/admin/loyalty");
 const router = (0, express_1.Router)();
 // All admin routes require authentication
 router.use(auth_1.authMiddleware);
@@ -23,6 +24,8 @@ router.get('/users/:userId', users_1.getUserById);
 router.put('/users/:userId/status', users_1.updateUserStatus);
 router.delete('/users/:userId', users_1.deleteUser);
 router.get('/users/stats', users_1.getUserStats);
+router.get('/users/:userId/loyalty', loyalty_1.getUserLoyaltyInfo);
+router.put('/users/:userId/loyalty-points', loyalty_1.updateUserLoyaltyPoints);
 // Admin pet management endpoints
 router.get('/pets', pets_1.getPets);
 router.get('/pets/:petId', pets_1.getPetById);
@@ -49,4 +52,7 @@ router.delete('/qr-codes/:qrId', qrManagement_1.deleteQRCode);
 router.get('/contacts', contact_1.getAllContacts);
 router.get('/contacts/:contactId', contact_1.getContact);
 router.put('/contacts/:contactId/status', contact_1.updateContactStatus);
+// Admin reward redemption endpoints
+router.get('/reward-redemptions/pending', loyalty_1.getPendingRewardRedemptions);
+router.put('/reward-redemptions/:redemptionId/status', loyalty_1.updateRewardRedemptionStatus);
 exports.default = router;
