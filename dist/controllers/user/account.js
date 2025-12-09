@@ -20,7 +20,7 @@ exports.getSingleUser = (0, express_async_handler_1.default)(async (req, res) =>
         res.status(401).json({ message: 'User not authenticated' });
         return;
     }
-    const user = await User_1.default.findById(userId).select('firstName lastName email phone');
+    const user = await User_1.default.findById(userId).select('firstName lastName email phone street city state zipCode country');
     if (!user) {
         res.status(404).json({ message: 'User not found' });
         return;
@@ -33,7 +33,12 @@ exports.getSingleUser = (0, express_async_handler_1.default)(async (req, res) =>
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-            phone: user.phone
+            phone: user.phone,
+            street: user.street,
+            city: user.city,
+            state: user.state,
+            zipCode: user.zipCode,
+            country: user.country
         }
     });
 });
@@ -42,7 +47,7 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
     var _a;
     // Assuming the user ID comes from the auth middleware (req.user.id)
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
-    const { firstName, lastName, email, phone } = req.body;
+    const { firstName, lastName, email, phone, street, city, state, zipCode, country } = req.body;
     if (!userId) {
         res.status(401).json({ message: 'User not authenticated' });
         return;
@@ -94,11 +99,27 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
     if (phone !== undefined) {
         updateData.phone = phone.trim() === '' ? undefined : phone.trim();
     }
+    // Add address fields if provided
+    if (street !== undefined) {
+        updateData.street = street.trim() === '' ? undefined : street.trim();
+    }
+    if (city !== undefined) {
+        updateData.city = city.trim() === '' ? undefined : city.trim();
+    }
+    if (state !== undefined) {
+        updateData.state = state.trim() === '' ? undefined : state.trim();
+    }
+    if (zipCode !== undefined) {
+        updateData.zipCode = zipCode.trim() === '' ? undefined : zipCode.trim();
+    }
+    if (country !== undefined) {
+        updateData.country = country.trim() === '' ? undefined : country.trim();
+    }
     // Update user
     const updatedUser = await User_1.default.findByIdAndUpdate(userId, updateData, {
         new: true,
         runValidators: true
-    }).select('firstName lastName email phone');
+    }).select('firstName lastName email phone street city state zipCode country');
     if (!updatedUser) {
         res.status(404).json({ message: 'User not found' });
         return;
@@ -111,7 +132,12 @@ exports.updateSingleUser = (0, express_async_handler_1.default)(async (req, res)
             firstName: updatedUser.firstName,
             lastName: updatedUser.lastName,
             email: updatedUser.email,
-            phone: updatedUser.phone
+            phone: updatedUser.phone,
+            street: updatedUser.street,
+            city: updatedUser.city,
+            state: updatedUser.state,
+            zipCode: updatedUser.zipCode,
+            country: updatedUser.country
         }
     });
 });
