@@ -41,6 +41,11 @@ import {
   updateContactStatus
 } from '../controllers/user/contact';
 import {
+  getAllInvestments,
+  getInvestmentById,
+  updateInvestmentStatus
+} from '../controllers/user/invest';
+import {
   updateUserLoyaltyPoints,
   getUserLoyaltyInfo,
   updateRewardRedemptionStatus,
@@ -98,6 +103,11 @@ router.delete('/qr-codes/:qrId', deleteQRCode);
 router.get('/contacts', getAllContacts);
 router.get('/contacts/:contactId', getContact);
 router.put('/contacts/:contactId/status', updateContactStatus);
+
+// Admin investment management endpoints
+router.get('/investments', getAllInvestments);
+router.get('/investments/:investmentId', getInvestmentById);
+router.put('/investments/:investmentId/status', updateInvestmentStatus);
 
 // Admin reward redemption endpoints
 router.get('/reward-redemptions/pending', getPendingRewardRedemptions);

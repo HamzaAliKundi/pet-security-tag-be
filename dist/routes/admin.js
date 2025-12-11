@@ -10,6 +10,7 @@ const orders_1 = require("../controllers/admin/orders");
 const payments_1 = require("../controllers/admin/payments");
 const qrManagement_1 = require("../controllers/qrcode/qrManagement");
 const contact_1 = require("../controllers/user/contact");
+const invest_1 = require("../controllers/user/invest");
 const loyalty_1 = require("../controllers/admin/loyalty");
 const router = (0, express_1.Router)();
 // All admin routes require authentication
@@ -52,6 +53,10 @@ router.delete('/qr-codes/:qrId', qrManagement_1.deleteQRCode);
 router.get('/contacts', contact_1.getAllContacts);
 router.get('/contacts/:contactId', contact_1.getContact);
 router.put('/contacts/:contactId/status', contact_1.updateContactStatus);
+// Admin investment management endpoints
+router.get('/investments', invest_1.getAllInvestments);
+router.get('/investments/:investmentId', invest_1.getInvestmentById);
+router.put('/investments/:investmentId/status', invest_1.updateInvestmentStatus);
 // Admin reward redemption endpoints
 router.get('/reward-redemptions/pending', loyalty_1.getPendingRewardRedemptions);
 router.put('/reward-redemptions/:redemptionId/status', loyalty_1.updateRewardRedemptionStatus);

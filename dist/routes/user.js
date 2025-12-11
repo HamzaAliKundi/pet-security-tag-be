@@ -4,6 +4,7 @@ const express_1 = require("express");
 const order_1 = require("../controllers/user/order");
 const userPetTagOrder_1 = require("../controllers/user/userPetTagOrder");
 const contact_1 = require("../controllers/user/contact");
+const invest_1 = require("../controllers/user/invest");
 const auth_1 = require("../middleware/auth");
 const account_1 = require("../controllers/user/account");
 const pet_1 = require("../controllers/user/pet");
@@ -19,6 +20,8 @@ router.post('/contact', contact_1.submitContact);
 router.get('/contact', contact_1.getAllContacts);
 router.get('/contact/:contactId', contact_1.getContact);
 router.put('/contact/:contactId/status', contact_1.updateContactStatus);
+// Investment inquiry endpoints (public)
+router.post('/invest', invest_1.submitInvestment);
 // User dashboard (Private)
 router.get("/get-single-user", auth_1.authMiddleware, account_1.getSingleUser);
 router.patch("/update-single-user", auth_1.authMiddleware, account_1.updateSingleUser);

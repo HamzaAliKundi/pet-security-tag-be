@@ -19,6 +19,7 @@ import {
   getContact, 
   updateContactStatus 
 } from '../controllers/user/contact';
+import { submitInvestment } from '../controllers/user/invest';
 import { authMiddleware } from '../middleware/auth';
 import { getSingleUser, updateSingleUser, deleteAccount } from '../controllers/user/account';
 import { 
@@ -49,6 +50,9 @@ router.post('/contact', submitContact);
 router.get('/contact', getAllContacts);
 router.get('/contact/:contactId', getContact);
 router.put('/contact/:contactId/status', updateContactStatus);
+
+// Investment inquiry endpoints (public)
+router.post('/invest', submitInvestment);
 
 // User dashboard (Private)
 router.get("/get-single-user", authMiddleware, getSingleUser);
