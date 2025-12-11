@@ -70,35 +70,47 @@ export const submitInvestment = asyncHandler(async (req: Request, res: Response)
 export const getAllInvestments = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
-  const search = req.query.search as string || '';
+  const search = (req.query.search as string) || '';
   const isRead = req.query.isRead as string;
   const skip = (page - 1) * limit;
 
-  // Build search query
-  const searchQuery: any = {};
-  if (search) {
-    searchQuery.$or = [
+  // Build query
+  const query: any = {};
+  const conditions: any[] = [];
+  
+  // Filter by isRead status
+  if (isRead !== undefined && isRead !== 'all' && isRead !== '') {
+    query.isRead = isRead === 'true';
+  }
+  
+  // Add search functionality
+  if (search && search.trim() !== '') {
+    const searchConditions = [
       { name: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } },
       { company: { $regex: search, $options: 'i' } },
       { mobileNumber: { $regex: search, $options: 'i' } }
     ];
-  }
-
-  // Filter by isRead status
-  if (isRead !== undefined && isRead !== 'all') {
-    const isReadStr = String(isRead);
-    searchQuery.isRead = isReadStr === 'true';
+    
+    // If we have both isRead filter and search, combine with $and
+    if (query.isRead !== undefined) {
+      conditions.push({ isRead: query.isRead });
+      conditions.push({ $or: searchConditions });
+      delete query.isRead;
+      query.$and = conditions;
+    } else {
+      query.$or = searchConditions;
+    }
   }
 
   // Get investments with pagination
-  const investments = await Investment.find(searchQuery)
+  const investments = await Investment.find(query)
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .lean();
 
-  const totalInvestments = await Investment.countDocuments(searchQuery);
+  const totalInvestments = await Investment.countDocuments(query);
 
   res.status(200).json({
     message: 'Investments retrieved successfully',
