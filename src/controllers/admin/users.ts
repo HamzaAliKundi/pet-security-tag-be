@@ -12,6 +12,7 @@ export const getUsers = asyncHandler(async (req: Request, res: Response): Promis
       limit = 10,
       search = '',
       status = 'all',
+      rewardStatus = 'all',
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
@@ -34,6 +35,109 @@ export const getUsers = asyncHandler(async (req: Request, res: Response): Promis
     // Build status filter
     if (status && status !== 'all') {
       searchQuery.status = status;
+    }
+
+    // Build reward status filter
+    // First, get user IDs that match the reward status filter
+    let rewardStatusUserIds: string[] | null = null;
+    if (rewardStatus && rewardStatus !== 'all') {
+      if (rewardStatus === 'none') {
+        // Users with no pending/shipped redemptions - exclude users with any pending/shipped rewards
+        const usersWithRewards = await RewardRedemption.find({
+          status: { $in: ['pending', 'shipped'] }
+        }).distinct('userId');
+        
+        const rewardUserIds = usersWithRewards.map((id: any) => id.toString());
+        if (rewardUserIds.length > 0) {
+          // Exclude users with rewards
+          if (searchQuery._id && searchQuery._id.$in) {
+            // Already have _id filter, filter out reward users
+            searchQuery._id.$in = searchQuery._id.$in.filter((id: any) => 
+              !rewardUserIds.includes(id.toString())
+            );
+            if (searchQuery._id.$in.length === 0) {
+              // No users match, return empty
+              res.status(200).json({
+                message: 'Users retrieved successfully',
+                status: 200,
+                users: [],
+                pagination: {
+                  currentPage: pageNum,
+                  totalPages: 0,
+                  totalUsers: 0,
+                  usersPerPage: limitNum,
+                  hasNextPage: false,
+                  hasPrevPage: false
+                }
+              });
+              return;
+            }
+          } else {
+            searchQuery._id = { $nin: rewardUserIds };
+          }
+        }
+        // Mark as handled, don't use rewardStatusUserIds
+        rewardStatusUserIds = null;
+      } else if (rewardStatus === 'voucher-pending') {
+        const redemptions = await RewardRedemption.find({
+          rewardTier: 1,
+          status: 'pending'
+        }).distinct('userId');
+        rewardStatusUserIds = redemptions.map((id: any) => id.toString());
+      } else if (rewardStatus === 'voucher-shipped') {
+        const redemptions = await RewardRedemption.find({
+          rewardTier: 1,
+          status: 'shipped'
+        }).distinct('userId');
+        rewardStatusUserIds = redemptions.map((id: any) => id.toString());
+      } else if (rewardStatus === 'gift-pending') {
+        const redemptions = await RewardRedemption.find({
+          rewardTier: 2,
+          status: 'pending'
+        }).distinct('userId');
+        rewardStatusUserIds = redemptions.map((id: any) => id.toString());
+      } else if (rewardStatus === 'gift-shipped') {
+        const redemptions = await RewardRedemption.find({
+          rewardTier: 2,
+          status: 'shipped'
+        }).distinct('userId');
+        rewardStatusUserIds = redemptions.map((id: any) => id.toString());
+      } else if (rewardStatus === 'pending') {
+        // Any pending reward (voucher or gift)
+        const redemptions = await RewardRedemption.find({
+          status: 'pending'
+        }).distinct('userId');
+        rewardStatusUserIds = redemptions.map((id: any) => id.toString());
+      } else if (rewardStatus === 'shipped') {
+        // Any shipped reward (voucher or gift)
+        const redemptions = await RewardRedemption.find({
+          status: 'shipped'
+        }).distinct('userId');
+        rewardStatusUserIds = redemptions.map((id: any) => id.toString());
+      }
+      
+      // Apply filter to search query (only if not handled above for 'none')
+      if (rewardStatusUserIds !== null && rewardStatus !== 'none') {
+        if (rewardStatusUserIds.length === 0) {
+          // No users match the filter, return empty result
+          res.status(200).json({
+            message: 'Users retrieved successfully',
+            status: 200,
+            users: [],
+            pagination: {
+              currentPage: pageNum,
+              totalPages: 0,
+              totalUsers: 0,
+              usersPerPage: limitNum,
+              hasNextPage: false,
+              hasPrevPage: false
+            }
+          });
+          return;
+        }
+        // Apply _id filter (no existing _id filter at this point since 'none' is handled separately)
+        searchQuery._id = { $in: rewardStatusUserIds };
+      }
     }
 
     // Build sort object
