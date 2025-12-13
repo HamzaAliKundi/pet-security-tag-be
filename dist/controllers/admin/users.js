@@ -5,13 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUserStats = exports.deleteUser = exports.updateUserStatus = exports.getUserById = exports.getUsers = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const User_1 = __importDefault(require("../../models/User"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
 const RewardRedemption_1 = __importDefault(require("../../models/RewardRedemption"));
 // Get all users with search, filtering, and pagination
 exports.getUsers = (0, express_async_handler_1.default)(async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = '', status = 'all', rewardStatus = 'all', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+        const { page = 1, limit = 10, search = '', status = 'all', rewardStatus = 'all', country = '', city = '', sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
@@ -28,6 +29,11 @@ exports.getUsers = (0, express_async_handler_1.default)(async (req, res) => {
         if (status && status !== 'all') {
             searchQuery.status = status;
         }
+        // Build country and city filters first (will be combined with reward status filter later)
+        const hasCountryFilter = country && country.trim() !== '';
+        const hasCityFilter = city && city.trim() !== '';
+        const countryStr = hasCountryFilter ? country.trim() : '';
+        const cityStr = hasCityFilter ? city.trim() : '';
         // Build reward status filter
         // First, get user IDs that match the reward status filter
         let rewardStatusUserIds = null;
@@ -129,9 +135,54 @@ exports.getUsers = (0, express_async_handler_1.default)(async (req, res) => {
                     });
                     return;
                 }
-                // Apply _id filter (no existing _id filter at this point since 'none' is handled separately)
-                searchQuery._id = { $in: rewardStatusUserIds };
+                // Convert string IDs to ObjectIds for proper querying
+                // Note: distinct returns ObjectIds, but we converted to strings, so convert back
+                const rewardStatusObjectIds = rewardStatusUserIds
+                    .filter(id => mongoose_1.default.Types.ObjectId.isValid(id))
+                    .map(id => new mongoose_1.default.Types.ObjectId(id));
+                if (rewardStatusObjectIds.length === 0) {
+                    // No valid ObjectIds, return empty
+                    res.status(200).json({
+                        message: 'Users retrieved successfully',
+                        status: 200,
+                        users: [],
+                        pagination: {
+                            currentPage: pageNum,
+                            totalPages: 0,
+                            totalUsers: 0,
+                            usersPerPage: limitNum,
+                            hasNextPage: false,
+                            hasPrevPage: false
+                        }
+                    });
+                    return;
+                }
+                // Apply _id filter - MongoDB will AND this with country/city filters
+                if (searchQuery._id && searchQuery._id.$nin) {
+                    // Handle edge case where 'none' was previously applied
+                    const existingExclusions = searchQuery._id.$nin.map((id) => id.toString());
+                    const filteredIds = rewardStatusObjectIds.filter((id) => !existingExclusions.includes(id.toString()));
+                    searchQuery._id = filteredIds.length > 0 ? { $in: filteredIds } : { $in: [] };
+                }
+                else {
+                    searchQuery._id = { $in: rewardStatusObjectIds };
+                }
             }
+        }
+        // Now apply country and city filters (after reward status filter is applied)
+        // These will be ANDed with the _id filter from reward status
+        // Regex on null/undefined fields will simply not match (which is correct behavior)
+        if (hasCountryFilter) {
+            searchQuery.country = {
+                $regex: countryStr,
+                $options: 'i'
+            };
+        }
+        if (hasCityFilter) {
+            searchQuery.city = {
+                $regex: cityStr,
+                $options: 'i'
+            };
         }
         // Build sort object
         const sortObj = {};
