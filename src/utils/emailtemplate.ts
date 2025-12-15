@@ -1080,8 +1080,7 @@ export const credentialsEmailTemplate = compile(`
         <div class="content">
             <div class="welcome-text">Welcome to Digital Tails, {{customerName}}!</div>
             <p class="description">
-                Your account has been created successfully! We've generated your login credentials 
-                so you can access your dashboard and manage your pet's protection.
+            Your account has been successfully created. We’ve generated your login details so you can access your dashboard and manage your pet’s protection. After logging in, you can update your password by selecting "Forgot Password"
             </p>
             
             <div class="credentials-box">
