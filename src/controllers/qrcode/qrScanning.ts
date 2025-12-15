@@ -1174,6 +1174,7 @@ export const getPetProfileByQR = asyncHandler(async (req: Request, res: Response
       tagColor: order?.tagColor || 'blue',
       owner: {
         name: `${user.firstName} ${user.lastName}`,
+        phone: user.phone || null,
         // Hide full address for privacy
         address: {
           street: user.street ? `***${user.street.slice(-4)}` : 'Hidden',

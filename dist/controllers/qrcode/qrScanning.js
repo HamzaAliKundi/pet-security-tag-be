@@ -1086,6 +1086,7 @@ exports.getPetProfileByQR = (0, express_async_handler_1.default)(async (req, res
             tagColor: (order === null || order === void 0 ? void 0 : order.tagColor) || 'blue',
             owner: {
                 name: `${user.firstName} ${user.lastName}`,
+                phone: user.phone || null,
                 // Hide full address for privacy
                 address: {
                     street: user.street ? `***${user.street.slice(-4)}` : 'Hidden',
