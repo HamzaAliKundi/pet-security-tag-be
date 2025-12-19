@@ -46,6 +46,12 @@ import {
   updateInvestmentStatus
 } from '../controllers/user/invest';
 import {
+  getAllReviews,
+  getReviewById,
+  updateReview,
+  deleteReview
+} from '../controllers/admin/reviews';
+import {
   updateUserLoyaltyPoints,
   getUserLoyaltyInfo,
   updateRewardRedemptionStatus,
@@ -112,5 +118,11 @@ router.put('/investments/:investmentId/status', updateInvestmentStatus);
 // Admin reward redemption endpoints
 router.get('/reward-redemptions/pending', getPendingRewardRedemptions);
 router.put('/reward-redemptions/:redemptionId/status', updateRewardRedemptionStatus);
+
+// Admin review management endpoints
+router.get('/reviews', getAllReviews);
+router.get('/reviews/:reviewId', getReviewById);
+router.put('/reviews/:reviewId', updateReview);
+router.delete('/reviews/:reviewId', deleteReview);
 
 export default router;

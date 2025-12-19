@@ -11,6 +11,7 @@ const payments_1 = require("../controllers/admin/payments");
 const qrManagement_1 = require("../controllers/qrcode/qrManagement");
 const contact_1 = require("../controllers/user/contact");
 const invest_1 = require("../controllers/user/invest");
+const reviews_1 = require("../controllers/admin/reviews");
 const loyalty_1 = require("../controllers/admin/loyalty");
 const router = (0, express_1.Router)();
 // All admin routes require authentication
@@ -60,4 +61,9 @@ router.put('/investments/:investmentId/status', invest_1.updateInvestmentStatus)
 // Admin reward redemption endpoints
 router.get('/reward-redemptions/pending', loyalty_1.getPendingRewardRedemptions);
 router.put('/reward-redemptions/:redemptionId/status', loyalty_1.updateRewardRedemptionStatus);
+// Admin review management endpoints
+router.get('/reviews', reviews_1.getAllReviews);
+router.get('/reviews/:reviewId', reviews_1.getReviewById);
+router.put('/reviews/:reviewId', reviews_1.updateReview);
+router.delete('/reviews/:reviewId', reviews_1.deleteReview);
 exports.default = router;

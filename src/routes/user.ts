@@ -20,6 +20,7 @@ import {
   updateContactStatus 
 } from '../controllers/user/contact';
 import { submitInvestment } from '../controllers/user/invest';
+import { submitReview, getMyReview, getApprovedReviews } from '../controllers/user/review';
 import { authMiddleware } from '../middleware/auth';
 import { getSingleUser, updateSingleUser, deleteAccount } from '../controllers/user/account';
 import { 
@@ -53,6 +54,11 @@ router.put('/contact/:contactId/status', updateContactStatus);
 
 // Investment inquiry endpoints (public)
 router.post('/invest', submitInvestment);
+
+// Review endpoints
+router.post('/reviews', authMiddleware, submitReview);
+router.get('/reviews/my-review', authMiddleware, getMyReview);
+router.get('/reviews', getApprovedReviews);
 
 // User dashboard (Private)
 router.get("/get-single-user", authMiddleware, getSingleUser);
