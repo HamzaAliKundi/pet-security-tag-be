@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { 
   createOrder,
-  confirmPayment as confirmPublicOrderPayment
+  confirmPayment as confirmPublicOrderPayment,
+  getLatestOrders
 } from '../controllers/user/order';
 import { 
   createUserPetTagOrder,
@@ -45,6 +46,7 @@ const router = Router();
 // Pet tag order endpoints (public)
 router.post('/orders', createOrder);
 router.post('/orders/:orderId/confirm-payment', confirmPublicOrderPayment);
+router.get('/orders/latest', getLatestOrders);
 
 // Contact form endpoints (public)
 router.post('/contact', submitContact);

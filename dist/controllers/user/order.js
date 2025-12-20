@@ -3,9 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.confirmPayment = exports.createOrder = void 0;
+exports.getLatestOrders = exports.confirmPayment = exports.createOrder = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
+const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
 const User_1 = __importDefault(require("../../models/User"));
 const Pet_1 = __importDefault(require("../../models/Pet"));
 const Referral_1 = __importDefault(require("../../models/Referral"));
@@ -409,6 +410,67 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
         console.error('Error confirming payment:', error);
         res.status(500).json({
             message: 'Internal server error while confirming payment',
+            error: 'Internal server error'
+        });
+    }
+});
+// Get latest orders for public display (notification widget)
+exports.getLatestOrders = (0, express_async_handler_1.default)(async (req, res) => {
+    var _a, _b;
+    try {
+        const limit = parseInt(req.query.limit) || 5;
+        // Get latest orders from both collections
+        const [userRecentOrders, petRecentOrders] = await Promise.all([
+            // UserPetTagOrder - need to populate userId to get name
+            UserPetTagOrder_1.default.find({ status: 'paid' })
+                .sort({ createdAt: -1 })
+                .limit(limit)
+                .populate('userId', 'firstName lastName')
+                .select('userId city country createdAt')
+                .lean(),
+            // PetTagOrder - has name directly
+            PetTagOrder_1.default.find({ status: 'paid' })
+                .sort({ createdAt: -1 })
+                .limit(limit)
+                .select('name shippingAddress createdAt')
+                .lean()
+        ]);
+        // Transform and combine orders
+        const allOrders = [];
+        // Process UserPetTagOrder
+        for (const order of userRecentOrders) {
+            const user = order.userId;
+            const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Customer';
+            allOrders.push({
+                name: name || 'Customer',
+                city: order.city || null,
+                country: order.country || null,
+                createdAt: order.createdAt
+            });
+        }
+        // Process PetTagOrder
+        for (const order of petRecentOrders) {
+            allOrders.push({
+                name: order.name || 'Customer',
+                city: ((_a = order.shippingAddress) === null || _a === void 0 ? void 0 : _a.city) || null,
+                country: ((_b = order.shippingAddress) === null || _b === void 0 ? void 0 : _b.country) || null,
+                createdAt: order.createdAt
+            });
+        }
+        // Sort all orders by creation time (newest first)
+        allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // Take only the requested limit
+        const latestOrders = allOrders.slice(0, limit);
+        res.status(200).json({
+            message: 'Latest orders retrieved successfully',
+            status: 200,
+            orders: latestOrders
+        });
+    }
+    catch (error) {
+        console.error('Error getting latest orders:', error);
+        res.status(500).json({
+            message: 'Failed to get latest orders',
             error: 'Internal server error'
         });
     }

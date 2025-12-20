@@ -16,6 +16,7 @@ const router = (0, express_1.Router)();
 // Pet tag order endpoints (public)
 router.post('/orders', order_1.createOrder);
 router.post('/orders/:orderId/confirm-payment', order_1.confirmPayment);
+router.get('/orders/latest', order_1.getLatestOrders);
 // Contact form endpoints (public)
 router.post('/contact', contact_1.submitContact);
 router.get('/contact', contact_1.getAllContacts);

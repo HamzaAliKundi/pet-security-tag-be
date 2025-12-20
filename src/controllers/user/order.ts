@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import PetTagOrder from '../../models/PetTagOrder';
+import UserPetTagOrder from '../../models/UserPetTagOrder';
 import User from '../../models/User';
 import Pet from '../../models/Pet';
 import Referral from '../../models/Referral';
@@ -430,6 +431,74 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
     console.error('Error confirming payment:', error);
     res.status(500).json({
       message: 'Internal server error while confirming payment',
+      error: 'Internal server error'
+    });
+  }
+});
+
+// Get latest orders for public display (notification widget)
+export const getLatestOrders = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limit = parseInt(req.query.limit as string) || 5;
+
+    // Get latest orders from both collections
+    const [userRecentOrders, petRecentOrders] = await Promise.all([
+      // UserPetTagOrder - need to populate userId to get name
+      UserPetTagOrder.find({ status: 'paid' })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .populate('userId', 'firstName lastName')
+        .select('userId city country createdAt')
+        .lean(),
+      // PetTagOrder - has name directly
+      PetTagOrder.find({ status: 'paid' })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .select('name shippingAddress createdAt')
+        .lean()
+    ]);
+
+    // Transform and combine orders
+    const allOrders = [];
+
+    // Process UserPetTagOrder
+    for (const order of userRecentOrders) {
+      const user = order.userId as any;
+      const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Customer';
+      
+      allOrders.push({
+        name: name || 'Customer',
+        city: order.city || null,
+        country: order.country || null,
+        createdAt: order.createdAt
+      });
+    }
+
+    // Process PetTagOrder
+    for (const order of petRecentOrders) {
+      allOrders.push({
+        name: order.name || 'Customer',
+        city: order.shippingAddress?.city || null,
+        country: order.shippingAddress?.country || null,
+        createdAt: order.createdAt
+      });
+    }
+
+    // Sort all orders by creation time (newest first)
+    allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    // Take only the requested limit
+    const latestOrders = allOrders.slice(0, limit);
+
+    res.status(200).json({
+      message: 'Latest orders retrieved successfully',
+      status: 200,
+      orders: latestOrders
+    });
+  } catch (error) {
+    console.error('Error getting latest orders:', error);
+    res.status(500).json({
+      message: 'Failed to get latest orders',
       error: 'Internal server error'
     });
   }
