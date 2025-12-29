@@ -39,8 +39,7 @@ const DiscountSchema = new mongoose_1.Schema({
         type: String,
         required: true,
         unique: true,
-        trim: true,
-        uppercase: true
+        trim: true
     },
     isActive: {
         type: Boolean,

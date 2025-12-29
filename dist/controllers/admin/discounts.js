@@ -61,9 +61,9 @@ exports.createDiscount = (0, express_async_handler_1.default)(async (req, res) =
             });
             return;
         }
-        // Check if discount code already exists
+        // Check if discount code already exists (case-sensitive)
         const existingDiscount = await Discount_1.default.findOne({
-            code: code.trim().toUpperCase()
+            code: code.trim()
         });
         if (existingDiscount) {
             res.status(409).json({
@@ -73,7 +73,7 @@ exports.createDiscount = (0, express_async_handler_1.default)(async (req, res) =
             return;
         }
         const discount = new Discount_1.default({
-            code: code.trim().toUpperCase(),
+            code: code.trim(),
             isActive: true
         });
         await discount.save();
@@ -111,10 +111,10 @@ exports.updateDiscount = (0, express_async_handler_1.default)(async (req, res) =
             });
             return;
         }
-        // If code is being updated, check for duplicates
+        // If code is being updated, check for duplicates (case-sensitive)
         if (code && code.trim() !== discount.code) {
             const existingDiscount = await Discount_1.default.findOne({
-                code: code.trim().toUpperCase(),
+                code: code.trim(),
                 _id: { $ne: discountId }
             });
             if (existingDiscount) {
@@ -124,7 +124,7 @@ exports.updateDiscount = (0, express_async_handler_1.default)(async (req, res) =
                 });
                 return;
             }
-            discount.code = code.trim().toUpperCase();
+            discount.code = code.trim();
         }
         if (typeof isActive === 'boolean') {
             discount.isActive = isActive;

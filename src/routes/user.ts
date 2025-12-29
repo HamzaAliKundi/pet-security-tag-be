@@ -39,6 +39,7 @@ import {
   confirmSubscriptionPayment
 } from '../controllers/user/subscription';
 import { getLoyaltyInfo, getReferralLink } from '../controllers/user/loyalty';
+import { validateDiscount } from '../controllers/user/discount';
 import { upload } from '../utils/imageUploadService';
 
 const router = Router();
@@ -47,6 +48,9 @@ const router = Router();
 router.post('/orders', createOrder);
 router.post('/orders/:orderId/confirm-payment', confirmPublicOrderPayment);
 router.get('/orders/latest', getLatestOrders);
+
+// Discount validation endpoint (public)
+router.post('/discounts/validate', validateDiscount);
 
 // Contact form endpoints (public)
 router.post('/contact', submitContact);

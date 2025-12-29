@@ -12,8 +12,7 @@ const DiscountSchema: Schema = new Schema({
     type: String,
     required: true,
     unique: true,
-    trim: true,
-    uppercase: true
+    trim: true
   },
   isActive: {
     type: Boolean,

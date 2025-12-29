@@ -11,12 +11,15 @@ const account_1 = require("../controllers/user/account");
 const pet_1 = require("../controllers/user/pet");
 const subscription_1 = require("../controllers/user/subscription");
 const loyalty_1 = require("../controllers/user/loyalty");
+const discount_1 = require("../controllers/user/discount");
 const imageUploadService_1 = require("../utils/imageUploadService");
 const router = (0, express_1.Router)();
 // Pet tag order endpoints (public)
 router.post('/orders', order_1.createOrder);
 router.post('/orders/:orderId/confirm-payment', order_1.confirmPayment);
 router.get('/orders/latest', order_1.getLatestOrders);
+// Discount validation endpoint (public)
+router.post('/discounts/validate', discount_1.validateDiscount);
 // Contact form endpoints (public)
 router.post('/contact', contact_1.submitContact);
 router.get('/contact', contact_1.getAllContacts);

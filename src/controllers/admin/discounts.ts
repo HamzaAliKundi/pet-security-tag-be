@@ -63,9 +63,9 @@ export const createDiscount = asyncHandler(async (req: Request, res: Response): 
       return;
     }
     
-    // Check if discount code already exists
+    // Check if discount code already exists (case-sensitive)
     const existingDiscount = await Discount.findOne({ 
-      code: code.trim().toUpperCase() 
+      code: code.trim() 
     });
     
     if (existingDiscount) {
@@ -77,7 +77,7 @@ export const createDiscount = asyncHandler(async (req: Request, res: Response): 
     }
     
     const discount = new Discount({
-      code: code.trim().toUpperCase(),
+      code: code.trim(),
       isActive: true
     });
     
@@ -120,10 +120,10 @@ export const updateDiscount = asyncHandler(async (req: Request, res: Response): 
       return;
     }
     
-    // If code is being updated, check for duplicates
+    // If code is being updated, check for duplicates (case-sensitive)
     if (code && code.trim() !== discount.code) {
       const existingDiscount = await Discount.findOne({ 
-        code: code.trim().toUpperCase(),
+        code: code.trim(),
         _id: { $ne: discountId }
       });
       
@@ -135,7 +135,7 @@ export const updateDiscount = asyncHandler(async (req: Request, res: Response): 
         return;
       }
       
-      discount.code = code.trim().toUpperCase();
+      discount.code = code.trim();
     }
     
     if (typeof isActive === 'boolean') {
