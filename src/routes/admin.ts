@@ -57,6 +57,13 @@ import {
   updateRewardRedemptionStatus,
   getPendingRewardRedemptions
 } from '../controllers/admin/loyalty';
+import {
+  getDiscounts,
+  getDiscountById,
+  createDiscount,
+  updateDiscount,
+  deleteDiscount
+} from '../controllers/admin/discounts';
 
 
 const router = Router();
@@ -124,5 +131,12 @@ router.get('/reviews', getAllReviews);
 router.get('/reviews/:reviewId', getReviewById);
 router.put('/reviews/:reviewId', updateReview);
 router.delete('/reviews/:reviewId', deleteReview);
+
+// Admin discount management endpoints
+router.get('/discounts', getDiscounts);
+router.get('/discounts/:discountId', getDiscountById);
+router.post('/discounts', createDiscount);
+router.put('/discounts/:discountId', updateDiscount);
+router.delete('/discounts/:discountId', deleteDiscount);
 
 export default router;

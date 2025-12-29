@@ -13,6 +13,7 @@ const contact_1 = require("../controllers/user/contact");
 const invest_1 = require("../controllers/user/invest");
 const reviews_1 = require("../controllers/admin/reviews");
 const loyalty_1 = require("../controllers/admin/loyalty");
+const discounts_1 = require("../controllers/admin/discounts");
 const router = (0, express_1.Router)();
 // All admin routes require authentication
 router.use(auth_1.authMiddleware);
@@ -66,4 +67,10 @@ router.get('/reviews', reviews_1.getAllReviews);
 router.get('/reviews/:reviewId', reviews_1.getReviewById);
 router.put('/reviews/:reviewId', reviews_1.updateReview);
 router.delete('/reviews/:reviewId', reviews_1.deleteReview);
+// Admin discount management endpoints
+router.get('/discounts', discounts_1.getDiscounts);
+router.get('/discounts/:discountId', discounts_1.getDiscountById);
+router.post('/discounts', discounts_1.createDiscount);
+router.put('/discounts/:discountId', discounts_1.updateDiscount);
+router.delete('/discounts/:discountId', discounts_1.deleteDiscount);
 exports.default = router;
