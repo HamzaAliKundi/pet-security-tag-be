@@ -86,25 +86,34 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
         else {
             colorsArray = Array(quantity).fill('blue');
         }
-        // Create Stripe payment intent
-        const amountInCents = Math.round((totalCostEuro || 0) * 100); // Convert to cents
-        const paymentResult = await (0, stripeService_1.createPaymentIntent)({
-            amount: amountInCents,
-            currency: 'eur',
-            metadata: {
-                userId: email, // Using email as userId for now
-                petName,
-                quantity: quantity.toString(),
-                tagColor: colorsArray.join(',') // Store all colors as comma-separated string in metadata
-            }
-        });
-        if (!paymentResult.success) {
-            res.status(400).json({
-                message: 'Failed to create payment intent: ' + (paymentResult.error || 'Unknown error')
+        // Skip payment intent creation if total cost is 0 (free order with discount)
+        let paymentResult = null;
+        let orderStatus = 'pending';
+        if (totalCostEuro > 0) {
+            // Create Stripe payment intent only if there's a charge
+            const amountInCents = Math.round(totalCostEuro * 100); // Convert to cents
+            paymentResult = await (0, stripeService_1.createPaymentIntent)({
+                amount: amountInCents,
+                currency: 'eur',
+                metadata: {
+                    userId: email, // Using email as userId for now
+                    petName,
+                    quantity: quantity.toString(),
+                    tagColor: colorsArray.join(',') // Store all colors as comma-separated string in metadata
+                }
             });
-            return;
+            if (!paymentResult.success) {
+                res.status(400).json({
+                    message: 'Failed to create payment intent: ' + (paymentResult.error || 'Unknown error')
+                });
+                return;
+            }
         }
-        // Create the order with payment intent ID
+        else {
+            // For free orders (discount applied), skip payment and mark as paid
+            orderStatus = 'paid';
+        }
+        // Create the order
         const order = await PetTagOrder_1.default.create({
             email,
             name,
@@ -116,10 +125,159 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
             totalCostEuro,
             phone,
             shippingAddress,
-            paymentIntentId: paymentResult.paymentIntentId,
-            status: 'pending',
+            paymentIntentId: paymentResult === null || paymentResult === void 0 ? void 0 : paymentResult.paymentIntentId,
+            status: orderStatus,
             termsAccepted: termsAccepted || false
         });
+        // If free order, automatically create user account and pets
+        if (totalCostEuro === 0) {
+            // Check if user already exists
+            let user = await User_1.default.findOne({ email: order.email.toLowerCase() });
+            let isNewUser = false;
+            let generatedPassword = '';
+            if (!user) {
+                // Create new user account
+                isNewUser = true;
+                generatedPassword = generateRandomPassword();
+                const salt = await bcryptjs_1.default.genSalt(env_1.env.SALT_ROUNDS);
+                const hashedPassword = await bcryptjs_1.default.hash(generatedPassword, salt);
+                const { firstName, lastName } = splitName(order.name);
+                // Generate unique referral code for new user
+                let userReferralCode = (0, referralCode_1.generateReferralCode)();
+                let isUniqueCode = false;
+                while (!isUniqueCode) {
+                    const existingCode = await User_1.default.findOne({ referralCode: userReferralCode });
+                    if (!existingCode) {
+                        isUniqueCode = true;
+                    }
+                    else {
+                        userReferralCode = (0, referralCode_1.generateReferralCode)();
+                    }
+                }
+                // Get referral code from query params if provided
+                const referralCodeFromQuery = req.query.referralCode;
+                let referredByUserId = null;
+                if (referralCodeFromQuery) {
+                    const referrer = await User_1.default.findOne({ referralCode: referralCodeFromQuery });
+                    if (referrer && referrer._id) {
+                        referredByUserId = referrer._id;
+                    }
+                }
+                user = await User_1.default.create({
+                    email: order.email.toLowerCase(),
+                    password: hashedPassword,
+                    firstName,
+                    lastName,
+                    isEmailVerified: true, // Auto-verify the account
+                    role: 'user',
+                    status: 'active',
+                    referralCode: userReferralCode,
+                    loyaltyPoints: referredByUserId ? 100 : 0, // New user gets 100 points if referred
+                    referredBy: referredByUserId
+                });
+                // Award points to referrer and create referral record
+                if (referredByUserId) {
+                    try {
+                        const referrer = await User_1.default.findById(referredByUserId);
+                        if (referrer) {
+                            // Award 100 points to referrer
+                            referrer.loyaltyPoints = (referrer.loyaltyPoints || 0) + 100;
+                            await referrer.save();
+                            // Check for reward redemptions after awarding points
+                            await (0, rewardRedemption_1.checkAndCreateRewardRedemption)(referrer._id.toString());
+                            // Create referral record
+                            await Referral_1.default.create({
+                                referrerId: referrer._id,
+                                referredUserId: user._id,
+                                pointsAwarded: 100,
+                                referralCodeUsed: referralCodeFromQuery
+                            });
+                        }
+                    }
+                    catch (referralError) {
+                        console.error('Error processing referral:', referralError);
+                        // Don't fail order if referral processing fails
+                    }
+                }
+            }
+            // Create pet records based on quantity
+            const createdPets = [];
+            for (let i = 0; i < order.quantity; i++) {
+                const pet = await Pet_1.default.create({
+                    userId: user._id,
+                    userPetTagOrderId: order._id,
+                    orderType: 'PetTagOrder',
+                    petName: order.quantity > 1 ? `${order.petName} #${i + 1}` : order.petName,
+                    hideName: false,
+                    age: undefined,
+                    breed: '',
+                    medication: '',
+                    allergies: '',
+                    notes: ''
+                });
+                createdPets.push(pet);
+            }
+            // Send credentials email (non-blocking)
+            if (isNewUser) {
+                try {
+                    await (0, emailService_1.sendCredentialsEmail)(user.email, {
+                        customerName: user.firstName || 'Valued Customer',
+                        email: user.email,
+                        password: generatedPassword,
+                        loginUrl: `${env_1.env.FRONTEND_URL}`
+                    });
+                }
+                catch (emailError) {
+                    console.error('Failed to send credentials email:', emailError);
+                    // Don't fail the order if email fails
+                }
+            }
+            // Send order confirmation email (non-blocking)
+            try {
+                await (0, emailService_1.sendOrderConfirmationEmail)(user.email, {
+                    customerName: user.firstName || 'Valued Customer',
+                    orderNumber: order._id.toString(),
+                    petName: order.petName,
+                    quantity: order.quantity,
+                    orderDate: new Date().toLocaleDateString('en-GB'),
+                    totalAmount: order.totalCostEuro || 0
+                });
+            }
+            catch (emailError) {
+                console.error('Failed to send order confirmation email:', emailError);
+                // Don't fail the order if email fails
+            }
+            res.status(201).json({
+                message: 'Order created successfully (free order)',
+                status: 201,
+                order: {
+                    _id: order._id,
+                    email: order.email,
+                    name: order.name,
+                    petName: order.petName,
+                    quantity: order.quantity,
+                    subscriptionType: order.subscriptionType,
+                    status: order.status,
+                    tagColor: order.tagColor,
+                    tagColors: order.tagColors,
+                    totalCostEuro: order.totalCostEuro,
+                    phone: order.phone,
+                    shippingAddress: order.shippingAddress,
+                    paymentIntentId: order.paymentIntentId,
+                    createdAt: order.createdAt
+                },
+                payment: null, // No payment for free orders
+                isFreeOrder: true,
+                user: {
+                    _id: user._id,
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName
+                },
+                pets: createdPets
+            });
+            return;
+        }
         res.status(201).json({
             message: 'Order created successfully',
             status: 201,
@@ -132,16 +290,17 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
                 subscriptionType: order.subscriptionType,
                 status: order.status,
                 tagColor: order.tagColor,
+                tagColors: order.tagColors,
                 totalCostEuro: order.totalCostEuro,
                 phone: order.phone,
                 shippingAddress: order.shippingAddress,
                 paymentIntentId: order.paymentIntentId,
                 createdAt: order.createdAt
             },
-            payment: {
+            payment: paymentResult ? {
                 clientSecret: paymentResult.clientSecret,
                 paymentIntentId: paymentResult.paymentIntentId
-            }
+            } : null
         });
     }
     catch (error) {
