@@ -77,7 +77,7 @@ exports.getUserPetCount = (0, express_async_handler_1.default)(async (req, res) 
 exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-    const { quantity, petName, totalCostEuro, tagColor, tagColors, phone, street, city, state, zipCode, country, isReplacement = false } = req.body;
+    const { quantity, petName, totalCostEuro, currency, tagColor, tagColors, phone, street, city, state, zipCode, country, isReplacement = false } = req.body;
     // Validate required fields
     if (!quantity || !petName || !totalCostEuro || (!tagColor && !tagColors) || !phone || !street || !city || !state || !zipCode || !country) {
         res.status(400).json({
@@ -151,11 +151,13 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
                 return;
             }
         }
+        // Determine currency - use from request or default to GBP (same logic as subscriptions)
+        const finalCurrency = currency ? currency.toLowerCase() : 'gbp';
         // Create Stripe payment intent
-        const amountInCents = Math.round(totalCostEuro * 100); // Convert euros to cents
+        const amountInCents = Math.round(totalCostEuro * 100); // Convert to cents
         const paymentResult = await (0, stripeService_1.createPaymentIntent)({
             amount: amountInCents,
-            currency: 'eur',
+            currency: finalCurrency, // Use currency from frontend (GBP, USD, CAD) instead of hardcoded EUR
             metadata: {
                 userId: userId.toString(),
                 petName: petName.trim(),

@@ -44,6 +44,7 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
     quantity, 
     petName, 
     totalCostEuro, 
+    currency,
     tagColor, 
     tagColors,
     phone, 
@@ -134,11 +135,15 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
         return;
       }
     }
+    
+    // Determine currency - use from request or default to GBP (same logic as subscriptions)
+    const finalCurrency = currency ? currency.toLowerCase() : 'gbp';
+    
     // Create Stripe payment intent
-    const amountInCents = Math.round(totalCostEuro * 100); // Convert euros to cents
+    const amountInCents = Math.round(totalCostEuro * 100); // Convert to cents
     const paymentResult = await createPaymentIntent({
       amount: amountInCents,
-      currency: 'eur',
+      currency: finalCurrency, // Use currency from frontend (GBP, USD, CAD) instead of hardcoded EUR
       metadata: {
         userId: userId.toString(),
         petName: petName.trim(),

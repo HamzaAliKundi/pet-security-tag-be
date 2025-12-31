@@ -18,7 +18,7 @@ const env_1 = require("../../config/env");
 const referralCode_1 = require("../../utils/referralCode");
 const rewardRedemption_1 = require("../../utils/rewardRedemption");
 exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
-    const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
+    const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
     if (!email || !name || !petName || !quantity || !subscriptionType) {
         res.status(400).json({
             message: 'All fields are required: email, name, petName, quantity, subscriptionType'
@@ -86,6 +86,8 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
         else {
             colorsArray = Array(quantity).fill('blue');
         }
+        // Determine currency - use from request or default to GBP (same logic as subscriptions)
+        const finalCurrency = currency ? currency.toLowerCase() : 'gbp';
         // Skip payment intent creation if total cost is 0 (free order with discount)
         let paymentResult = null;
         let orderStatus = 'pending';
@@ -94,7 +96,7 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
             const amountInCents = Math.round(totalCostEuro * 100); // Convert to cents
             paymentResult = await (0, stripeService_1.createPaymentIntent)({
                 amount: amountInCents,
-                currency: 'eur',
+                currency: finalCurrency, // Use currency from frontend (GBP, USD, CAD) instead of hardcoded EUR
                 metadata: {
                     userId: email, // Using email as userId for now
                     petName,

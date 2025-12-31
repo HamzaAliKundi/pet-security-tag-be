@@ -14,7 +14,7 @@ import { generateReferralCode } from '../../utils/referralCode';
 import { checkAndCreateRewardRedemption } from '../../utils/rewardRedemption';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
+  const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
 
   if (!email || !name || !petName || !quantity || !subscriptionType) {
     res.status(400).json({ 
@@ -87,6 +87,9 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       colorsArray = Array(quantity).fill('blue');
     }
 
+    // Determine currency - use from request or default to GBP (same logic as subscriptions)
+    const finalCurrency = currency ? currency.toLowerCase() : 'gbp';
+    
     // Skip payment intent creation if total cost is 0 (free order with discount)
     let paymentResult = null;
     let orderStatus = 'pending';
@@ -96,7 +99,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       const amountInCents = Math.round(totalCostEuro * 100); // Convert to cents
       paymentResult = await createPaymentIntent({
         amount: amountInCents,
-        currency: 'eur',
+        currency: finalCurrency, // Use currency from frontend (GBP, USD, CAD) instead of hardcoded EUR
         metadata: {
           userId: email, // Using email as userId for now
           petName,
