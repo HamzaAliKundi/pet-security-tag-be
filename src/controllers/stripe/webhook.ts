@@ -310,33 +310,104 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void
 }
 
 /**
- * Handle subscription update (e.g., plan change, cancellation)
+ * Handle subscription update (e.g., plan change, cancellation, incomplete -> active transition)
  */
 async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription): Promise<void> {
   try {
-    const subscription = await Subscription.findOne({
+    // Find subscription by stripeSubscriptionId (don't filter by status - we need to handle all statuses)
+    let subscription = await Subscription.findOne({
       stripeSubscriptionId: stripeSubscription.id,
-      status: 'active',
     });
 
-    if (subscription) {
-      // Update subscription status based on Stripe status
-      if (stripeSubscription.status === 'canceled' || stripeSubscription.status === 'unpaid') {
+    // Type assertion to access properties that may not be in TypeScript definitions
+    const subscriptionAny: any = stripeSubscription;
+    const periodEnd = subscriptionAny.current_period_end;
+    const periodStart = subscriptionAny.current_period_start;
+
+    // Handle status transitions
+    if (stripeSubscription.status === 'canceled' || stripeSubscription.status === 'unpaid') {
+      if (subscription) {
         subscription.status = 'cancelled';
         await subscription.save();
-      } else if (stripeSubscription.status === 'active') {
-        // Update end date based on current period end
-        // Type assertion to access properties that may not be in TypeScript definitions
-        const subscriptionAny: any = stripeSubscription;
-        const periodEnd = subscriptionAny.current_period_end;
+        console.log(`Subscription ${subscription._id} marked as cancelled`);
+      }
+      return;
+    }
+
+    // If subscription becomes active and we have metadata, we can create/update the record
+    if (stripeSubscription.status === 'active') {
+      if (subscription) {
+        // Update existing subscription
+        subscription.status = 'active';
         if (periodEnd) {
           subscription.endDate = new Date(periodEnd * 1000);
-          await subscription.save();
+        }
+        if (periodStart) {
+          subscription.startDate = new Date(periodStart * 1000);
+        }
+        await subscription.save();
+        console.log(`✅ Updated subscription ${subscription._id} to active status`);
+      } else {
+        // Subscription record doesn't exist - try to create it from metadata
+        // This can happen if confirmSubscriptionPayment wasn't called or failed
+        const metadata = stripeSubscription.metadata || {};
+        const userId = metadata.userId;
+        const qrCodeId = metadata.qrCodeId;
+        const subscriptionType = metadata.subscriptionType || 'monthly';
+
+        if (userId) {
+          // Calculate end date based on subscription type
+          const startDate = periodStart ? new Date(periodStart * 1000) : new Date();
+          const endDate = periodEnd ? new Date(periodEnd * 1000) : new Date();
+
+          // If we don't have period end, calculate based on type
+          if (!periodEnd) {
+            if (subscriptionType === 'monthly') {
+              endDate.setMonth(endDate.getMonth() + 1);
+            } else if (subscriptionType === 'yearly') {
+              endDate.setFullYear(endDate.getFullYear() + 1);
+            } else if (subscriptionType === 'lifetime') {
+              endDate.setFullYear(endDate.getFullYear() + 100);
+            }
+          }
+
+          try {
+            subscription = await Subscription.create({
+              userId,
+              qrCodeId: qrCodeId || undefined,
+              type: subscriptionType as 'monthly' | 'yearly' | 'lifetime',
+              status: 'active',
+              startDate,
+              endDate,
+              stripeSubscriptionId: stripeSubscription.id,
+              amountPaid: 0, // Will be updated when invoice payment succeeds
+              currency: 'eur', // Default, will be updated from invoice
+              autoRenew: subscriptionType !== 'lifetime',
+            });
+            console.log(`✅ Created subscription record ${subscription._id} from webhook (incomplete -> active transition)`);
+          } catch (createError: any) {
+            console.error('Error creating subscription from webhook:', createError);
+            // If creation fails (e.g., duplicate key), try to find it again
+            subscription = await Subscription.findOne({
+              stripeSubscriptionId: stripeSubscription.id,
+            });
+            if (subscription) {
+              subscription.status = 'active';
+              if (periodEnd) {
+                subscription.endDate = new Date(periodEnd * 1000);
+              }
+              await subscription.save();
+              console.log(`✅ Updated existing subscription ${subscription._id} to active`);
+            }
+          }
+        } else {
+          console.log(`⚠️ Cannot create subscription record: missing userId in metadata for Stripe subscription ${stripeSubscription.id}`);
         }
       }
     }
   } catch (error) {
     console.error('Error handling customer.subscription.updated:', error);
+    throw error;
   }
 }
 
