@@ -8,6 +8,26 @@ const express_async_handler_1 = __importDefault(require("express-async-handler")
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder")); // Added import for PetTagOrder
 const emailService_1 = require("../../utils/emailService");
+// Helper function to get currency symbol based on country
+const getCurrencySymbol = (country) => {
+    if (!country)
+        return '£'; // Default to GBP
+    const countryLower = country.toLowerCase().trim();
+    // USA variations
+    if (countryLower === 'united states' || countryLower === 'usa' || countryLower === 'us') {
+        return '$';
+    }
+    // Canada variations
+    if (countryLower === 'canada' || countryLower === 'ca') {
+        return '$';
+    }
+    // UK variations (default to GBP)
+    if (countryLower === 'united kingdom' || countryLower === 'uk' || countryLower === 'gb') {
+        return '£';
+    }
+    // Default to GBP for all other countries (Europe, etc.)
+    return '£';
+};
 // Get all orders with search, filtering, and pagination
 exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -87,18 +107,19 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
         const paginatedOrders = allOrders.slice(skip, skip + limitNum);
         // Transform orders data to match frontend requirements
         const transformedOrders = paginatedOrders.map((order) => {
-            var _a, _b, _c, _d, _e;
+            var _a, _b, _c, _d, _e, _f;
             // Check if it's a UserPetTagOrder (has userId) or PetTagOrder (has email/name)
             if (order.userId) {
                 // UserPetTagOrder
                 const user = order.userId;
+                const currencySymbol = getCurrencySymbol(order.country);
                 return {
                     id: order._id,
                     orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
                     customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
                     email: user ? user.email : 'No Email',
                     items: order.quantity || 1,
-                    total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+                    total: `${currencySymbol}${(order.totalCostEuro || 0).toFixed(2)}`,
                     status: order.status || 'pending',
                     date: new Date(order.createdAt).toISOString().split('T')[0],
                     tracking: order.paymentIntentId || 'N/A',
@@ -119,13 +140,14 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
             }
             else {
                 // PetTagOrder
+                const currencySymbol = getCurrencySymbol((_a = order.shippingAddress) === null || _a === void 0 ? void 0 : _a.country);
                 return {
                     id: order._id,
                     orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
                     customer: order.name || 'No Name',
                     email: order.email || 'No Email',
                     items: order.quantity || 1,
-                    total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+                    total: `${currencySymbol}${(order.totalCostEuro || 0).toFixed(2)}`,
                     status: order.status || 'pending',
                     date: new Date(order.createdAt).toISOString().split('T')[0],
                     tracking: order.paymentIntentId || 'N/A',
@@ -133,11 +155,11 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
                     tagColor: order.tagColor || (order.tagColors && order.tagColors.length > 0 ? order.tagColors[0] : 'Unknown'),
                     tagColors: order.tagColors || (order.tagColor ? [order.tagColor] : []),
                     phone: order.phone || 'No Phone',
-                    street: ((_a = order.shippingAddress) === null || _a === void 0 ? void 0 : _a.street) || '',
-                    city: ((_b = order.shippingAddress) === null || _b === void 0 ? void 0 : _b.city) || '',
-                    state: ((_c = order.shippingAddress) === null || _c === void 0 ? void 0 : _c.state) || '',
-                    zipCode: ((_d = order.shippingAddress) === null || _d === void 0 ? void 0 : _d.zipCode) || '',
-                    country: ((_e = order.shippingAddress) === null || _e === void 0 ? void 0 : _e.country) || '',
+                    street: ((_b = order.shippingAddress) === null || _b === void 0 ? void 0 : _b.street) || '',
+                    city: ((_c = order.shippingAddress) === null || _c === void 0 ? void 0 : _c.city) || '',
+                    state: ((_d = order.shippingAddress) === null || _d === void 0 ? void 0 : _d.state) || '',
+                    zipCode: ((_e = order.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
+                    country: ((_f = order.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
                     paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
                     orderType: 'PetTagOrder',
                     createdAt: order.createdAt,
@@ -170,7 +192,7 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
 });
 // Get single order by ID
 exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => {
-    var _a, _b, _c, _d, _e, _f;
+    var _a, _b, _c, _d, _e, _f, _g;
     try {
         const { orderId } = req.params;
         // Search in both models
@@ -194,13 +216,14 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
         if (orderType === 'UserPetTagOrder') {
             // UserPetTagOrder
             const user = order.userId;
+            const currencySymbol = getCurrencySymbol(order.country);
             transformedOrder = {
                 id: order._id,
                 orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
                 customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
                 email: user ? user.email : 'No Email',
                 items: order.quantity,
-                total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+                total: `${currencySymbol}${(order.totalCostEuro || 0).toFixed(2)}`,
                 status: order.status,
                 date: new Date(order.createdAt).toISOString().split('T')[0],
                 tracking: order.paymentIntentId || 'N/A',
@@ -222,13 +245,14 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
         else {
             // PetTagOrder
             const petOrder = order;
+            const currencySymbol = getCurrencySymbol((_a = petOrder.shippingAddress) === null || _a === void 0 ? void 0 : _a.country);
             transformedOrder = {
                 id: petOrder._id,
                 orderId: petOrder.paymentIntentId || `ORD-${petOrder._id.toString().slice(-6).toUpperCase()}`,
                 customer: petOrder.name || 'No Name',
                 email: petOrder.email || 'No Email',
                 items: petOrder.quantity,
-                total: `€${((_a = petOrder.totalCostEuro) === null || _a === void 0 ? void 0 : _a.toFixed(2)) || '0.00'}`,
+                total: `${currencySymbol}${((_b = petOrder.totalCostEuro) === null || _b === void 0 ? void 0 : _b.toFixed(2)) || '0.00'}`,
                 status: petOrder.status,
                 date: new Date(petOrder.createdAt).toISOString().split('T')[0],
                 tracking: petOrder.paymentIntentId || 'N/A',
@@ -236,11 +260,11 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
                 tagColor: petOrder.tagColor || (petOrder.tagColors && petOrder.tagColors.length > 0 ? petOrder.tagColors[0] : 'Unknown'),
                 tagColors: petOrder.tagColors || (petOrder.tagColor ? [petOrder.tagColor] : []),
                 phone: petOrder.phone,
-                street: ((_b = petOrder.shippingAddress) === null || _b === void 0 ? void 0 : _b.street) || '',
-                city: ((_c = petOrder.shippingAddress) === null || _c === void 0 ? void 0 : _c.city) || '',
-                state: ((_d = petOrder.shippingAddress) === null || _d === void 0 ? void 0 : _d.state) || '',
-                zipCode: ((_e = petOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
-                country: ((_f = petOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
+                street: ((_c = petOrder.shippingAddress) === null || _c === void 0 ? void 0 : _c.street) || '',
+                city: ((_d = petOrder.shippingAddress) === null || _d === void 0 ? void 0 : _d.city) || '',
+                state: ((_e = petOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.state) || '',
+                zipCode: ((_f = petOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.zipCode) || '',
+                country: ((_g = petOrder.shippingAddress) === null || _g === void 0 ? void 0 : _g.country) || '',
                 paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
                 orderType: 'PetTagOrder',
                 createdAt: petOrder.createdAt,
@@ -263,7 +287,7 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
 });
 // Update order status
 exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f;
     try {
         const { orderId } = req.params;
         const { status, trackingNumber, deliveryCompany } = req.body;
@@ -357,13 +381,14 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
         let transformedOrder;
         if (orderType === 'UserPetTagOrder') {
             const user = updatedOrder.userId;
+            const currencySymbol = getCurrencySymbol(updatedOrder.country);
             transformedOrder = {
                 id: updatedOrder._id,
                 orderId: updatedOrder.orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`,
                 customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
                 email: user ? user.email : 'No Email',
                 items: updatedOrder.quantity,
-                total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
+                total: `${currencySymbol}${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
                 status: updatedOrder.status,
                 date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
                 tracking: updatedOrder.trackingNumber || updatedOrder.paymentIntentId || 'N/A',
@@ -384,13 +409,14 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
             };
         }
         else {
+            const currencySymbol = getCurrencySymbol((_a = updatedOrder.shippingAddress) === null || _a === void 0 ? void 0 : _a.country);
             transformedOrder = {
                 id: updatedOrder._id,
                 orderId: updatedOrder.orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`,
                 customer: updatedOrder.name || 'Unknown Customer',
                 email: updatedOrder.email || 'No Email',
                 items: updatedOrder.quantity,
-                total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
+                total: `${currencySymbol}${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
                 status: updatedOrder.status,
                 date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
                 tracking: updatedOrder.trackingNumber || updatedOrder.paymentIntentId || 'N/A',
@@ -398,11 +424,11 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
                 tagColor: updatedOrder.tagColor || (updatedOrder.tagColors && updatedOrder.tagColors.length > 0 ? updatedOrder.tagColors[0] : 'Unknown'),
                 tagColors: updatedOrder.tagColors || (updatedOrder.tagColor ? [updatedOrder.tagColor] : []),
                 phone: updatedOrder.phone,
-                street: ((_a = updatedOrder.shippingAddress) === null || _a === void 0 ? void 0 : _a.street) || '',
-                city: ((_b = updatedOrder.shippingAddress) === null || _b === void 0 ? void 0 : _b.city) || '',
-                state: ((_c = updatedOrder.shippingAddress) === null || _c === void 0 ? void 0 : _c.state) || '',
-                zipCode: ((_d = updatedOrder.shippingAddress) === null || _d === void 0 ? void 0 : _d.zipCode) || '',
-                country: ((_e = updatedOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.country) || '',
+                street: ((_b = updatedOrder.shippingAddress) === null || _b === void 0 ? void 0 : _b.street) || '',
+                city: ((_c = updatedOrder.shippingAddress) === null || _c === void 0 ? void 0 : _c.city) || '',
+                state: ((_d = updatedOrder.shippingAddress) === null || _d === void 0 ? void 0 : _d.state) || '',
+                zipCode: ((_e = updatedOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
+                country: ((_f = updatedOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
                 paymentStatus: updatedOrder.paymentStatus || 'pending',
                 trackingNumber: updatedOrder.trackingNumber,
                 deliveryCompany: updatedOrder.deliveryCompany,

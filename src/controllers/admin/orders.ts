@@ -5,6 +5,31 @@ import User from '../../models/User';
 import PetTagOrder from '../../models/PetTagOrder'; // Added import for PetTagOrder
 import { sendOrderShippedEmail, sendOrderCancelledEmail } from '../../utils/emailService';
 
+// Helper function to get currency symbol based on country
+const getCurrencySymbol = (country: string | undefined | null): string => {
+  if (!country) return '£'; // Default to GBP
+  
+  const countryLower = country.toLowerCase().trim();
+  
+  // USA variations
+  if (countryLower === 'united states' || countryLower === 'usa' || countryLower === 'us') {
+    return '$';
+  }
+  
+  // Canada variations
+  if (countryLower === 'canada' || countryLower === 'ca') {
+    return '$';
+  }
+  
+  // UK variations (default to GBP)
+  if (countryLower === 'united kingdom' || countryLower === 'uk' || countryLower === 'gb') {
+    return '£';
+  }
+  
+  // Default to GBP for all other countries (Europe, etc.)
+  return '£';
+};
+
 // Get all orders with search, filtering, and pagination
 export const getOrders = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
@@ -109,13 +134,14 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
       if (order.userId) {
         // UserPetTagOrder
         const user = order.userId as any;
+        const currencySymbol = getCurrencySymbol(order.country);
                  return {
            id: order._id,
            orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
            customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
            email: user ? user.email : 'No Email',
            items: order.quantity || 1,
-           total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+           total: `${currencySymbol}${(order.totalCostEuro || 0).toFixed(2)}`,
            status: order.status || 'pending',
            date: new Date(order.createdAt).toISOString().split('T')[0],
            tracking: order.paymentIntentId || 'N/A',
@@ -135,13 +161,14 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
          };
       } else {
         // PetTagOrder
+        const currencySymbol = getCurrencySymbol(order.shippingAddress?.country);
                  return {
            id: order._id,
            orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
            customer: order.name || 'No Name',
            email: order.email || 'No Email',
            items: order.quantity || 1,
-           total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+           total: `${currencySymbol}${(order.totalCostEuro || 0).toFixed(2)}`,
            status: order.status || 'pending',
            date: new Date(order.createdAt).toISOString().split('T')[0],
            tracking: order.paymentIntentId || 'N/A',
@@ -217,13 +244,14 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
     if (orderType === 'UserPetTagOrder') {
       // UserPetTagOrder
       const user = order.userId as any;
+      const currencySymbol = getCurrencySymbol(order.country);
       transformedOrder = {
         id: order._id,
         orderId: order.paymentIntentId || `ORD-${order._id.toString().slice(-6).toUpperCase()}`,
         customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
         email: user ? user.email : 'No Email',
         items: order.quantity,
-                 total: `€${(order.totalCostEuro || 0).toFixed(2)}`,
+                 total: `${currencySymbol}${(order.totalCostEuro || 0).toFixed(2)}`,
         status: order.status,
         date: new Date(order.createdAt).toISOString().split('T')[0],
         tracking: order.paymentIntentId || 'N/A',
@@ -244,13 +272,14 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
     } else {
       // PetTagOrder
       const petOrder = order as any;
+      const currencySymbol = getCurrencySymbol(petOrder.shippingAddress?.country);
       transformedOrder = {
         id: petOrder._id,
         orderId: petOrder.paymentIntentId || `ORD-${petOrder._id.toString().slice(-6).toUpperCase()}`,
         customer: petOrder.name || 'No Name',
         email: petOrder.email || 'No Email',
         items: petOrder.quantity,
-        total: `€${petOrder.totalCostEuro?.toFixed(2) || '0.00'}`,
+        total: `${currencySymbol}${petOrder.totalCostEuro?.toFixed(2) || '0.00'}`,
         status: petOrder.status,
         date: new Date(petOrder.createdAt).toISOString().split('T')[0],
         tracking: petOrder.paymentIntentId || 'N/A',
@@ -395,13 +424,14 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
     let transformedOrder: any;
     if (orderType === 'UserPetTagOrder') {
       const user = updatedOrder.userId as any;
+      const currencySymbol = getCurrencySymbol(updatedOrder.country);
       transformedOrder = {
         id: updatedOrder._id,
         orderId: (updatedOrder as any).orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`,
         customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
         email: user ? user.email : 'No Email',
         items: updatedOrder.quantity,
-        total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
+        total: `${currencySymbol}${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
         status: updatedOrder.status,
         date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
         tracking: updatedOrder.trackingNumber || updatedOrder.paymentIntentId || 'N/A',
@@ -421,13 +451,14 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         updatedAt: updatedOrder.updatedAt
       };
     } else {
+      const currencySymbol = getCurrencySymbol(updatedOrder.shippingAddress?.country);
       transformedOrder = {
         id: updatedOrder._id,
         orderId: (updatedOrder as any).orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`,
         customer: updatedOrder.name || 'Unknown Customer',
         email: updatedOrder.email || 'No Email',
         items: updatedOrder.quantity,
-        total: `€${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
+        total: `${currencySymbol}${(updatedOrder.totalCostEuro || 0).toFixed(2)}`,
         status: updatedOrder.status,
         date: new Date(updatedOrder.createdAt).toISOString().split('T')[0],
         tracking: updatedOrder.trackingNumber || updatedOrder.paymentIntentId || 'N/A',

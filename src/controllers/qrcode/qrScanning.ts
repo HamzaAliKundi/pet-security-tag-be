@@ -4,7 +4,7 @@ import QRCode from '../../models/QRCode';
 import Subscription from '../../models/Subscription';
 import Pet from '../../models/Pet';
 import User from '../../models/User';
-import { createPaymentIntent, createSubscriptionPaymentIntent, createStripeSubscription } from '../../utils/stripeService';
+import { createPaymentIntent, createSubscriptionPaymentIntent, createStripeSubscription, paySubscriptionInvoice } from '../../utils/stripeService';
 import { sendQRCodeFirstScanEmail } from '../../utils/emailService';
 
 // Check QR code availability (Public route)
@@ -1070,6 +1070,22 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
     console.log(`✅ Subscription record created in database: ${subscription._id}`);
     console.log(`   Type: ${subscription.type}, Status: ${subscription.status}, AutoRenew: ${subscription.autoRenew}`);
     console.log(`   Stripe Subscription ID: ${subscription.stripeSubscriptionId || 'N/A'}`);
+
+    // Update Stripe subscription status to active after payment is confirmed
+    // This fixes the "Incomplete" status in Stripe dashboard
+    if (stripeSubscriptionId && paymentIntentId) {
+      try {
+        const payResult = await paySubscriptionInvoice(stripeSubscriptionId, paymentIntentId);
+        if (!payResult.success) {
+          console.warn(`⚠️  Could not pay invoice for subscription ${stripeSubscriptionId}: ${payResult.error}`);
+          console.log('   Subscription is still active in our database. This is a Stripe dashboard display issue.');
+        }
+      } catch (stripeError: any) {
+        // Log error but don't fail the request - subscription is already created in our DB
+        console.error('⚠️  Error updating Stripe subscription status (non-critical):', stripeError.message);
+        console.log('   Subscription is still active in our database. This is a Stripe dashboard display issue.');
+      }
+    }
 
     res.status(200).json({
       message: 'Subscription activated and QR code verified successfully',
