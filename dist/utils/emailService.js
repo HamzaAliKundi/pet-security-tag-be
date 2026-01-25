@@ -53,7 +53,20 @@ const sendPasswordResetEmail = async (email, name, token) => {
 exports.sendPasswordResetEmail = sendPasswordResetEmail;
 // Send order confirmation email
 const sendOrderConfirmationEmail = async (email, orderData) => {
-    const html = (0, emailtemplate_1.orderConfirmationTemplate)(orderData);
+    // Format pet names for email display
+    const petNamesDisplay = orderData.petNames && orderData.petNames.length > 0
+        ? orderData.petNames.join(', ')
+        : orderData.petName;
+    const petNamesLabel = orderData.petNames && orderData.petNames.length > 1
+        ? 'Pet Names:'
+        : 'Pet Name:';
+    const templateData = {
+        ...orderData,
+        petNamesDisplay,
+        petNamesLabel,
+        hasMultiplePets: orderData.petNames && orderData.petNames.length > 1
+    };
+    const html = (0, emailtemplate_1.orderConfirmationTemplate)(templateData);
     const msg = {
         to: email,
         from: {

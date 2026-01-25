@@ -480,8 +480,8 @@ exports.orderConfirmationTemplate = (0, handlebars_1.compile)(`
                     <span class="order-value">{{orderNumber}}</span>
                 </div>
                 <div class="order-row">
-                    <span class="order-label">Pet Name:</span>
-                    <span class="order-value">{{petName}}</span>
+                    <span class="order-label">{{petNamesLabel}}</span>
+                    <span class="order-value">{{petNamesDisplay}}</span>
                 </div>
                 <div class="order-row">
                     <span class="order-label">Quantity:</span>

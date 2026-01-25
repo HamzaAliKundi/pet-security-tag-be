@@ -14,14 +14,38 @@ import { generateReferralCode } from '../../utils/referralCode';
 import { checkAndCreateRewardRedemption } from '../../utils/rewardRedemption';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email, name, petName, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
+  const { email, name, petName, petNames, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
 
-  if (!email || !name || !petName || !quantity || !subscriptionType) {
+  // Validate pet names - accept either petName (backward compatibility) or petNames array
+  let petNamesArray: string[] = [];
+  if (petNames && Array.isArray(petNames) && petNames.length > 0) {
+    // Use petNames array if provided
+    petNamesArray = petNames.filter(name => name && name.trim()).map(name => name.trim());
+  } else if (petName) {
+    // Fallback to single petName for backward compatibility
+    petNamesArray = [petName.trim()];
+  }
+
+  if (!email || !name || !quantity || !subscriptionType) {
     res.status(400).json({ 
-      message: 'All fields are required: email, name, petName, quantity, subscriptionType' 
+      message: 'All fields are required: email, name, quantity, subscriptionType' 
     });
     return;
   }
+
+  // Validate that we have enough pet names for the quantity
+  if (petNamesArray.length < quantity) {
+    res.status(400).json({ 
+      message: `Please provide names for all ${quantity} pet(s). You provided ${petNamesArray.length} name(s).` 
+    });
+    return;
+  }
+
+  // Trim petNames array to match quantity exactly
+  petNamesArray = petNamesArray.slice(0, quantity);
+  
+  // Use first pet name for backward compatibility (petName field)
+  const firstPetName = petNamesArray[0] || '';
 
   if (!termsAccepted) {
     res.status(400).json({ 
@@ -102,8 +126,9 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
         currency: finalCurrency, // Use currency from frontend (GBP, USD, CAD) instead of hardcoded EUR
         metadata: {
           userId: email, // Using email as userId for now
-          petName,
-          quantity: quantity.toString(),
+          petName: firstPetName, // Use first pet name for metadata
+          petNames: petNamesArray.join(','), // Store all pet names as comma-separated string
+          quantity: quantity, // Number (will be converted to string by Stripe)
           tagColor: colorsArray.join(',') // Store all colors as comma-separated string in metadata
         }
       });
@@ -123,7 +148,8 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
     const order = await PetTagOrder.create({
       email,
       name,
-      petName,
+      petName: firstPetName, // Keep for backward compatibility
+      petNames: petNamesArray, // Store array of pet names
       quantity,
       subscriptionType,
       tagColor: quantity === 1 ? colorsArray[0] : undefined, // Keep for backward compatibility
@@ -214,14 +240,18 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
         }
       }
 
-      // Create pet records based on quantity
+      // Create pet records based on quantity - use petNames array if available
       const createdPets = [];
+      const petNamesToUse = (order.petNames && order.petNames.length > 0) 
+        ? order.petNames 
+        : (order.quantity > 1 ? Array(order.quantity).fill(null).map((_, i) => `${order.petName} #${i + 1}`) : [order.petName]);
+      
       for (let i = 0; i < order.quantity; i++) {
         const pet = await Pet.create({
           userId: user._id,
           userPetTagOrderId: order._id,
           orderType: 'PetTagOrder',
-          petName: order.quantity > 1 ? `${order.petName} #${i + 1}` : order.petName,
+          petName: petNamesToUse[i] || (order.quantity > 1 ? `${order.petName} #${i + 1}` : order.petName),
           hideName: false,
           age: undefined,
           breed: '',
@@ -249,10 +279,15 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
 
       // Send order confirmation email (non-blocking)
       try {
+        const petNamesForEmail = (order.petNames && order.petNames.length > 0) 
+          ? order.petNames 
+          : [order.petName];
+        
         await sendOrderConfirmationEmail(user.email, {
           customerName: user.firstName || 'Valued Customer',
           orderNumber: order._id.toString(),
-          petName: order.petName,
+          petName: order.petName, // Keep for backward compatibility
+          petNames: petNamesForEmail, // Array of pet names
           quantity: order.quantity,
           orderDate: new Date().toLocaleDateString('en-GB'),
           totalAmount: order.totalCostEuro || 0
@@ -464,18 +499,23 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
         }
       }
 
-      // Create pet records based on quantity
+      // Create pet records based on quantity - use petNames array if available
       // NOTE: QR codes are NOT assigned at this point - they will be assigned when the user scans the tag
       const createdPets = [];
       
       try {
+        // Use petNames array if available, otherwise fallback to auto-generated names
+        const petNamesToUse = (order.petNames && order.petNames.length > 0) 
+          ? order.petNames 
+          : (order.quantity > 1 ? Array(order.quantity).fill(null).map((_, i) => `${order.petName} #${i + 1}`) : [order.petName]);
+        
         for (let i = 0; i < order.quantity; i++) {
           // Create pet record for each tag
           const pet = await Pet.create({
             userId: user._id,
             userPetTagOrderId: order._id,
             orderType: 'PetTagOrder',
-            petName: order.quantity > 1 ? `${order.petName} #${i + 1}` : order.petName,
+            petName: petNamesToUse[i] || (order.quantity > 1 ? `${order.petName} #${i + 1}` : order.petName),
             hideName: false,
             age: undefined,
             breed: '',
@@ -492,10 +532,15 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
 
         // Send order confirmation email (non-blocking)
         try {
+          const petNamesForEmail = (order.petNames && order.petNames.length > 0) 
+            ? order.petNames 
+            : [order.petName];
+          
           await sendOrderConfirmationEmail(user.email, {
             customerName: user.firstName || 'Valued Customer',
             orderNumber: order.paymentIntentId || order._id.toString(),
-            petName: order.petName,
+            petName: order.petName, // Keep for backward compatibility
+            petNames: petNamesForEmail, // Array of pet names
             quantity: order.quantity,
             orderDate: new Date().toLocaleDateString('en-GB'),
             totalAmount: order.totalCostEuro || 0

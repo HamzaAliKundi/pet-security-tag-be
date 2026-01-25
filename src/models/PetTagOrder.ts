@@ -3,7 +3,8 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IPetTagOrder extends Document {
   email: string;
   name: string;
-  petName: string;
+  petName: string; // Keep for backward compatibility
+  petNames?: string[]; // Array of pet names for each tag (length should match quantity)
   quantity: number;
   subscriptionType: 'monthly' | 'yearly';
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
@@ -42,6 +43,10 @@ const PetTagOrderSchema: Schema = new Schema({
     type: String,
     required: true,
     trim: true
+  },
+  petNames: {
+    type: [String],
+    default: undefined
   },
   quantity: {
     type: Number,

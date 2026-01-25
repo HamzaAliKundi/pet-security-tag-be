@@ -51,6 +51,10 @@ const PetTagOrderSchema = new mongoose_1.Schema({
         required: true,
         trim: true
     },
+    petNames: {
+        type: [String],
+        default: undefined
+    },
     quantity: {
         type: Number,
         required: true,

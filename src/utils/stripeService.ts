@@ -12,7 +12,8 @@ export interface CreatePaymentIntentParams {
   metadata: {
     userId: string;
     petName: string;
-    quantity: number;
+    petNames?: string; // Comma-separated string of all pet names
+    quantity: string | number; // Can be string or number (Stripe converts to string)
     tagColor: string;
   };
 }

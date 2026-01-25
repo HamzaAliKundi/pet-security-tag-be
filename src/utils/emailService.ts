@@ -64,12 +64,29 @@ export const sendPasswordResetEmail = async (email: string, name: string, token:
 export const sendOrderConfirmationEmail = async (email: string, orderData: {
   customerName: string;
   orderNumber: string;
-  petName: string;
+  petName: string; // Keep for backward compatibility
+  petNames?: string[]; // Array of pet names
   quantity: number;
   orderDate: string;
   totalAmount: number;
 }): Promise<void> => {
-  const html = orderConfirmationTemplate(orderData);
+  // Format pet names for email display
+  const petNamesDisplay = orderData.petNames && orderData.petNames.length > 0
+    ? orderData.petNames.join(', ')
+    : orderData.petName;
+  
+  const petNamesLabel = orderData.petNames && orderData.petNames.length > 1
+    ? 'Pet Names:'
+    : 'Pet Name:';
+  
+  const templateData = {
+    ...orderData,
+    petNamesDisplay,
+    petNamesLabel,
+    hasMultiplePets: orderData.petNames && orderData.petNames.length > 1
+  };
+  
+  const html = orderConfirmationTemplate(templateData);
 
   const msg = {
     to: email,
