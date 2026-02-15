@@ -993,11 +993,19 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
         console.log(`✅ Subscription record created in database: ${subscription._id}`);
         console.log(`   Type: ${subscription.type}, Status: ${subscription.status}, AutoRenew: ${subscription.autoRenew}`);
         console.log(`   Stripe Subscription ID: ${subscription.stripeSubscriptionId || 'N/A'}`);
-        // Do NOT call paySubscriptionInvoice here. The invoice was already paid when the frontend
-        // confirmed the PaymentIntent (confirmCardPayment). Calling stripe.invoices.pay() would
-        // trigger a second charge attempt and cause: (1) duplicate charge, (2) bank decline
-        // ("Do not honor"), (3) one Succeeded + one Failed row in Stripe for the same subscription.
-        // Stripe automatically marks the subscription invoice as paid when the PaymentIntent succeeds.
+        // Mark the Stripe invoice as paid without charging again (customer already paid via PaymentIntent).
+        // Using paid_out_of_band tells Stripe to mark the invoice paid so the subscription shows Active.
+        if (stripeSubscriptionId && paymentIntentId) {
+            try {
+                const payResult = await (0, stripeService_1.paySubscriptionInvoice)(stripeSubscriptionId, paymentIntentId, { markPaidOutOfBand: true });
+                if (!payResult.success) {
+                    console.warn(`⚠️  Could not mark invoice paid for subscription ${stripeSubscriptionId}: ${payResult.error}`);
+                }
+            }
+            catch (stripeError) {
+                console.error('⚠️  Error marking Stripe invoice paid (non-critical):', stripeError === null || stripeError === void 0 ? void 0 : stripeError.message);
+            }
+        }
         res.status(200).json({
             message: 'Subscription activated and QR code verified successfully',
             status: 200,

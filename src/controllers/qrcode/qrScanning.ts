@@ -4,7 +4,7 @@ import QRCode from '../../models/QRCode';
 import Subscription from '../../models/Subscription';
 import Pet from '../../models/Pet';
 import User from '../../models/User';
-import { createPaymentIntent, createSubscriptionPaymentIntent, createStripeSubscription } from '../../utils/stripeService';
+import { createPaymentIntent, createSubscriptionPaymentIntent, createStripeSubscription, paySubscriptionInvoice } from '../../utils/stripeService';
 import { sendQRCodeFirstScanEmail } from '../../utils/emailService';
 
 // Check QR code availability (Public route)
@@ -1071,11 +1071,18 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
     console.log(`   Type: ${subscription.type}, Status: ${subscription.status}, AutoRenew: ${subscription.autoRenew}`);
     console.log(`   Stripe Subscription ID: ${subscription.stripeSubscriptionId || 'N/A'}`);
 
-    // Do NOT call paySubscriptionInvoice here. The invoice was already paid when the frontend
-    // confirmed the PaymentIntent (confirmCardPayment). Calling stripe.invoices.pay() would
-    // trigger a second charge attempt and cause: (1) duplicate charge, (2) bank decline
-    // ("Do not honor"), (3) one Succeeded + one Failed row in Stripe for the same subscription.
-    // Stripe automatically marks the subscription invoice as paid when the PaymentIntent succeeds.
+    // Mark the Stripe invoice as paid without charging again (customer already paid via PaymentIntent).
+    // Using paid_out_of_band tells Stripe to mark the invoice paid so the subscription shows Active.
+    if (stripeSubscriptionId && paymentIntentId) {
+      try {
+        const payResult = await paySubscriptionInvoice(stripeSubscriptionId, paymentIntentId, { markPaidOutOfBand: true });
+        if (!payResult.success) {
+          console.warn(`⚠️  Could not mark invoice paid for subscription ${stripeSubscriptionId}: ${payResult.error}`);
+        }
+      } catch (stripeError: any) {
+        console.error('⚠️  Error marking Stripe invoice paid (non-critical):', stripeError?.message);
+      }
+    }
 
     res.status(200).json({
       message: 'Subscription activated and QR code verified successfully',

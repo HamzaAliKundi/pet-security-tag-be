@@ -429,12 +429,14 @@ export const cancelStripeSubscription = async (subscriptionId: string, immediate
 };
 
 /**
- * Pay invoice for a subscription to mark it as active
- * This fixes the "Incomplete" status in Stripe dashboard
+ * Pay invoice for a subscription to mark it as active.
+ * Use markPaidOutOfBand: true when the customer already paid via PaymentIntent (e.g. frontend
+ * confirmCardPayment) so we only mark the invoice paid in Stripe without triggering a second charge.
  */
 export const paySubscriptionInvoice = async (
   subscriptionId: string,
-  paymentIntentId: string
+  paymentIntentId: string,
+  options?: { markPaidOutOfBand?: boolean }
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     // Retrieve the subscription to get the latest invoice
@@ -473,26 +475,24 @@ export const paySubscriptionInvoice = async (
         finalInvoiceId = finalizedInvoice.id || invoiceId;
       }
       
-      // Since payment intent already succeeded, we need to mark the invoice as paid
-      // We'll use the payment intent's payment method to pay the invoice
+      // markPaidOutOfBand: true = mark invoice paid without charging again (payment already taken via PaymentIntent).
+      if (options?.markPaidOutOfBand) {
+        await stripe.invoices.pay(finalInvoiceId, { paid_out_of_band: true });
+        console.log(`✅ Invoice ${finalInvoiceId} marked paid (out of band). Subscription ${subscriptionId} active.`);
+        return { success: true };
+      }
+
       try {
-        // Pay the invoice - Stripe will attempt to collect payment
-        // Since we already have a succeeded payment intent, we'll mark it manually
         await stripe.invoices.pay(finalInvoiceId);
-        
         console.log(`✅ Invoice ${finalInvoiceId} paid successfully. Subscription ${subscriptionId} should now be active.`);
       } catch (payError: any) {
-        // If invoice can't be paid (maybe already processing), that's okay
-        // The subscription should still become active via webhook
         if (payError.code === 'invoice_already_paid' || payError.message?.includes('already paid')) {
           console.log(`ℹ️  Invoice ${finalInvoiceId} is already paid.`);
         } else {
-          // For other errors, log but don't fail - subscription is active in our DB
           console.warn(`⚠️  Could not pay invoice ${finalInvoiceId}: ${payError.message}`);
           console.log(`   Subscription ${subscriptionId} is active in our database. Stripe will sync via webhook.`);
         }
       }
-      
       return { success: true };
     } else if (invoice.status === 'paid') {
       // Invoice is already paid, subscription should be active
