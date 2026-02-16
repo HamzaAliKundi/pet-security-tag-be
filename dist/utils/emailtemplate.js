@@ -156,7 +156,7 @@ exports.verificationEmailTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -337,7 +337,7 @@ exports.resetPasswordTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -526,7 +526,7 @@ exports.orderConfirmationTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -711,7 +711,7 @@ exports.subscriptionNotificationTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -913,7 +913,7 @@ exports.qrCodeFirstScanTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -1132,7 +1132,7 @@ exports.credentialsEmailTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -1312,7 +1312,7 @@ exports.petFoundNotificationTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -1511,7 +1511,7 @@ exports.orderShippedTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -1687,7 +1687,7 @@ exports.orderCancelledTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -1864,7 +1864,7 @@ exports.orderDeliveredTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
@@ -2038,7 +2038,7 @@ exports.accountDeletedTemplate = (0, handlebars_1.compile)(`
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
-                © Digital Tails 2023. All Rights Reserved.
+                © Digital Tails 2026. All Rights Reserved.
             </p>
         </div>
     </div>
