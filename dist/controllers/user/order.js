@@ -618,17 +618,18 @@ exports.getLatestOrders = (0, express_async_handler_1.default)(async (req, res) 
     var _a, _b;
     try {
         const limit = parseInt(req.query.limit) || 5;
-        // Get latest orders from both collections
+        // Get latest orders from both collections (paid, shipped, delivered = completed orders)
+        const completedStatuses = ['paid', 'shipped', 'delivered'];
         const [userRecentOrders, petRecentOrders] = await Promise.all([
             // UserPetTagOrder - need to populate userId to get name
-            UserPetTagOrder_1.default.find({ status: 'paid' })
+            UserPetTagOrder_1.default.find({ status: { $in: completedStatuses } })
                 .sort({ createdAt: -1 })
                 .limit(limit)
                 .populate('userId', 'firstName lastName')
                 .select('userId city country createdAt')
                 .lean(),
             // PetTagOrder - has name directly
-            PetTagOrder_1.default.find({ status: 'paid' })
+            PetTagOrder_1.default.find({ status: { $in: completedStatuses } })
                 .sort({ createdAt: -1 })
                 .limit(limit)
                 .select('name shippingAddress createdAt')
