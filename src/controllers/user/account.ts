@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import User from '../../models/User';
 import Pet from '../../models/Pet';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
+import PetTagOrder from '../../models/PetTagOrder';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
 import { sendAccountDeletedEmail } from '../../utils/emailService';
@@ -137,6 +138,38 @@ export const updateSingleUser = asyncHandler(async (req: Request, res: Response)
   if (!updatedUser) {
     res.status(404).json({ message: 'User not found' });
     return;
+  }
+
+  // Sync phone and address to all orders linked to this user (for location share / contact consistency)
+  const orderUpdateFields: { phone?: string; street?: string; city?: string; state?: string; zipCode?: string; country?: string } = {};
+  if (phone !== undefined && phone.trim() !== '') orderUpdateFields.phone = phone.trim();
+  if (street !== undefined && street.trim() !== '') orderUpdateFields.street = street.trim();
+  if (city !== undefined && city.trim() !== '') orderUpdateFields.city = city.trim();
+  if (state !== undefined && state.trim() !== '') orderUpdateFields.state = state.trim();
+  if (zipCode !== undefined && zipCode.trim() !== '') orderUpdateFields.zipCode = zipCode.trim();
+  if (country !== undefined && country.trim() !== '') orderUpdateFields.country = country.trim();
+
+  if (Object.keys(orderUpdateFields).length > 0) {
+    // UserPetTagOrder: find by userId and update phone, street, city, state, zipCode, country
+    await UserPetTagOrder.updateMany(
+      { userId },
+      { $set: orderUpdateFields }
+    );
+
+    // PetTagOrder: find by email and update phone + shippingAddress (only set provided fields)
+    const petTagOrderSet: any = {};
+    if (orderUpdateFields.phone !== undefined) petTagOrderSet.phone = orderUpdateFields.phone;
+    if (orderUpdateFields.street !== undefined) petTagOrderSet['shippingAddress.street'] = orderUpdateFields.street;
+    if (orderUpdateFields.city !== undefined) petTagOrderSet['shippingAddress.city'] = orderUpdateFields.city;
+    if (orderUpdateFields.state !== undefined) petTagOrderSet['shippingAddress.state'] = orderUpdateFields.state;
+    if (orderUpdateFields.zipCode !== undefined) petTagOrderSet['shippingAddress.zipCode'] = orderUpdateFields.zipCode;
+    if (orderUpdateFields.country !== undefined) petTagOrderSet['shippingAddress.country'] = orderUpdateFields.country;
+    if (Object.keys(petTagOrderSet).length > 0) {
+      await PetTagOrder.updateMany(
+        { email: updatedUser.email },
+        { $set: petTagOrderSet }
+      );
+    }
   }
 
   res.status(200).json({
