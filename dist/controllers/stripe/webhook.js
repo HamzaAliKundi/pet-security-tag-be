@@ -95,12 +95,13 @@ exports.handleStripeWebhook = handleStripeWebhook;
  * This is the key event for auto-renewal
  */
 async function handleInvoicePaymentSucceeded(invoice) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p;
     try {
         // Type assertion to access properties that may not be in TypeScript definitions
         const invoiceAny = invoice;
-        // invoice.subscription can be a string ID or an expanded Subscription object
+        // Get subscription ID: invoice.subscription (or .subscription_id in raw payload), or from first line item
         let subscriptionId = null;
-        const subscriptionField = invoiceAny.subscription;
+        const subscriptionField = (_a = invoiceAny.subscription) !== null && _a !== void 0 ? _a : invoiceAny.subscription_id;
         if (subscriptionField) {
             if (typeof subscriptionField === 'string') {
                 subscriptionId = subscriptionField;
@@ -109,8 +110,15 @@ async function handleInvoicePaymentSucceeded(invoice) {
                 subscriptionId = subscriptionField.id;
             }
         }
+        if (!subscriptionId && ((_c = (_b = invoiceAny.lines) === null || _b === void 0 ? void 0 : _b.data) === null || _c === void 0 ? void 0 : _c[0])) {
+            const subFromLine = (_d = invoiceAny.lines.data[0].subscription) !== null && _d !== void 0 ? _d : invoiceAny.lines.data[0].subscription_id;
+            if (typeof subFromLine === 'string')
+                subscriptionId = subFromLine;
+            else if (subFromLine && typeof subFromLine === 'object' && subFromLine.id)
+                subscriptionId = subFromLine.id;
+        }
         if (!subscriptionId) {
-            console.log('Invoice does not have a subscription ID');
+            console.log('[invoice.payment_succeeded] Invoice does not have a subscription ID');
             return;
         }
         // Find subscription in database by stripeSubscriptionId
@@ -118,11 +126,12 @@ async function handleInvoicePaymentSucceeded(invoice) {
             stripeSubscriptionId: subscriptionId,
         });
         if (!subscription) {
-            console.log(`Subscription not found in database for Stripe subscription: ${subscriptionId}`);
+            console.log(`[invoice.payment_succeeded] Subscription not found in DB for Stripe sub: ${subscriptionId}`);
             return;
         }
         // Check invoice billing_reason to determine if this is initial payment or renewal
         const billingReason = invoiceAny.billing_reason;
+        console.log(`[invoice.payment_succeeded] stripeSubId=${subscriptionId} billing_reason=${billingReason} dbSubId=${subscription._id} currentEndDate=${(_g = (_f = (_e = subscription.endDate) === null || _e === void 0 ? void 0 : _e.toISOString) === null || _f === void 0 ? void 0 : _f.call(_e)) !== null && _g !== void 0 ? _g : subscription.endDate}`);
         const invoiceAmount = invoice.amount_paid ? invoice.amount_paid / 100 : 0;
         // Skip if this is the initial subscription creation invoice
         // The subscription record is already created by confirmSubscriptionPayment
@@ -173,22 +182,35 @@ async function handleInvoicePaymentSucceeded(invoice) {
             console.log(`Subscription ${subscription._id} was just created (${Math.round(subscriptionAge / 1000)}s ago). Skipping initial payment webhook.`);
             return;
         }
-        // Check if subscription is already active (avoid duplicate renewals)
-        if (subscription.status === 'active' && new Date(subscription.endDate) > new Date()) {
-            console.log(`Subscription ${subscription._id} is already active, skipping renewal`);
+        // Renewal (subscription_cycle): always process so endDate is updated when Stripe charges. Do not skip.
+        // Other billing reasons: skip if already active and endDate still in future (avoid duplicate processing).
+        const isRenewal = billingReason === 'subscription_cycle';
+        if (!isRenewal && subscription.status === 'active' && new Date(subscription.endDate) > new Date()) {
+            console.log(`[invoice.payment_succeeded] Skipping: not renewal (billing_reason=${billingReason}), subscription already active`);
             return;
         }
-        // Calculate new end date based on subscription type
-        const startDate = new Date();
-        const endDate = new Date();
-        if (subscription.type === 'monthly') {
-            endDate.setMonth(endDate.getMonth() + 1);
+        // Use period from invoice when present (Stripe's authoritative dates), else calculate from type
+        let startDate;
+        let endDate;
+        const firstLine = (_j = (_h = invoiceAny.lines) === null || _h === void 0 ? void 0 : _h.data) === null || _j === void 0 ? void 0 : _j[0];
+        const periodStart = (_k = firstLine === null || firstLine === void 0 ? void 0 : firstLine.period) === null || _k === void 0 ? void 0 : _k.start;
+        const periodEnd = (_l = firstLine === null || firstLine === void 0 ? void 0 : firstLine.period) === null || _l === void 0 ? void 0 : _l.end;
+        if (typeof periodStart === 'number' && typeof periodEnd === 'number') {
+            startDate = new Date(periodStart * 1000);
+            endDate = new Date(periodEnd * 1000);
         }
-        else if (subscription.type === 'yearly') {
-            endDate.setFullYear(endDate.getFullYear() + 1);
-        }
-        else if (subscription.type === 'lifetime') {
-            endDate.setFullYear(endDate.getFullYear() + 100);
+        else {
+            startDate = new Date();
+            endDate = new Date();
+            if (subscription.type === 'monthly') {
+                endDate.setMonth(endDate.getMonth() + 1);
+            }
+            else if (subscription.type === 'yearly') {
+                endDate.setFullYear(endDate.getFullYear() + 1);
+            }
+            else if (subscription.type === 'lifetime') {
+                endDate.setFullYear(endDate.getFullYear() + 100);
+            }
         }
         // Get payment intent ID - can be string or expanded PaymentIntent object
         let paymentIntentId = undefined;
@@ -201,24 +223,19 @@ async function handleInvoicePaymentSucceeded(invoice) {
                 paymentIntentId = paymentIntentField.id;
             }
         }
-        // Create new subscription record for this renewal (preserve payment history)
-        const newSubscription = await Subscription_1.default.create({
-            userId: subscription.userId,
-            qrCodeId: subscription.qrCodeId,
-            type: subscription.type,
-            status: 'active',
-            startDate,
-            endDate,
-            paymentIntentId: paymentIntentId,
-            stripeSubscriptionId: subscriptionId, // Keep the same Stripe subscription ID
-            amountPaid: invoice.amount_paid ? invoice.amount_paid / 100 : subscription.amountPaid, // Convert from cents
-            currency: invoice.currency || subscription.currency,
-            autoRenew: subscription.autoRenew,
-        });
-        // Mark old subscription as expired (keep for history)
-        subscription.status = 'expired';
+        const amountPaid = invoice.amount_paid ? invoice.amount_paid / 100 : subscription.amountPaid;
+        const currency = invoice.currency || subscription.currency;
+        // Update existing subscription in place (no new document). Keeps stripeSubscriptionId unique; pet profile and other flows unchanged.
+        const previousEndDate = (_p = (_o = (_m = subscription.endDate) === null || _m === void 0 ? void 0 : _m.toISOString) === null || _o === void 0 ? void 0 : _o.call(_m)) !== null && _p !== void 0 ? _p : String(subscription.endDate);
+        subscription.status = 'active';
+        subscription.startDate = startDate;
+        subscription.endDate = endDate;
+        subscription.amountPaid = amountPaid;
+        subscription.currency = currency;
+        if (paymentIntentId)
+            subscription.paymentIntentId = paymentIntentId;
         await subscription.save();
-        // Send notification email
+        // Send notification email (unchanged behaviour)
         try {
             const user = await User_1.default.findById(subscription.userId);
             if (user && user.email) {
@@ -226,7 +243,7 @@ async function handleInvoicePaymentSucceeded(invoice) {
                     customerName: user.firstName || 'Valued Customer',
                     action: 'renewal',
                     planType: subscription.type,
-                    amount: newSubscription.amountPaid,
+                    amount: amountPaid,
                     validUntil: endDate.toLocaleDateString('en-GB'),
                     paymentDate: new Date().toLocaleDateString('en-GB'),
                 });
@@ -235,7 +252,7 @@ async function handleInvoicePaymentSucceeded(invoice) {
         catch (emailError) {
             console.error('Failed to send renewal notification email:', emailError);
         }
-        console.log(`Subscription ${subscription._id} auto-renewed successfully. New subscription: ${newSubscription._id}`);
+        console.log(`[invoice.payment_succeeded] RENEWAL OK dbSubId=${subscription._id} previousEndDate=${previousEndDate} newEndDate=${endDate.toISOString()}`);
     }
     catch (error) {
         console.error('Error handling invoice.payment_succeeded:', error);
