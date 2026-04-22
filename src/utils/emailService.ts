@@ -10,7 +10,9 @@ import {
   orderShippedTemplate,
   orderCancelledTemplate,
   orderDeliveredTemplate,
-  accountDeletedTemplate
+  accountDeletedTemplate,
+  subscriptionPaymentFailedRetryTemplate,
+  subscriptionPaymentFailedFinalTemplate
 } from './emailtemplate';
 
 // Configure SendGrid with API key
@@ -133,6 +135,63 @@ export const sendSubscriptionNotificationEmail = async (email: string, subscript
     console.log('Subscription notification email sent successfully to:', email);
   } catch (error) {
     console.error('Error sending subscription notification email:', error);
+    throw error;
+  }
+};
+
+export const sendSubscriptionPaymentFailedRetryEmail = async (
+  email: string,
+  data: {
+    customerName: string;
+    dashboardPaymentsUrl: string;
+    nextRetrySummary?: string;
+  }
+): Promise<void> => {
+  const html = subscriptionPaymentFailedRetryTemplate(data);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Action needed: subscription payment failed — Digital Tails',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Subscription payment retry notice sent to:', email);
+  } catch (error) {
+    console.error('Error sending subscription payment retry email:', error);
+    throw error;
+  }
+};
+
+export const sendSubscriptionPaymentFailedFinalEmail = async (
+  email: string,
+  data: {
+    customerName: string;
+    dashboardPaymentsUrl: string;
+  }
+): Promise<void> => {
+  const html = subscriptionPaymentFailedFinalTemplate(data);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Your Digital Tails subscription could not be renewed',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Subscription payment final failure notice sent to:', email);
+  } catch (error) {
+    console.error('Error sending subscription payment final failure email:', error);
     throw error;
   }
 };

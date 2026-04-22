@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
 import User from '../../models/User';
-import { createSubscriptionPaymentIntent, createStripeSubscription, updateStripeSubscription, getOrCreateCustomer, savePaymentMethodToCustomer } from '../../utils/stripeService';
+import { createSubscriptionPaymentIntent, createStripeSubscription, updateStripeSubscription, getOrCreateCustomer, savePaymentMethodToCustomer, getStripeSubscription, getPaymentIntentContext } from '../../utils/stripeService';
 import { sendSubscriptionNotificationEmail } from '../../utils/emailService';
 
 // Get user's subscriptions
@@ -20,11 +20,12 @@ export const getUserSubscriptions = asyncHandler(async (req: Request, res: Respo
       return;
     }
 
-    // Build query - if includeAll is true, get all subscriptions; otherwise only active ones
+    // Build query - if includeAll is true, get all subscriptions; otherwise only active ones.
+    // Status is the source of truth for access/state. Do not hard-filter by endDate here,
+    // because Stripe/webhook timing can temporarily leave endDate stale.
     const query: any = { userId };
     if (includeAll !== 'true') {
       query.status = 'active';
-      query.endDate = { $gt: new Date() }; // Only active subscriptions
     }
 
     // Get subscriptions based on query
@@ -50,13 +51,44 @@ export const getUserSubscriptions = asyncHandler(async (req: Request, res: Respo
 
     // Get the primary subscription (the most recent one)
     const primarySubscription = subscriptionsWithDaysRemaining[0] || null;
+    const hasActiveSubscription = subscriptionsWithDaysRemaining.length > 0;
+
+    let paymentFailureLapsed: {
+      _id: string;
+      type: string;
+      endDate: Date;
+      stripeSubscriptionId?: string;
+      endedDueToPaymentFailure?: boolean;
+      status?: string;
+    } | null = null;
+
+    if (!hasActiveSubscription) {
+      const lapsed = await Subscription.findOne({
+        userId,
+        status: { $in: ['expired', 'cancelled'] },
+      })
+        .sort({ updatedAt: -1 })
+        .lean();
+
+      if (lapsed) {
+        paymentFailureLapsed = {
+          _id: lapsed._id.toString(),
+          type: lapsed.type,
+          endDate: lapsed.endDate,
+          stripeSubscriptionId: lapsed.stripeSubscriptionId,
+          endedDueToPaymentFailure: !!lapsed.endedDueToPaymentFailure,
+          status: lapsed.status,
+        };
+      }
+    }
 
     res.status(200).json({
       message: 'User subscriptions retrieved successfully',
       status: 200,
       subscriptions: subscriptionsWithDaysRemaining,
       primarySubscription,
-      hasActiveSubscription: subscriptionsWithDaysRemaining.length > 0
+      hasActiveSubscription,
+      paymentFailureLapsed
     });
 
   } catch (error) {
@@ -87,13 +119,11 @@ export const getSubscriptionStats = asyncHandler(async (req: Request, res: Respo
     const [activeSubscriptions, expiredSubscriptions, totalSubscriptions] = await Promise.all([
       Subscription.countDocuments({ 
         userId, 
-        status: 'active',
-        endDate: { $gt: now }
+        status: 'active'
       }),
       Subscription.countDocuments({ 
         userId, 
-        status: 'expired',
-        endDate: { $lte: now }
+        status: { $in: ['expired', 'cancelled'] }
       }),
       Subscription.countDocuments({ userId })
     ]);
@@ -148,14 +178,25 @@ export const renewSubscription = asyncHandler(async (req: Request, res: Response
       return;
     }
 
-    // Find the subscription
-    const subscription = await Subscription.findOne({ 
-      _id: subscriptionId, 
+    const subscription = await Subscription.findOne({
+      _id: subscriptionId,
       userId,
-      status: 'active'
     });
 
     if (!subscription) {
+      res.status(404).json({
+        message: 'Subscription not found',
+        error: 'Subscription does not exist'
+      });
+      return;
+    }
+
+    const canRenew =
+      subscription.status === 'active' ||
+      subscription.status === 'expired' ||
+      subscription.status === 'cancelled';
+
+    if (!canRenew) {
       res.status(404).json({
         message: 'Active subscription not found',
         error: 'Subscription does not exist or is not active'
@@ -193,10 +234,24 @@ export const renewSubscription = asyncHandler(async (req: Request, res: Response
 
     const amountInCents = Math.round(finalAmount * 100);
 
+    // Create/reuse Stripe customer so renewal payment method can be saved for future auto-renew.
+    const user = await User.findById(userId);
+    let stripeCustomerId: string | undefined;
+    if (user?.email) {
+      const customerResult = await getOrCreateCustomer(user.email, user.firstName || user.email, {
+        userId: userId.toString(),
+      });
+      if (!('error' in customerResult)) {
+        stripeCustomerId = customerResult.customerId;
+      }
+    }
+
     // Create Stripe payment intent
     const paymentResult = await createSubscriptionPaymentIntent({
       amount: amountInCents,
       currency: finalCurrency,
+      customerId: stripeCustomerId,
+      setupFutureUsage: 'off_session',
       metadata: {
         userId: userId.toString(),
         subscriptionType: subscription.type,
@@ -405,14 +460,25 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       return;
     }
 
-    // Find the subscription
-    const subscription = await Subscription.findOne({ 
-      _id: subscriptionId, 
+    const subscription = await Subscription.findOne({
+      _id: subscriptionId,
       userId,
-      status: 'active'
     });
 
     if (!subscription) {
+      res.status(404).json({
+        message: 'Subscription not found',
+        error: 'Subscription does not exist'
+      });
+      return;
+    }
+
+    const canConfirm =
+      subscription.status === 'active' ||
+      subscription.status === 'expired' ||
+      subscription.status === 'cancelled';
+
+    if (!canConfirm) {
       res.status(404).json({
         message: 'Active subscription not found',
         error: 'Subscription does not exist or is not active'
@@ -454,8 +520,12 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
           const customerResult = await getOrCreateCustomer(user.email, user.firstName || user.email);
           if (!('error' in customerResult)) {
             // Save payment method to customer
-            await savePaymentMethodToCustomer(paymentMethodId, customerResult.customerId);
-            console.log(`Payment method ${paymentMethodId} saved to customer ${customerResult.customerId} for future auto-renewals`);
+            const savePmResult = await savePaymentMethodToCustomer(paymentMethodId, customerResult.customerId);
+            if (savePmResult.success) {
+              console.log(`Payment method ${paymentMethodId} saved to customer ${customerResult.customerId} for future auto-renewals`);
+            } else {
+              console.warn(`Could not save payment method ${paymentMethodId} to customer ${customerResult.customerId}: ${savePmResult.error}`);
+            }
           }
         }
       } catch (pmError) {
@@ -470,24 +540,92 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       autoRenewStatus = false; // Lifetime doesn't auto-renew
     }
 
-    // Create a new subscription record for this payment (preserve previous payment history)
-    const newSubscription = await Subscription.create({
-      userId: subscription.userId,
-      qrCodeId: subscription.qrCodeId,
-      type: subscriptionType as 'monthly' | 'yearly' | 'lifetime',
-      status: 'active',
-      startDate,
-      endDate,
-      paymentIntentId,
-      stripeSubscriptionId: subscription.stripeSubscriptionId, // Preserve Stripe subscription ID if exists
-      amountPaid,
-      currency: finalCurrency,
-      autoRenew: autoRenewStatus
-    });
-
-    // Mark the old subscription as expired (but keep it for payment history)
-    subscription.status = 'expired';
+    // Reactivation/renewal must update the same subscription row in place.
+    // Creating a new row here causes duplicate stripeSubscriptionId rows and
+    // inconsistent dashboard/public-profile state.
+    subscription.type = subscriptionType as 'monthly' | 'yearly' | 'lifetime';
+    subscription.status = 'active';
+    subscription.startDate = startDate;
+    subscription.endDate = endDate;
+    subscription.paymentIntentId = paymentIntentId;
+    subscription.amountPaid = amountPaid;
+    subscription.currency = finalCurrency;
+    subscription.autoRenew = autoRenewStatus;
+    subscription.endedDueToPaymentFailure = false;
     await subscription.save();
+
+    // If Stripe subscription was cancelled/deleted after failed retries, recreate recurring billing
+    // so next month's auto-renew works and DB remains synced with Stripe.
+    if ((subscriptionType === 'monthly' || subscriptionType === 'yearly') && autoRenewStatus) {
+      try {
+        let stripeSubStatus: string | null = null;
+        let stripeSubExists = false;
+        if (subscription.stripeSubscriptionId) {
+          const stripeSub = await getStripeSubscription(subscription.stripeSubscriptionId);
+          stripeSubExists = !!stripeSub;
+          stripeSubStatus = stripeSub?.status || null;
+        }
+
+        const needsNewStripeSubscription =
+          !subscription.stripeSubscriptionId ||
+          (subscription.stripeSubscriptionId && !stripeSubExists) ||
+          stripeSubStatus === 'canceled' ||
+          stripeSubStatus === 'incomplete_expired' ||
+          stripeSubStatus === 'unpaid';
+
+        if (needsNewStripeSubscription) {
+          const user = await User.findById(userId);
+          if (user?.email) {
+            const interval = subscriptionType === 'yearly' ? 'year' : 'month';
+            const amountInCents = Math.round(amountPaid * 100);
+            const billingCycleAnchorUnix = Math.floor(endDate.getTime() / 1000);
+
+            // Prefer customer/payment-method from the successful reactivation payment.
+            // This avoids detached/unattached payment method issues on Stripe.
+            let resolvedCustomerId: string | undefined;
+            let resolvedPaymentMethodId: string | undefined = paymentMethodId;
+            const piCtx = await getPaymentIntentContext(paymentIntentId);
+            if (piCtx.success && piCtx.status === 'succeeded') {
+              resolvedCustomerId = piCtx.customerId;
+              if (piCtx.paymentMethodId) {
+                resolvedPaymentMethodId = piCtx.paymentMethodId;
+              }
+            }
+
+            const newStripeSub = await createStripeSubscription({
+              customerId: resolvedCustomerId,
+              customerEmail: user.email,
+              customerName: user.firstName || user.email,
+              amount: amountInCents,
+              currency: finalCurrency,
+              interval,
+              paymentMethodId: resolvedPaymentMethodId,
+              billingCycleAnchorUnix,
+              metadata: {
+                userId: userId.toString(),
+                subscriptionId: subscription._id.toString(),
+                subscriptionType,
+                qrCodeId: subscription.qrCodeId?.toString(),
+              },
+            });
+
+            if (newStripeSub.success && newStripeSub.subscriptionId) {
+              subscription.stripeSubscriptionId = newStripeSub.subscriptionId;
+              await subscription.save();
+              console.log(
+                `✅ Recreated Stripe subscription for auto-renew: ${newStripeSub.subscriptionId} (dbSubId=${subscription._id})`
+              );
+            } else {
+              console.warn(
+                `⚠️ Could not recreate Stripe subscription for auto-renew (dbSubId=${subscription._id}): ${newStripeSub.error}`
+              );
+            }
+          }
+        }
+      } catch (stripeSyncError) {
+        console.error('Error syncing Stripe auto-renew subscription after reactivation:', stripeSyncError);
+      }
+    }
 
     // Send subscription notification email (non-blocking)
     try {
@@ -511,10 +649,10 @@ export const confirmSubscriptionPayment = asyncHandler(async (req: Request, res:
       message: `Subscription ${action} confirmed successfully`,
       status: 200,
       subscription: {
-        id: newSubscription._id,
-        type: newSubscription.type,
-        endDate: newSubscription.endDate,
-        status: newSubscription.status
+        id: subscription._id,
+        type: subscription.type,
+        endDate: subscription.endDate,
+        status: subscription.status
       }
     });
 

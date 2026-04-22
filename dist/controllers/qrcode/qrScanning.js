@@ -1067,14 +1067,14 @@ exports.getPetProfileByQR = (0, express_async_handler_1.default)(async (req, res
         let activeSubscription = await Subscription_1.default.findOne({
             qrCodeId: qrCode._id,
             status: 'active',
-            endDate: { $gt: new Date() }
+            endedDueToPaymentFailure: { $ne: true }
         });
         // If not found by qrCodeId, check by userId (since one subscription covers all tags)
         if (!activeSubscription && qrCode.assignedUserId) {
             activeSubscription = await Subscription_1.default.findOne({
                 userId: qrCode.assignedUserId,
                 status: 'active',
-                endDate: { $gt: new Date() },
+                endedDueToPaymentFailure: { $ne: true },
                 amountPaid: { $gt: 0 } // Only use subscriptions with actual payment
             });
         }

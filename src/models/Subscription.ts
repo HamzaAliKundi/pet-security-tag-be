@@ -12,6 +12,8 @@ export interface ISubscription extends Document {
   amountPaid: number;
   currency: string;
   autoRenew: boolean;
+  /** Set when renewal payment fails after retries; used for dashboard copy only */
+  endedDueToPaymentFailure?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -67,6 +69,10 @@ const SubscriptionSchema: Schema = new Schema({
   autoRenew: {
     type: Boolean,
     default: true
+  },
+  endedDueToPaymentFailure: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

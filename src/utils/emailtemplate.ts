@@ -2053,3 +2053,102 @@ export const accountDeletedTemplate = compile(`
 </body>
 </html>
 `);
+
+export const subscriptionPaymentFailedRetryTemplate = compile(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Issue - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8f9fa; line-height: 1.6; color: #2D2D2D; }
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #4CB2E2; padding: 28px 20px; text-align: center; color: white; }
+        .logo { font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+        .tagline { font-size: 15px; margin-top: 8px; opacity: 0.95; }
+        .content { padding: 28px 24px; }
+        .welcome-text { font-size: 18px; font-weight: 600; margin-bottom: 14px; color: #313131; }
+        .description { font-size: 15px; color: #555; margin-bottom: 16px; }
+        .info-box { background: #fff8e6; border-left: 4px solid #f0ad4e; padding: 14px 16px; margin: 18px 0; border-radius: 8px; }
+        .info-text { font-size: 14px; color: #5c4a00; }
+        .cta { display: inline-block; margin-top: 18px; padding: 12px 22px; background: #4CB2E2; color: #fff !important; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; }
+        .footer { padding: 20px; text-align: center; background: #f8f9fa; font-size: 13px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">We couldn’t process your subscription payment</div>
+        </div>
+        <div class="content">
+            <div class="welcome-text">Hi {{customerName}},</div>
+            <p class="description">
+                Your latest subscription payment was unsuccessful. Don’t worry — we will automatically try again{{#if nextRetrySummary}} ({{nextRetrySummary}}){{else}} soon{{/if}}.
+            </p>
+            <div class="info-box">
+                <p class="info-text">
+                    To avoid interruption to your pet’s security tag, please check that your card has sufficient funds and that your bank isn’t blocking the charge. You can also update your payment method from your Digital Tails account.
+                </p>
+            </div>
+            <p class="description">If the next charge succeeds, your subscription will continue as normal.</p>
+            <a class="cta" href="{{dashboardPaymentsUrl}}">Open payments &amp; subscription</a>
+        </div>
+        <div class="footer">
+            <p>Need help? Reply to this email or contact us at info@digitaltails.com</p>
+        </div>
+    </div>
+</body>
+</html>
+`);
+
+export const subscriptionPaymentFailedFinalTemplate = compile(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription paused - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8f9fa; line-height: 1.6; color: #2D2D2D; }
+        .email-container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .header { background: #c0392b; padding: 28px 20px; text-align: center; color: white; }
+        .logo { font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+        .tagline { font-size: 15px; margin-top: 8px; opacity: 0.95; }
+        .content { padding: 28px 24px; }
+        .welcome-text { font-size: 18px; font-weight: 600; margin-bottom: 14px; color: #313131; }
+        .description { font-size: 15px; color: #555; margin-bottom: 16px; }
+        .warning-box { background: #fdecea; border-left: 4px solid #c0392b; padding: 14px 16px; margin: 18px 0; border-radius: 8px; }
+        .warning-text { font-size: 14px; color: #611a15; }
+        .cta { display: inline-block; margin-top: 18px; padding: 12px 22px; background: #4CB2E2; color: #fff !important; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; }
+        .footer { padding: 20px; text-align: center; background: #f8f9fa; font-size: 13px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">Your subscription could not be renewed</div>
+        </div>
+        <div class="content">
+            <div class="welcome-text">Hi {{customerName}},</div>
+            <p class="description">
+                After multiple attempts, we still couldn’t collect your subscription payment. Your Digital Tails subscription is no longer active, and your pet’s public profile linked to your tag is now disabled until payment is restored.
+            </p>
+            <div class="warning-box">
+                <p class="warning-text">
+                    <strong>What you can do:</strong> Sign in to Digital Tails, open Payments, and use “Update payment method” to add a valid card. When a payment succeeds, your protection can resume according to your plan.
+                </p>
+            </div>
+            <a class="cta" href="{{dashboardPaymentsUrl}}">Update payment in Digital Tails</a>
+        </div>
+        <div class="footer">
+            <p>Questions? We’re here 24/7 — info@digitaltails.com</p>
+        </div>
+    </div>
+</body>
+</html>
+`);

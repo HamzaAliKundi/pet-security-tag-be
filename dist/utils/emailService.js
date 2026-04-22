@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendAccountDeletedEmail = exports.sendOrderDeliveredEmail = exports.sendOrderCancelledEmail = exports.sendOrderShippedEmail = exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
+exports.sendAccountDeletedEmail = exports.sendOrderDeliveredEmail = exports.sendOrderCancelledEmail = exports.sendOrderShippedEmail = exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionPaymentFailedFinalEmail = exports.sendSubscriptionPaymentFailedRetryEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
 const mail_1 = __importDefault(require("@sendgrid/mail"));
 const env_1 = require("../config/env");
 const emailtemplate_1 = require("./emailtemplate");
@@ -108,6 +108,48 @@ const sendSubscriptionNotificationEmail = async (email, subscriptionData) => {
     }
 };
 exports.sendSubscriptionNotificationEmail = sendSubscriptionNotificationEmail;
+const sendSubscriptionPaymentFailedRetryEmail = async (email, data) => {
+    const html = (0, emailtemplate_1.subscriptionPaymentFailedRetryTemplate)(data);
+    const msg = {
+        to: email,
+        from: {
+            email: env_1.env.SENDGRID_FROM_EMAIL,
+            name: env_1.env.SENDGRID_FROM_NAME
+        },
+        subject: 'Action needed: subscription payment failed — Digital Tails',
+        html
+    };
+    try {
+        await mail_1.default.send(msg);
+        console.log('Subscription payment retry notice sent to:', email);
+    }
+    catch (error) {
+        console.error('Error sending subscription payment retry email:', error);
+        throw error;
+    }
+};
+exports.sendSubscriptionPaymentFailedRetryEmail = sendSubscriptionPaymentFailedRetryEmail;
+const sendSubscriptionPaymentFailedFinalEmail = async (email, data) => {
+    const html = (0, emailtemplate_1.subscriptionPaymentFailedFinalTemplate)(data);
+    const msg = {
+        to: email,
+        from: {
+            email: env_1.env.SENDGRID_FROM_EMAIL,
+            name: env_1.env.SENDGRID_FROM_NAME
+        },
+        subject: 'Your Digital Tails subscription could not be renewed',
+        html
+    };
+    try {
+        await mail_1.default.send(msg);
+        console.log('Subscription payment final failure notice sent to:', email);
+    }
+    catch (error) {
+        console.error('Error sending subscription payment final failure email:', error);
+        throw error;
+    }
+};
+exports.sendSubscriptionPaymentFailedFinalEmail = sendSubscriptionPaymentFailedFinalEmail;
 // Send QR code first scan notification email
 const sendQRCodeFirstScanEmail = async (email, scanData) => {
     const html = (0, emailtemplate_1.qrCodeFirstScanTemplate)(scanData);
