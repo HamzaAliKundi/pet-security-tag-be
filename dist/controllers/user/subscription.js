@@ -561,6 +561,18 @@ exports.confirmSubscriptionPayment = (0, express_async_handler_1.default)(async 
                         }
                     }
                 }
+                else if (action === 'upgrade' && subscription.stripeSubscriptionId) {
+                    // Keep Stripe's recurring plan aligned with DB when user changes monthly/yearly plan.
+                    const interval = subscriptionType === 'yearly' ? 'year' : 'month';
+                    const amountInCents = Math.round(amountPaid * 100);
+                    const stripeUpdateResult = await (0, stripeService_1.updateStripeSubscription)(subscription.stripeSubscriptionId, undefined, amountInCents, interval);
+                    if (stripeUpdateResult.success) {
+                        console.log(`✅ Updated Stripe subscription plan after upgrade: ${subscription.stripeSubscriptionId} (dbSubId=${subscription._id})`);
+                    }
+                    else {
+                        console.warn(`⚠️ Could not update Stripe subscription plan after upgrade (dbSubId=${subscription._id}): ${stripeUpdateResult.error}`);
+                    }
+                }
             }
             catch (stripeSyncError) {
                 console.error('Error syncing Stripe auto-renew subscription after reactivation:', stripeSyncError);
