@@ -85,6 +85,10 @@ const SubscriptionSchema = new mongoose_1.Schema({
     autoRenew: {
         type: Boolean,
         default: true
+    },
+    endedDueToPaymentFailure: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

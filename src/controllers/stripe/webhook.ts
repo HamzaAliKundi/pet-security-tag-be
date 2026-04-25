@@ -3,11 +3,43 @@ import Stripe from 'stripe';
 import { env } from '../../config/env';
 import Subscription from '../../models/Subscription';
 import User from '../../models/User';
-import { sendSubscriptionNotificationEmail } from '../../utils/emailService';
+import {
+  sendSubscriptionNotificationEmail,
+  sendSubscriptionPaymentFailedRetryEmail,
+  sendSubscriptionPaymentFailedFinalEmail,
+} from '../../utils/emailService';
 
 const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-07-30.basil',
+  apiVersion: '2025-08-27.basil',
 });
+
+/** Resolves Stripe subscription id from invoice (including newer nested payload shapes). */
+function getStripeSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+  const invoiceAny: any = invoice;
+  let subscriptionId: string | null = null;
+  const subscriptionField = invoiceAny.subscription ?? invoiceAny.subscription_id;
+  if (subscriptionField) {
+    if (typeof subscriptionField === 'string') {
+      subscriptionId = subscriptionField;
+    } else if (typeof subscriptionField === 'object' && subscriptionField.id) {
+      subscriptionId = subscriptionField.id;
+    }
+  }
+  if (!subscriptionId && invoiceAny.lines?.data?.[0]) {
+    const line0 = invoiceAny.lines.data[0];
+    const subFromLine =
+      line0.subscription ??
+      line0.subscription_id ??
+      line0.parent?.subscription_item_details?.subscription;
+    if (typeof subFromLine === 'string') subscriptionId = subFromLine;
+    else if (subFromLine && typeof subFromLine === 'object' && subFromLine.id) subscriptionId = subFromLine.id;
+  }
+  if (!subscriptionId && invoiceAny.parent?.subscription_details?.subscription) {
+    const s = invoiceAny.parent.subscription_details.subscription;
+    subscriptionId = typeof s === 'string' ? s : s?.id ?? null;
+  }
+  return subscriptionId;
+}
 
 /**
  * Stripe Webhook Handler
@@ -110,23 +142,8 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
   try {
     // Type assertion to access properties that may not be in TypeScript definitions
     const invoiceAny: any = invoice;
-    
-    // Get subscription ID: invoice.subscription (or .subscription_id in raw payload), or from first line item
-    let subscriptionId: string | null = null;
-    const subscriptionField = invoiceAny.subscription ?? invoiceAny.subscription_id;
-    if (subscriptionField) {
-      if (typeof subscriptionField === 'string') {
-        subscriptionId = subscriptionField;
-      } else if (typeof subscriptionField === 'object' && subscriptionField.id) {
-        subscriptionId = subscriptionField.id;
-      }
-    }
-    if (!subscriptionId && invoiceAny.lines?.data?.[0]) {
-      const subFromLine = invoiceAny.lines.data[0].subscription ?? invoiceAny.lines.data[0].subscription_id;
-      if (typeof subFromLine === 'string') subscriptionId = subFromLine;
-      else if (subFromLine && typeof subFromLine === 'object' && subFromLine.id) subscriptionId = subFromLine.id;
-    }
-    
+    const subscriptionId = getStripeSubscriptionIdFromInvoice(invoice);
+
     if (!subscriptionId) {
       console.log('[invoice.payment_succeeded] Invoice does not have a subscription ID');
       return;
@@ -205,9 +222,10 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
     }
 
     // Renewal (subscription_cycle): always process so endDate is updated when Stripe charges. Do not skip.
-    // Other billing reasons: skip if already active and endDate still in future (avoid duplicate processing).
+    // Recovering after failed payments may use a different billing_reason — still process if we flagged payment failure.
     const isRenewal = billingReason === 'subscription_cycle';
-    if (!isRenewal && subscription.status === 'active' && new Date(subscription.endDate) > new Date()) {
+    const recoverAfterPaymentFailure = !!subscription.endedDueToPaymentFailure && invoiceAmount > 0;
+    if (!isRenewal && !recoverAfterPaymentFailure && subscription.status === 'active' && new Date(subscription.endDate) > new Date()) {
       console.log(`[invoice.payment_succeeded] Skipping: not renewal (billing_reason=${billingReason}), subscription already active`);
       return;
     }
@@ -255,6 +273,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
     subscription.amountPaid = amountPaid;
     subscription.currency = currency;
     if (paymentIntentId) subscription.paymentIntentId = paymentIntentId;
+    subscription.endedDueToPaymentFailure = false;
     await subscription.save();
 
     // Send notification email (unchanged behaviour)
@@ -283,24 +302,15 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
 
 /**
  * Handle failed invoice payment
+ * attempt_count 1 → retry email; 2+ → final email + mark subscription inactive for pet profile
  */
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   try {
-    // Type assertion to access properties that may not be in TypeScript definitions
     const invoiceAny: any = invoice;
-    
-    // invoice.subscription can be a string ID or an expanded Subscription object
-    let subscriptionId: string | null = null;
-    const subscriptionField = invoiceAny.subscription;
-    if (subscriptionField) {
-      if (typeof subscriptionField === 'string') {
-        subscriptionId = subscriptionField;
-      } else if (typeof subscriptionField === 'object' && subscriptionField.id) {
-        subscriptionId = subscriptionField.id;
-      }
-    }
-    
+    const subscriptionId = getStripeSubscriptionIdFromInvoice(invoice);
+
     if (!subscriptionId) {
+      console.log('[invoice.payment_failed] Invoice does not have a subscription ID');
       return;
     }
 
@@ -308,13 +318,59 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void
       stripeSubscriptionId: subscriptionId,
     });
 
-    if (subscription) {
-      // Optionally mark subscription as expired or send notification
-      console.log(`Payment failed for subscription ${subscription._id}`);
-      
-      // You might want to send an email notification here
-      // or mark the subscription with a "payment_failed" status
+    if (!subscription) {
+      console.log(`[invoice.payment_failed] Subscription not found in DB for Stripe sub: ${subscriptionId}`);
+      return;
     }
+
+    const attemptCount = typeof invoice.attempt_count === 'number' ? invoice.attempt_count : 1;
+    const nextTs = invoiceAny.next_payment_attempt as number | null | undefined;
+    const dashboardBase = (env.FRONTEND_URL || '').replace(/\/$/, '');
+    const dashboardPaymentsUrl = `${dashboardBase}/payments`;
+
+    const user = await User.findById(subscription.userId);
+    const customerName = user?.firstName || 'Valued Customer';
+
+    const nextRetrySummary = nextTs
+      ? `on or after ${new Date(nextTs * 1000).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`
+      : undefined;
+
+    if (attemptCount < 2) {
+      if (user?.email) {
+        try {
+          await sendSubscriptionPaymentFailedRetryEmail(user.email, {
+            customerName,
+            dashboardPaymentsUrl,
+            nextRetrySummary,
+          });
+        } catch (emailErr) {
+          console.error('[invoice.payment_failed] Retry notice email failed:', emailErr);
+        }
+      }
+      console.log(
+        `[invoice.payment_failed] attempt=${attemptCount} (retry notice) dbSubId=${subscription._id} stripeSubId=${subscriptionId}`
+      );
+      return;
+    }
+
+    subscription.status = 'expired';
+    subscription.endedDueToPaymentFailure = true;
+    await subscription.save();
+
+    if (user?.email) {
+      try {
+        await sendSubscriptionPaymentFailedFinalEmail(user.email, {
+          customerName,
+          dashboardPaymentsUrl,
+        });
+      } catch (emailErr) {
+        console.error('[invoice.payment_failed] Final failure email failed:', emailErr);
+      }
+    }
+
+    console.log(
+      `[invoice.payment_failed] attempt=${attemptCount} FINAL — subscription expired, pet profile disabled dbSubId=${subscription._id}`
+    );
   } catch (error) {
     console.error('Error handling invoice.payment_failed:', error);
   }
@@ -339,6 +395,9 @@ async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription
     if (stripeSubscription.status === 'canceled' || stripeSubscription.status === 'unpaid') {
       if (subscription) {
         subscription.status = 'cancelled';
+        if (stripeSubscription.status === 'unpaid') {
+          subscription.endedDueToPaymentFailure = true;
+        }
         await subscription.save();
         console.log(`Subscription ${subscription._id} marked as cancelled`);
       }

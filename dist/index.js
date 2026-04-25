@@ -17,7 +17,7 @@ app.use((0, cors_1.default)({
     origin: [
         'http://localhost:5173', // Main frontend
         'http://localhost:5174', // User dashboard
-        'http://localhost:5175', // Admin panel (if different port)
+        'http://localhost:5176', // Admin panel (if different port)
         'https://admin.digitaltails.com',
         'https://user.digitaltails.com',
         'https://digitaltails.com'

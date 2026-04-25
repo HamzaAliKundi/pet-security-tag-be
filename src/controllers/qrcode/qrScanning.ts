@@ -1151,7 +1151,7 @@ export const getPetProfileByQR = asyncHandler(async (req: Request, res: Response
     let activeSubscription = await Subscription.findOne({
       qrCodeId: qrCode._id,
       status: 'active',
-      endDate: { $gt: new Date() }
+      endedDueToPaymentFailure: { $ne: true }
     });
 
     // If not found by qrCodeId, check by userId (since one subscription covers all tags)
@@ -1159,7 +1159,7 @@ export const getPetProfileByQR = asyncHandler(async (req: Request, res: Response
       activeSubscription = await Subscription.findOne({
         userId: qrCode.assignedUserId,
         status: 'active',
-        endDate: { $gt: new Date() },
+        endedDueToPaymentFailure: { $ne: true },
         amountPaid: { $gt: 0 } // Only use subscriptions with actual payment
       });
     }

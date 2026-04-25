@@ -41,7 +41,7 @@ app.post('/test-webhook', async (req, res) => {
     const mockEvent: Stripe.Event = {
       id: 'evt_test_123',
       object: 'event',
-      api_version: '2025-07-30.basil',
+      api_version: '2025-08-27.basil',
       created: Math.floor(Date.now() / 1000),
       data: {
         object: mockInvoice,

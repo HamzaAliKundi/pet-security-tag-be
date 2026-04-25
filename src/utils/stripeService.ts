@@ -3,7 +3,7 @@ import { env } from '../config/env';
 
 // Initialize Stripe with secret key
 const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-07-30.basil', // Use latest stable API version
+  apiVersion: '2025-08-27.basil', // Must match @types / stripe package pinned API version
 });
 
 export interface CreatePaymentIntentParams {
@@ -21,6 +21,8 @@ export interface CreatePaymentIntentParams {
 export interface CreateSubscriptionPaymentIntentParams {
   amount: number; // Amount in cents
   currency: string;
+  customerId?: string;
+  setupFutureUsage?: 'off_session' | 'on_session';
   metadata: {
     userId: string;
     petName?: string;
@@ -46,6 +48,7 @@ export interface CreateStripeSubscriptionParams {
     petName?: string;
   };
   paymentMethodId?: string; // Payment method ID from frontend
+  billingCycleAnchorUnix?: number; // Optional: next recurring billing anchor timestamp
 }
 
 export interface PaymentIntentResult {
@@ -60,6 +63,14 @@ export interface SubscriptionResult {
   subscriptionId?: string;
   customerId?: string;
   clientSecret?: string;
+  error?: string;
+}
+
+export interface PaymentIntentContextResult {
+  success: boolean;
+  customerId?: string;
+  paymentMethodId?: string;
+  status?: string;
   error?: string;
 }
 
@@ -99,9 +110,12 @@ export const createSubscriptionPaymentIntent = async (params: CreateSubscription
       },
     };
 
-    // If customer ID is provided in metadata and we want to save the card for future use
-    // Note: setup_future_usage requires the payment method to be attached during confirmation
-    // We'll handle this in the frontend by creating a payment method first
+    if (params.customerId) {
+      paymentIntentParams.customer = params.customerId;
+    }
+    if (params.setupFutureUsage) {
+      paymentIntentParams.setup_future_usage = params.setupFutureUsage;
+    }
     
     const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
@@ -128,10 +142,20 @@ export const savePaymentMethodToCustomer = async (
   customerId: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    // Attach payment method to customer
-    await stripe.paymentMethods.attach(paymentMethodId, {
-      customer: customerId,
-    });
+    // Attach payment method to customer.
+    // If already attached to this customer, Stripe may error — continue to default update.
+    try {
+      await stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
+      });
+    } catch (attachError: any) {
+      const attachMessage = String(attachError?.message || '');
+      const safeToContinue =
+        attachMessage.includes('already attached');
+      if (!safeToContinue) {
+        throw attachError;
+      }
+    }
 
     // Set as default payment method
     await stripe.customers.update(customerId, {
@@ -157,6 +181,41 @@ export const confirmPaymentIntent = async (paymentIntentId: string): Promise<boo
   } catch (error) {
     console.error('Error confirming payment intent:', error);
     return false;
+  }
+};
+
+/**
+ * Retrieve payment intent context needed for follow-up recurring setup
+ * (customer + payment method from the successful payment).
+ */
+export const getPaymentIntentContext = async (
+  paymentIntentId: string
+): Promise<PaymentIntentContextResult> => {
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ['payment_method', 'customer'],
+    });
+
+    const customerField = paymentIntent.customer as any;
+    const paymentMethodField = paymentIntent.payment_method as any;
+
+    const customerId =
+      typeof customerField === 'string' ? customerField : customerField?.id;
+    const paymentMethodId =
+      typeof paymentMethodField === 'string' ? paymentMethodField : paymentMethodField?.id;
+
+    return {
+      success: true,
+      customerId: customerId || undefined,
+      paymentMethodId: paymentMethodId || undefined,
+      status: paymentIntent.status,
+    };
+  } catch (error) {
+    console.error('Error retrieving payment intent context:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
   }
 };
 
@@ -256,12 +315,28 @@ export const createStripeSubscription = async (params: CreateStripeSubscriptionP
       metadata: params.metadata,
     };
 
+    // For reactivation flows, align the next recurring charge date without trial wording.
+    if (params.billingCycleAnchorUnix && params.billingCycleAnchorUnix > Math.floor(Date.now() / 1000)) {
+      subscriptionParams.billing_cycle_anchor = params.billingCycleAnchorUnix;
+      subscriptionParams.proration_behavior = 'none';
+    }
+
     // If payment method is provided, attach it
     if (params.paymentMethodId) {
-      // Attach payment method to customer
-      await stripe.paymentMethods.attach(params.paymentMethodId, {
-        customer: customerId,
-      });
+      // Attach payment method to customer (if already attached/reused, continue and just set default)
+      try {
+        await stripe.paymentMethods.attach(params.paymentMethodId, {
+          customer: customerId,
+        });
+      } catch (attachError: any) {
+        const attachMessage = String(attachError?.message || '');
+        const safeToContinue =
+          attachMessage.includes('already attached') ||
+          attachMessage.includes('may not be used again');
+        if (!safeToContinue) {
+          throw attachError;
+        }
+      }
 
       // Set as default payment method
       await stripe.customers.update(customerId, {
@@ -297,8 +372,8 @@ export const createStripeSubscription = async (params: CreateStripeSubscriptionP
           // Check if invoice has a payment intent now
           paymentIntentField = (invoice as any).payment_intent;
           
-          // If still no payment intent and invoice is open/unpaid, create one
-          if (!paymentIntentField && invoice.status === 'open') {
+          // If still no payment intent and invoice is open/unpaid with positive amount, create one
+          if (!paymentIntentField && invoice.status === 'open' && invoice.amount_due > 0) {
             console.log(`Creating payment intent for open invoice amount: ${invoice.amount_due}`);
             const paymentIntent = await stripe.paymentIntents.create({
               amount: invoice.amount_due,
@@ -318,6 +393,8 @@ export const createStripeSubscription = async (params: CreateStripeSubscriptionP
             console.log('✅ Created payment intent for invoice:', paymentIntent.id);
           } else if (paymentIntentField) {
             console.log('✅ Invoice has payment intent:', paymentIntentField);
+          } else if (invoice.status === 'open' && invoice.amount_due === 0) {
+            console.log('ℹ️  Open invoice has 0 amount; no payment intent required.');
           }
         } catch (invoiceError: any) {
           console.error('❌ Error retrieving invoice:', invoiceError);
@@ -341,10 +418,18 @@ export const createStripeSubscription = async (params: CreateStripeSubscriptionP
           console.log('✅ Using expanded payment intent clientSecret');
         }
       } else {
-        // If still no payment intent and we have invoice ID and payment method, create one
+        // If still no payment intent and we have invoice ID and payment method, create one (only when amount_due > 0)
         if (invoiceId && params.paymentMethodId) {
           try {
             const invoice = await stripe.invoices.retrieve(invoiceId);
+            if (invoice.amount_due <= 0) {
+              console.log('ℹ️  Invoice amount is 0; skipping payment intent creation.');
+              return {
+                success: true,
+                subscriptionId: subscription.id,
+                customerId: customerId,
+              };
+            }
             console.log(`Creating payment intent for invoice amount: ${invoice.amount_due}`);
             
             const paymentIntent = await stripe.paymentIntents.create({
@@ -566,6 +651,38 @@ export const updateStripeSubscription = async (
     };
   } catch (error) {
     console.error('Error updating Stripe subscription:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+};
+
+export const createBillingPortalSession = async (
+  stripeSubscriptionId: string,
+  returnUrl: string
+): Promise<{ success: true; url: string } | { success: false; error: string }> => {
+  try {
+    const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    const customerField = stripeSub.customer;
+    const customerId =
+      typeof customerField === 'string' ? customerField : customerField?.id;
+    if (!customerId) {
+      return { success: false, error: 'Subscription has no Stripe customer' };
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    });
+
+    if (!session.url) {
+      return { success: false, error: 'Billing portal session missing URL' };
+    }
+
+    return { success: true, url: session.url };
+  } catch (error) {
+    console.error('Error creating billing portal session:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
