@@ -2051,7 +2051,7 @@ exports.subscriptionPaymentFailedRetryTemplate = (0, handlebars_1.compile)(`
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Issue - Digital Tails</title>
+    <title>We couldn’t process your latest subscription payment - Digital Tails</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8f9fa; line-height: 1.6; color: #2D2D2D; }
@@ -2072,20 +2072,24 @@ exports.subscriptionPaymentFailedRetryTemplate = (0, handlebars_1.compile)(`
     <div class="email-container">
         <div class="header">
             <div class="logo">🐾 DIGITAL TAILS</div>
-            <div class="tagline">We couldn’t process your subscription payment</div>
+            <div class="tagline">We couldn’t process your latest subscription payment</div>
         </div>
         <div class="content">
             <div class="welcome-text">Hi {{customerName}},</div>
             <p class="description">
-                Your latest subscription payment was unsuccessful. Don’t worry — we will automatically try again{{#if nextRetrySummary}} ({{nextRetrySummary}}){{else}} soon{{/if}}.
+                Don’t worry, we’ll automatically try again{{#if nextRetrySummary}} on or after {{nextRetrySummary}}{{else}} soon{{/if}}.
             </p>
             <div class="info-box">
                 <p class="info-text">
-                    To avoid interruption to your pet’s security tag, please check that your card has sufficient funds and that your bank isn’t blocking the charge. You can also update your payment method from your Digital Tails account.
+                    To avoid any interruption to your pet’s security tag, please:
+                    <br />• Make sure your card has sufficient funds
+                    <br />• Check your bank hasn’t blocked the payment
+                    <br />• Update your payment method if needed in your Digital Tails account
                 </p>
             </div>
-            <p class="description">If the next charge succeeds, your subscription will continue as normal.</p>
-            <a class="cta" href="{{dashboardPaymentsUrl}}">Open payments &amp; subscription</a>
+            <p class="description">If the next payment goes through successfully, your subscription will continue as normal.</p>
+            <p class="description">If the second attempt is unsuccessful, your pet’s profile will be temporarily blocked until payment is completed.</p>
+            <a class="cta" href="https://user.digitaltails.com/overview">Open payments &amp; subscription</a>
         </div>
         <div class="footer">
             <p>Need help? Reply to this email or contact us at info@digitaltails.com</p>
@@ -2100,7 +2104,7 @@ exports.subscriptionPaymentFailedFinalTemplate = (0, handlebars_1.compile)(`
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Subscription paused - Digital Tails</title>
+    <title>Subscription payment unsuccessful - Digital Tails</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8f9fa; line-height: 1.6; color: #2D2D2D; }
@@ -2121,19 +2125,19 @@ exports.subscriptionPaymentFailedFinalTemplate = (0, handlebars_1.compile)(`
     <div class="email-container">
         <div class="header">
             <div class="logo">🐾 DIGITAL TAILS</div>
-            <div class="tagline">Your subscription could not be renewed</div>
+            <div class="tagline">We’ve tried to collect your subscription payment for the second time, but unfortunately we was unsuccessful.</div>
         </div>
         <div class="content">
             <div class="welcome-text">Hi {{customerName}},</div>
             <p class="description">
-                After multiple attempts, we still couldn’t collect your subscription payment. Your Digital Tails subscription is no longer active, and your pet’s public profile linked to your tag is now disabled until payment is restored.
+                Your Digital Tails subscription is now inactive, and your pet’s public profile linked to your pet’s tag has been temporarily blocked until payment is restored.
             </p>
             <div class="warning-box">
                 <p class="warning-text">
-                    <strong>What you can do:</strong> Sign in to Digital Tails, open Payments, and use “Update payment method” to add a valid card. When a payment succeeds, your protection can resume according to your plan.
+                    <strong>What you can do:</strong> Sign in to your Digital Tails account, go to overview, and select “Update payment method” to add a valid card. Once your payment is successful, your pet’s protection will resume in line with your plan.
                 </p>
             </div>
-            <a class="cta" href="{{dashboardPaymentsUrl}}">Update payment in Digital Tails</a>
+            <a class="cta" href="https://user.digitaltails.com/overview">Update payment in Digital Tails</a>
         </div>
         <div class="footer">
             <p>Questions? We’re here 24/7 — info@digitaltails.com</p>
