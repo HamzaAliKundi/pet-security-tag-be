@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import Subscription from '../../models/Subscription';
+import Payment from '../../models/Payment';
 import QRCode from '../../models/QRCode';
 import User from '../../models/User';
 import { createSubscriptionPaymentIntent, createStripeSubscription, updateStripeSubscription, getOrCreateCustomer, savePaymentMethodToCustomer, getStripeSubscription, getPaymentIntentContext } from '../../utils/stripeService';
@@ -82,13 +83,21 @@ export const getUserSubscriptions = asyncHandler(async (req: Request, res: Respo
       }
     }
 
+    const paymentHistory = await Payment.find({
+      userId,
+      paymentType: 'subscription',
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
     res.status(200).json({
       message: 'User subscriptions retrieved successfully',
       status: 200,
       subscriptions: subscriptionsWithDaysRemaining,
       primarySubscription,
       hasActiveSubscription,
-      paymentFailureLapsed
+      paymentFailureLapsed,
+      paymentHistory,
     });
 
   } catch (error) {

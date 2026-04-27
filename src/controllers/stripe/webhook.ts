@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { env } from '../../config/env';
 import Subscription from '../../models/Subscription';
+import Payment from '../../models/Payment';
 import User from '../../models/User';
 import {
   sendSubscriptionNotificationEmail,
@@ -94,13 +95,13 @@ export const handleStripeWebhook = async (req: Request, res: Response): Promise<
     switch (event.type) {
       case 'invoice.payment_succeeded':
         console.log('🔄 Processing invoice.payment_succeeded...');
-        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice, event.id);
         console.log('✅ invoice.payment_succeeded processed successfully');
         break;
 
       case 'invoice.payment_failed':
         console.log('⚠️  Processing invoice.payment_failed...');
-        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice, event.id);
         console.log('✅ invoice.payment_failed processed successfully');
         break;
 
@@ -138,7 +139,7 @@ export const handleStripeWebhook = async (req: Request, res: Response): Promise<
  * Handle successful invoice payment (auto-renewal)
  * This is the key event for auto-renewal
  */
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, eventId?: string): Promise<void> {
   try {
     // Type assertion to access properties that may not be in TypeScript definitions
     const invoiceAny: any = invoice;
@@ -276,6 +277,29 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
     subscription.endedDueToPaymentFailure = false;
     await subscription.save();
 
+    // Store payment history for successful subscription charge (non-blocking)
+    try {
+      await Payment.create({
+        userId: subscription.userId,
+        subscriptionId: subscription._id,
+        qrCodeId: subscription.qrCodeId || undefined,
+        status: 'succeeded',
+        paymentType: 'subscription',
+        source: 'stripe_webhook',
+        amount: amountPaid,
+        currency,
+        action: billingReason === 'subscription_cycle' ? 'renewal' : 'new_subscription',
+        subscriptionType: subscription.type,
+        paymentIntentId: paymentIntentId || undefined,
+        stripeSubscriptionId: subscriptionId,
+        stripeInvoiceId: invoice.id,
+        stripeEventId: eventId,
+        attemptCount: typeof invoice.attempt_count === 'number' ? invoice.attempt_count : undefined,
+      });
+    } catch (paymentLogError) {
+      console.error('[invoice.payment_succeeded] Failed to store payment history:', paymentLogError);
+    }
+
     // Send notification email (unchanged behaviour)
     try {
       const user = await User.findById(subscription.userId);
@@ -304,7 +328,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<v
  * Handle failed invoice payment
  * attempt_count 1 → retry email; 2+ → final email + mark subscription inactive for pet profile
  */
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, eventId?: string): Promise<void> {
   try {
     const invoiceAny: any = invoice;
     const subscriptionId = getStripeSubscriptionIdFromInvoice(invoice);
@@ -334,6 +358,43 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void
     const nextRetrySummary = nextTs
       ? `on or after ${new Date(nextTs * 1000).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`
       : undefined;
+
+    // Store failed payment attempt in payment history (non-blocking)
+    try {
+      const failedAmount = (invoice.amount_due ?? invoice.amount_remaining ?? invoice.amount_paid ?? 0) / 100;
+      let failureReason: string | undefined;
+      const failureMessage = invoiceAny.last_finalization_error?.message || invoiceAny.last_payment_error?.message;
+      if (typeof failureMessage === 'string' && failureMessage.trim()) {
+        failureReason = failureMessage.trim();
+      }
+
+      await Payment.create({
+        userId: subscription.userId,
+        subscriptionId: subscription._id,
+        qrCodeId: subscription.qrCodeId || undefined,
+        status: 'failed',
+        paymentType: 'subscription',
+        source: 'stripe_webhook',
+        amount: Math.max(0, failedAmount),
+        currency: (invoice.currency || subscription.currency || 'gbp').toLowerCase(),
+        action: 'renewal',
+        subscriptionType: subscription.type,
+        paymentIntentId:
+          typeof invoiceAny.payment_intent === 'string'
+            ? invoiceAny.payment_intent
+            : invoiceAny.payment_intent?.id,
+        stripeSubscriptionId: subscriptionId,
+        stripeInvoiceId: invoice.id,
+        stripeEventId: eventId,
+        attemptCount,
+        failureReason,
+        metadata: {
+          nextRetrySummary,
+        },
+      });
+    } catch (paymentLogError) {
+      console.error('[invoice.payment_failed] Failed to store payment history:', paymentLogError);
+    }
 
     if (attemptCount < 2) {
       if (user?.email) {
