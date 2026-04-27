@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.confirmSubscriptionPayment = exports.upgradeSubscription = exports.renewSubscription = exports.getSubscriptionStats = exports.getUserSubscriptions = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const Subscription_1 = __importDefault(require("../../models/Subscription"));
+const Payment_1 = __importDefault(require("../../models/Payment"));
 const User_1 = __importDefault(require("../../models/User"));
 const stripeService_1 = require("../../utils/stripeService");
 const emailService_1 = require("../../utils/emailService");
@@ -69,13 +70,20 @@ exports.getUserSubscriptions = (0, express_async_handler_1.default)(async (req, 
                 };
             }
         }
+        const paymentHistory = await Payment_1.default.find({
+            userId,
+            paymentType: 'subscription',
+        })
+            .sort({ createdAt: -1 })
+            .lean();
         res.status(200).json({
             message: 'User subscriptions retrieved successfully',
             status: 200,
             subscriptions: subscriptionsWithDaysRemaining,
             primarySubscription,
             hasActiveSubscription,
-            paymentFailureLapsed
+            paymentFailureLapsed,
+            paymentHistory,
         });
     }
     catch (error) {

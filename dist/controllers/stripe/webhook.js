@@ -7,6 +7,7 @@ exports.handleStripeWebhook = void 0;
 const stripe_1 = __importDefault(require("stripe"));
 const env_1 = require("../../config/env");
 const Subscription_1 = __importDefault(require("../../models/Subscription"));
+const Payment_1 = __importDefault(require("../../models/Payment"));
 const User_1 = __importDefault(require("../../models/User"));
 const emailService_1 = require("../../utils/emailService");
 const stripe = new stripe_1.default(env_1.env.STRIPE_SECRET_KEY, {
@@ -83,12 +84,12 @@ const handleStripeWebhook = async (req, res) => {
         switch (event.type) {
             case 'invoice.payment_succeeded':
                 console.log('🔄 Processing invoice.payment_succeeded...');
-                await handleInvoicePaymentSucceeded(event.data.object);
+                await handleInvoicePaymentSucceeded(event.data.object, event.id);
                 console.log('✅ invoice.payment_succeeded processed successfully');
                 break;
             case 'invoice.payment_failed':
                 console.log('⚠️  Processing invoice.payment_failed...');
-                await handleInvoicePaymentFailed(event.data.object);
+                await handleInvoicePaymentFailed(event.data.object, event.id);
                 console.log('✅ invoice.payment_failed processed successfully');
                 break;
             case 'customer.subscription.updated':
@@ -122,7 +123,7 @@ exports.handleStripeWebhook = handleStripeWebhook;
  * Handle successful invoice payment (auto-renewal)
  * This is the key event for auto-renewal
  */
-async function handleInvoicePaymentSucceeded(invoice) {
+async function handleInvoicePaymentSucceeded(invoice, eventId) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     try {
         // Type assertion to access properties that may not be in TypeScript definitions
@@ -248,6 +249,29 @@ async function handleInvoicePaymentSucceeded(invoice) {
             subscription.paymentIntentId = paymentIntentId;
         subscription.endedDueToPaymentFailure = false;
         await subscription.save();
+        // Store payment history for successful subscription charge (non-blocking)
+        try {
+            await Payment_1.default.create({
+                userId: subscription.userId,
+                subscriptionId: subscription._id,
+                qrCodeId: subscription.qrCodeId || undefined,
+                status: 'succeeded',
+                paymentType: 'subscription',
+                source: 'stripe_webhook',
+                amount: amountPaid,
+                currency,
+                action: billingReason === 'subscription_cycle' ? 'renewal' : 'new_subscription',
+                subscriptionType: subscription.type,
+                paymentIntentId: paymentIntentId || undefined,
+                stripeSubscriptionId: subscriptionId,
+                stripeInvoiceId: invoice.id,
+                stripeEventId: eventId,
+                attemptCount: typeof invoice.attempt_count === 'number' ? invoice.attempt_count : undefined,
+            });
+        }
+        catch (paymentLogError) {
+            console.error('[invoice.payment_succeeded] Failed to store payment history:', paymentLogError);
+        }
         // Send notification email (unchanged behaviour)
         try {
             const user = await User_1.default.findById(subscription.userId);
@@ -276,7 +300,8 @@ async function handleInvoicePaymentSucceeded(invoice) {
  * Handle failed invoice payment
  * attempt_count 1 → retry email; 2+ → final email + mark subscription inactive for pet profile
  */
-async function handleInvoicePaymentFailed(invoice) {
+async function handleInvoicePaymentFailed(invoice, eventId) {
+    var _a, _b, _c, _d, _e, _f;
     try {
         const invoiceAny = invoice;
         const subscriptionId = getStripeSubscriptionIdFromInvoice(invoice);
@@ -300,6 +325,41 @@ async function handleInvoicePaymentFailed(invoice) {
         const nextRetrySummary = nextTs
             ? `on or after ${new Date(nextTs * 1000).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`
             : undefined;
+        // Store failed payment attempt in payment history (non-blocking)
+        try {
+            const failedAmount = ((_c = (_b = (_a = invoice.amount_due) !== null && _a !== void 0 ? _a : invoice.amount_remaining) !== null && _b !== void 0 ? _b : invoice.amount_paid) !== null && _c !== void 0 ? _c : 0) / 100;
+            let failureReason;
+            const failureMessage = ((_d = invoiceAny.last_finalization_error) === null || _d === void 0 ? void 0 : _d.message) || ((_e = invoiceAny.last_payment_error) === null || _e === void 0 ? void 0 : _e.message);
+            if (typeof failureMessage === 'string' && failureMessage.trim()) {
+                failureReason = failureMessage.trim();
+            }
+            await Payment_1.default.create({
+                userId: subscription.userId,
+                subscriptionId: subscription._id,
+                qrCodeId: subscription.qrCodeId || undefined,
+                status: 'failed',
+                paymentType: 'subscription',
+                source: 'stripe_webhook',
+                amount: Math.max(0, failedAmount),
+                currency: (invoice.currency || subscription.currency || 'gbp').toLowerCase(),
+                action: 'renewal',
+                subscriptionType: subscription.type,
+                paymentIntentId: typeof invoiceAny.payment_intent === 'string'
+                    ? invoiceAny.payment_intent
+                    : (_f = invoiceAny.payment_intent) === null || _f === void 0 ? void 0 : _f.id,
+                stripeSubscriptionId: subscriptionId,
+                stripeInvoiceId: invoice.id,
+                stripeEventId: eventId,
+                attemptCount,
+                failureReason,
+                metadata: {
+                    nextRetrySummary,
+                },
+            });
+        }
+        catch (paymentLogError) {
+            console.error('[invoice.payment_failed] Failed to store payment history:', paymentLogError);
+        }
         if (attemptCount < 2) {
             if (user === null || user === void 0 ? void 0 : user.email) {
                 try {
