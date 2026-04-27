@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import PetTagOrder from '../../models/PetTagOrder';
 import Subscription from '../../models/Subscription';
+import Payment from '../../models/Payment';
 import User from '../../models/User';
 
 // Get all payments with search, filtering, and pagination
@@ -24,6 +25,9 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
     // Build search query for orders
     let orderSearchQuery: any = {};
     let subscriptionSearchQuery: any = {};
+    let paymentSearchQuery: any = {
+      paymentType: 'subscription',
+    };
     
     if (search) {
       orderSearchQuery.$or = [
@@ -34,6 +38,11 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
         { paymentIntentId: { $regex: search, $options: 'i' } },
         { stripeSubscriptionId: { $regex: search, $options: 'i' } }
       ];
+      paymentSearchQuery.$or = [
+        { paymentIntentId: { $regex: search, $options: 'i' } },
+        { stripeSubscriptionId: { $regex: search, $options: 'i' } },
+        { stripeInvoiceId: { $regex: search, $options: 'i' } },
+      ];
     }
 
     // Build status filter for orders
@@ -41,10 +50,12 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
       if (status === 'Paid') {
         orderSearchQuery.paymentStatus = 'succeeded';
         subscriptionSearchQuery.status = 'active';
+        paymentSearchQuery.status = 'succeeded';
       } else if (status === 'Pending') {
         orderSearchQuery.paymentStatus = 'pending';
       } else if (status === 'Failed') {
         orderSearchQuery.paymentStatus = 'failed';
+        paymentSearchQuery.status = 'failed';
       } else if (status === 'Refunded') {
         orderSearchQuery.paymentStatus = 'cancelled';
         subscriptionSearchQuery.status = 'cancelled';
@@ -55,8 +66,8 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
     const sortObj: any = {};
     sortObj[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute queries for all three models
-    const [userPayments, petPayments, subscriptions] = await Promise.all([
+    // Execute queries for all models
+    const [userPayments, petPayments, subscriptions, paymentHistory] = await Promise.all([
       UserPetTagOrder.find(orderSearchQuery)
         .populate('userId', 'firstName lastName email')
         .sort(sortObj)
@@ -70,11 +81,15 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
       })
         .populate('userId', 'firstName lastName email')
         .sort(sortObj)
+        .lean(),
+      Payment.find(paymentSearchQuery)
+        .populate('userId', 'firstName lastName email')
+        .sort(sortObj)
         .lean()
     ]);
 
     // Combine and sort all payments
-    let allPayments: any[] = [...userPayments, ...petPayments, ...subscriptions];
+    let allPayments: any[] = [...userPayments, ...petPayments, ...subscriptions, ...paymentHistory];
     
     // Sort combined payments
     allPayments.sort((a, b) => {
@@ -127,8 +142,45 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
 
     // Transform payments data to match frontend requirements
     const transformedPayments = paginatedPayments.map((payment) => {
-      // Check if it's a Subscription (has type field)
-      if (payment.type && ['monthly', 'yearly', 'lifetime'].includes(payment.type)) {
+      // Check if it's a subscription payment history entry
+      if (payment.paymentType === 'subscription' && payment.source) {
+        const user = payment.userId as any;
+        const subscriptionTypeLabels: { [key: string]: string } = {
+          monthly: 'Monthly Subscription',
+          yearly: 'Yearly Subscription',
+          lifetime: 'Lifetime Subscription'
+        };
+        return {
+          id: payment._id,
+          invoice:
+            payment.stripeInvoiceId ||
+            payment.paymentIntentId ||
+            payment.stripeSubscriptionId ||
+            `PAY-${payment._id.toString().slice(-6).toUpperCase()}`,
+          customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+          date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
+          amount: `€${(payment.amount || 0).toFixed(2)}`,
+          status: payment.status === 'succeeded' ? 'Paid' : 'Failed',
+          method: 'Card',
+          petName:
+            subscriptionTypeLabels[payment.subscriptionType as keyof typeof subscriptionTypeLabels] ||
+            'Subscription',
+          tagColor: 'N/A',
+          phone: user?.email || 'No Email',
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: '',
+          quantity: 1,
+          paymentStatus: payment.status,
+          paymentType: 'Subscription Payment',
+          subscriptionType: payment.subscriptionType,
+          createdAt: payment.createdAt,
+          updatedAt: payment.updatedAt
+        };
+      } else if (payment.type && ['monthly', 'yearly', 'lifetime'].includes(payment.type)) {
+        // Subscription
         // Subscription
         const user = payment.userId as any;
         const subscriptionTypeLabels: { [key: string]: string } = {
