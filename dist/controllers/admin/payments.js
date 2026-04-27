@@ -8,6 +8,7 @@ const express_async_handler_1 = __importDefault(require("express-async-handler")
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
 const Subscription_1 = __importDefault(require("../../models/Subscription"));
+const Payment_1 = __importDefault(require("../../models/Payment"));
 // Get all payments with search, filtering, and pagination
 exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -18,6 +19,9 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
         // Build search query for orders
         let orderSearchQuery = {};
         let subscriptionSearchQuery = {};
+        let paymentSearchQuery = {
+            paymentType: 'subscription',
+        };
         if (search) {
             orderSearchQuery.$or = [
                 { paymentIntentId: { $regex: search, $options: 'i' } },
@@ -27,18 +31,25 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
                 { paymentIntentId: { $regex: search, $options: 'i' } },
                 { stripeSubscriptionId: { $regex: search, $options: 'i' } }
             ];
+            paymentSearchQuery.$or = [
+                { paymentIntentId: { $regex: search, $options: 'i' } },
+                { stripeSubscriptionId: { $regex: search, $options: 'i' } },
+                { stripeInvoiceId: { $regex: search, $options: 'i' } },
+            ];
         }
         // Build status filter for orders
         if (status && status !== 'all') {
             if (status === 'Paid') {
                 orderSearchQuery.paymentStatus = 'succeeded';
                 subscriptionSearchQuery.status = 'active';
+                paymentSearchQuery.status = 'succeeded';
             }
             else if (status === 'Pending') {
                 orderSearchQuery.paymentStatus = 'pending';
             }
             else if (status === 'Failed') {
                 orderSearchQuery.paymentStatus = 'failed';
+                paymentSearchQuery.status = 'failed';
             }
             else if (status === 'Refunded') {
                 orderSearchQuery.paymentStatus = 'cancelled';
@@ -48,8 +59,8 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
         // Build sort object
         const sortObj = {};
         sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-        // Execute queries for all three models
-        const [userPayments, petPayments, subscriptions] = await Promise.all([
+        // Execute queries for all models
+        const [userPayments, petPayments, subscriptions, paymentHistory] = await Promise.all([
             UserPetTagOrder_1.default.find(orderSearchQuery)
                 .populate('userId', 'firstName lastName email')
                 .sort(sortObj)
@@ -63,10 +74,14 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
             })
                 .populate('userId', 'firstName lastName email')
                 .sort(sortObj)
+                .lean(),
+            Payment_1.default.find(paymentSearchQuery)
+                .populate('userId', 'firstName lastName email')
+                .sort(sortObj)
                 .lean()
         ]);
         // Combine and sort all payments
-        let allPayments = [...userPayments, ...petPayments, ...subscriptions];
+        let allPayments = [...userPayments, ...petPayments, ...subscriptions, ...paymentHistory];
         // Sort combined payments
         allPayments.sort((a, b) => {
             const aValue = a[sortBy];
@@ -113,8 +128,44 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
         // Transform payments data to match frontend requirements
         const transformedPayments = paginatedPayments.map((payment) => {
             var _a, _b, _c, _d, _e;
-            // Check if it's a Subscription (has type field)
-            if (payment.type && ['monthly', 'yearly', 'lifetime'].includes(payment.type)) {
+            // Check if it's a subscription payment history entry
+            if (payment.paymentType === 'subscription' && payment.source) {
+                const user = payment.userId;
+                const subscriptionTypeLabels = {
+                    monthly: 'Monthly Subscription',
+                    yearly: 'Yearly Subscription',
+                    lifetime: 'Lifetime Subscription'
+                };
+                return {
+                    id: payment._id,
+                    invoice: payment.stripeInvoiceId ||
+                        payment.paymentIntentId ||
+                        payment.stripeSubscriptionId ||
+                        `PAY-${payment._id.toString().slice(-6).toUpperCase()}`,
+                    customer: user ? `${user.firstName} ${user.lastName}` : 'Unknown Customer',
+                    date: new Date(payment.createdAt).toLocaleDateString('en-GB'),
+                    amount: `€${(payment.amount || 0).toFixed(2)}`,
+                    status: payment.status === 'succeeded' ? 'Paid' : 'Failed',
+                    method: 'Card',
+                    petName: subscriptionTypeLabels[payment.subscriptionType] ||
+                        'Subscription',
+                    tagColor: 'N/A',
+                    phone: (user === null || user === void 0 ? void 0 : user.email) || 'No Email',
+                    street: '',
+                    city: '',
+                    state: '',
+                    zipCode: '',
+                    country: '',
+                    quantity: 1,
+                    paymentStatus: payment.status,
+                    paymentType: 'Subscription Payment',
+                    subscriptionType: payment.subscriptionType,
+                    createdAt: payment.createdAt,
+                    updatedAt: payment.updatedAt
+                };
+            }
+            else if (payment.type && ['monthly', 'yearly', 'lifetime'].includes(payment.type)) {
+                // Subscription
                 // Subscription
                 const user = payment.userId;
                 const subscriptionTypeLabels = {
