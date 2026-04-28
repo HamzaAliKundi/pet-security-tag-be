@@ -11,7 +11,7 @@ if (!env.JWT_SECRET) {
 export const generateToken = (user: IUser): string => {
   const payload = { _id: user._id, role: user.role };
   const options: SignOptions = { 
-    expiresIn: '30d'
+    expiresIn: '10y'
   };
   
   return jwt.sign(payload, env.JWT_SECRET, options);

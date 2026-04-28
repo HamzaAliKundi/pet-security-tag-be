@@ -14,7 +14,7 @@ if (!env_1.env.JWT_SECRET) {
 const generateToken = (user) => {
     const payload = { _id: user._id, role: user.role };
     const options = {
-        expiresIn: '30d'
+        expiresIn: '10y'
     };
     return jsonwebtoken_1.default.sign(payload, env_1.env.JWT_SECRET, options);
 };
