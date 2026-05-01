@@ -23,6 +23,7 @@ export interface IPetTagOrder extends Document {
   trackingNumber?: string;
   deliveryCompany?: string;
   termsAccepted?: boolean;
+  isDiscount?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -117,6 +118,10 @@ const PetTagOrderSchema: Schema = new Schema({
     trim: true
   },
   termsAccepted: {
+    type: Boolean,
+    default: false
+  },
+  isDiscount: {
     type: Boolean,
     default: false
   }

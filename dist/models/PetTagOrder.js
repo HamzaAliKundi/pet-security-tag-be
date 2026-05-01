@@ -126,6 +126,10 @@ const PetTagOrderSchema = new mongoose_1.Schema({
     termsAccepted: {
         type: Boolean,
         default: false
+    },
+    isDiscount: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

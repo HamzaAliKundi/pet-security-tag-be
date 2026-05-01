@@ -14,7 +14,8 @@ import { generateReferralCode } from '../../utils/referralCode';
 import { checkAndCreateRewardRedemption } from '../../utils/rewardRedemption';
 
 export const createOrder = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { email, name, petName, petNames, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
+  const { email, name, petName, petNames, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted, isDiscount } = req.body;
+  const discountFlag = Boolean(isDiscount);
 
   // Validate pet names - accept either petName (backward compatibility) or petNames array
   let petNamesArray: string[] = [];
@@ -159,7 +160,8 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       shippingAddress,
       paymentIntentId: paymentResult?.paymentIntentId,
       status: orderStatus,
-      termsAccepted: termsAccepted || false
+      termsAccepted: termsAccepted || false,
+      isDiscount: discountFlag
     });
 
     // If free order, automatically create user account and pets

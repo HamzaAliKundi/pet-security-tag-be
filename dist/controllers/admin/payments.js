@@ -158,6 +158,7 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
                     country: '',
                     quantity: 1,
                     paymentStatus: payment.status,
+                    isDiscount: false,
                     paymentType: 'Subscription Payment',
                     subscriptionType: payment.subscriptionType,
                     createdAt: payment.createdAt,
@@ -192,6 +193,7 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
                     country: '',
                     quantity: 1,
                     paymentStatus: payment.status === 'active' ? 'succeeded' : payment.status,
+                    isDiscount: false,
                     paymentType: 'Subscription',
                     subscriptionType: payment.type,
                     createdAt: payment.createdAt,
@@ -221,6 +223,7 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
                     country: payment.country || '',
                     quantity: payment.quantity || 1,
                     paymentStatus: payment.paymentStatus || 'pending',
+                    isDiscount: Boolean(payment.isDiscount),
                     paymentType: 'UserPetTagOrder',
                     createdAt: payment.createdAt,
                     updatedAt: payment.updatedAt
@@ -246,6 +249,7 @@ exports.getPayments = (0, express_async_handler_1.default)(async (req, res) => {
                     country: ((_e = payment.shippingAddress) === null || _e === void 0 ? void 0 : _e.country) || '',
                     quantity: payment.quantity || 1,
                     paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                    isDiscount: Boolean(payment.isDiscount),
                     paymentType: 'PetTagOrder',
                     createdAt: payment.createdAt,
                     updatedAt: payment.updatedAt
@@ -332,6 +336,7 @@ exports.getPaymentById = (0, express_async_handler_1.default)(async (req, res) =
                 country: '',
                 quantity: 1,
                 paymentStatus: subscriptionPayment.status === 'active' ? 'succeeded' : subscriptionPayment.status,
+                isDiscount: false,
                 paymentType: 'Subscription',
                 subscriptionType: subscriptionPayment.type,
                 createdAt: subscriptionPayment.createdAt,
@@ -361,6 +366,7 @@ exports.getPaymentById = (0, express_async_handler_1.default)(async (req, res) =
                 country: payment.country || '',
                 quantity: payment.quantity || 1,
                 paymentStatus: payment.paymentStatus || 'pending',
+                isDiscount: Boolean(payment.isDiscount),
                 paymentType: 'UserPetTagOrder',
                 createdAt: payment.createdAt,
                 updatedAt: payment.updatedAt
@@ -387,6 +393,7 @@ exports.getPaymentById = (0, express_async_handler_1.default)(async (req, res) =
                 country: ((_e = petPayment.shippingAddress) === null || _e === void 0 ? void 0 : _e.country) || '',
                 quantity: petPayment.quantity || 1,
                 paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                isDiscount: Boolean(petPayment.isDiscount),
                 paymentType: 'PetTagOrder',
                 createdAt: petPayment.createdAt,
                 updatedAt: petPayment.updatedAt
