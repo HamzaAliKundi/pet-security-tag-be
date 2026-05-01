@@ -77,7 +77,8 @@ exports.getUserPetCount = (0, express_async_handler_1.default)(async (req, res) 
 exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
-    const { quantity, petName, totalCostEuro, currency, tagColor, tagColors, phone, street, city, state, zipCode, country, isReplacement = false } = req.body;
+    const { quantity, petName, totalCostEuro, currency, tagColor, tagColors, phone, street, city, state, zipCode, country, isDiscount, isReplacement = false } = req.body;
+    const discountFlag = Boolean(isDiscount);
     // Validate required fields
     if (!quantity || !petName || !totalCostEuro || (!tagColor && !tagColors) || !phone || !street || !city || !state || !zipCode || !country) {
         res.status(400).json({
@@ -189,6 +190,7 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
             status: 'pending',
             paymentIntentId: paymentResult.paymentIntentId,
             paymentStatus: 'pending',
+            isDiscount: discountFlag,
             isReplacement: isReplacement
         });
         res.status(201).json({
@@ -209,6 +211,7 @@ exports.createUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
                 status: order.status,
                 paymentStatus: order.paymentStatus,
                 paymentIntentId: order.paymentIntentId,
+                isDiscount: order.isDiscount,
                 createdAt: order.createdAt
             },
             payment: {
@@ -297,6 +300,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                             status: order.status,
                             paymentStatus: order.paymentStatus,
                             paymentIntentId: order.paymentIntentId,
+                            isDiscount: order.isDiscount,
                             createdAt: order.createdAt,
                             updatedAt: order.updatedAt,
                             isReplacement: order.isReplacement
@@ -382,6 +386,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
                         status: order.status,
                         paymentStatus: order.paymentStatus,
                         paymentIntentId: order.paymentIntentId,
+                        isDiscount: order.isDiscount,
                         createdAt: order.createdAt,
                         updatedAt: order.updatedAt,
                         isReplacement: order.isReplacement
@@ -510,6 +515,7 @@ exports.getUserPetTagOrder = (0, express_async_handler_1.default)(async (req, re
             status: order.status,
             paymentStatus: order.paymentStatus,
             paymentIntentId: order.paymentIntentId,
+            isDiscount: order.isDiscount,
             createdAt: order.createdAt,
             updatedAt: order.updatedAt
         }
@@ -520,7 +526,8 @@ exports.updateUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
     var _a;
     const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
     const { orderId } = req.params;
-    const { quantity, petName, totalCostEuro, tagColor, tagColors, phone, street, city, state, zipCode, country } = req.body;
+    const { quantity, petName, totalCostEuro, tagColor, tagColors, phone, street, city, state, zipCode, country, isDiscount } = req.body;
+    const discountFlag = Boolean(isDiscount);
     // Check if order exists and belongs to user
     const existingOrder = await UserPetTagOrder_1.default.findOne({ _id: orderId, userId });
     if (!existingOrder) {
@@ -590,7 +597,8 @@ exports.updateUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
         city: city.trim(),
         state: state.trim(),
         zipCode: zipCode.trim(),
-        country: country.trim()
+        country: country.trim(),
+        isDiscount: discountFlag
     }, {
         new: true,
         runValidators: true
@@ -617,6 +625,7 @@ exports.updateUserPetTagOrder = (0, express_async_handler_1.default)(async (req,
             status: updatedOrder.status,
             paymentStatus: updatedOrder.paymentStatus,
             paymentIntentId: updatedOrder.paymentIntentId,
+            isDiscount: updatedOrder.isDiscount,
             createdAt: updatedOrder.createdAt,
             updatedAt: updatedOrder.updatedAt
         }

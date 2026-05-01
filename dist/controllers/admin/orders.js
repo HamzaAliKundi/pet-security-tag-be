@@ -133,6 +133,7 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
                     zipCode: order.zipCode || '',
                     country: order.country || '',
                     paymentStatus: order.paymentStatus || 'pending',
+                    isDiscount: Boolean(order.isDiscount),
                     orderType: 'UserPetTagOrder',
                     createdAt: order.createdAt,
                     updatedAt: order.updatedAt
@@ -161,6 +162,7 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
                     zipCode: ((_e = order.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
                     country: ((_f = order.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
                     paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                    isDiscount: Boolean(order.isDiscount),
                     orderType: 'PetTagOrder',
                     createdAt: order.createdAt,
                     updatedAt: order.updatedAt
@@ -237,6 +239,7 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
                 zipCode: order.zipCode,
                 country: order.country,
                 paymentStatus: order.paymentStatus,
+                isDiscount: Boolean(order.isDiscount),
                 orderType: 'UserPetTagOrder',
                 createdAt: order.createdAt,
                 updatedAt: order.updatedAt
@@ -266,6 +269,7 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
                 zipCode: ((_f = petOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.zipCode) || '',
                 country: ((_g = petOrder.shippingAddress) === null || _g === void 0 ? void 0 : _g.country) || '',
                 paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                isDiscount: Boolean(petOrder.isDiscount),
                 orderType: 'PetTagOrder',
                 createdAt: petOrder.createdAt,
                 updatedAt: petOrder.updatedAt
@@ -402,6 +406,7 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
                 zipCode: updatedOrder.zipCode,
                 country: updatedOrder.country,
                 paymentStatus: updatedOrder.paymentStatus,
+                isDiscount: Boolean(updatedOrder.isDiscount),
                 trackingNumber: updatedOrder.trackingNumber,
                 deliveryCompany: updatedOrder.deliveryCompany,
                 createdAt: updatedOrder.createdAt,
@@ -430,6 +435,7 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
                 zipCode: ((_e = updatedOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
                 country: ((_f = updatedOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
                 paymentStatus: updatedOrder.paymentStatus || 'pending',
+                isDiscount: Boolean(updatedOrder.isDiscount),
                 trackingNumber: updatedOrder.trackingNumber,
                 deliveryCompany: updatedOrder.deliveryCompany,
                 createdAt: updatedOrder.createdAt,

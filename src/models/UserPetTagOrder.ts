@@ -16,6 +16,7 @@ export interface IUserPetTagOrder extends Document {
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
   paymentIntentId?: string;
   paymentStatus: 'pending' | 'succeeded' | 'failed' | 'cancelled';
+  isDiscount?: boolean;
   isReplacement?: boolean;
   trackingNumber?: string;
   deliveryCompany?: string;
@@ -99,6 +100,10 @@ const UserPetTagOrderSchema: Schema = new Schema({
     required: true,
     enum: ['pending', 'succeeded', 'failed', 'cancelled'],
     default: 'pending'
+  },
+  isDiscount: {
+    type: Boolean,
+    default: false
   },
   isReplacement: {
     type: Boolean,

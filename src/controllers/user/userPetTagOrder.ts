@@ -53,8 +53,10 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
     state, 
     zipCode, 
     country,
+    isDiscount,
     isReplacement = false
   } = req.body;
+  const discountFlag = Boolean(isDiscount);
 
   // Validate required fields
   if (!quantity || !petName || !totalCostEuro || (!tagColor && !tagColors) || !phone || !street || !city || !state || !zipCode || !country) {
@@ -177,6 +179,7 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
       status: 'pending',
       paymentIntentId: paymentResult.paymentIntentId,
       paymentStatus: 'pending',
+      isDiscount: discountFlag,
       isReplacement: isReplacement
     });
 
@@ -198,6 +201,7 @@ export const createUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
         status: order.status,
         paymentStatus: order.paymentStatus,
         paymentIntentId: order.paymentIntentId,
+        isDiscount: order.isDiscount,
         createdAt: order.createdAt
       },
       payment: {
@@ -298,6 +302,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
               status: order.status,
               paymentStatus: order.paymentStatus,
               paymentIntentId: order.paymentIntentId,
+              isDiscount: order.isDiscount,
               createdAt: order.createdAt,
               updatedAt: order.updatedAt,
               isReplacement: order.isReplacement
@@ -387,6 +392,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
             status: order.status,
             paymentStatus: order.paymentStatus,
             paymentIntentId: order.paymentIntentId,
+            isDiscount: order.isDiscount,
             createdAt: order.createdAt,
             updatedAt: order.updatedAt,
             isReplacement: order.isReplacement
@@ -522,6 +528,7 @@ export const getUserPetTagOrder = asyncHandler(async (req: Request, res: Respons
       status: order.status,
       paymentStatus: order.paymentStatus,
       paymentIntentId: order.paymentIntentId,
+      isDiscount: order.isDiscount,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt
     }
@@ -543,8 +550,10 @@ export const updateUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
     city, 
     state, 
     zipCode, 
-    country 
+    country,
+    isDiscount
   } = req.body;
+  const discountFlag = Boolean(isDiscount);
 
   // Check if order exists and belongs to user
   const existingOrder = await UserPetTagOrder.findOne({ _id: orderId, userId });
@@ -624,7 +633,8 @@ export const updateUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
       city: city.trim(),
       state: state.trim(),
       zipCode: zipCode.trim(),
-      country: country.trim()
+      country: country.trim(),
+      isDiscount: discountFlag
     },
     { 
       new: true,
@@ -655,6 +665,7 @@ export const updateUserPetTagOrder = asyncHandler(async (req: Request, res: Resp
       status: updatedOrder.status,
       paymentStatus: updatedOrder.paymentStatus,
       paymentIntentId: updatedOrder.paymentIntentId,
+      isDiscount: updatedOrder.isDiscount,
       createdAt: updatedOrder.createdAt,
       updatedAt: updatedOrder.updatedAt
     }

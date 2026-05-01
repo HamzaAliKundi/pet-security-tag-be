@@ -18,7 +18,8 @@ const env_1 = require("../../config/env");
 const referralCode_1 = require("../../utils/referralCode");
 const rewardRedemption_1 = require("../../utils/rewardRedemption");
 exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
-    const { email, name, petName, petNames, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted } = req.body;
+    const { email, name, petName, petNames, quantity, subscriptionType, tagColor, tagColors, totalCostEuro, currency, phone, shippingAddress, paymentMethodId, termsAccepted, isDiscount } = req.body;
+    const discountFlag = Boolean(isDiscount);
     // Validate pet names - accept either petName (backward compatibility) or petNames array
     let petNamesArray = [];
     if (petNames && Array.isArray(petNames) && petNames.length > 0) {
@@ -152,7 +153,8 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
             shippingAddress,
             paymentIntentId: paymentResult === null || paymentResult === void 0 ? void 0 : paymentResult.paymentIntentId,
             status: orderStatus,
-            termsAccepted: termsAccepted || false
+            termsAccepted: termsAccepted || false,
+            isDiscount: discountFlag
         });
         // If free order, automatically create user account and pets
         if (totalCostEuro === 0) {

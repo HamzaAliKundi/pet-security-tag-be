@@ -174,6 +174,7 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
           country: '',
           quantity: 1,
           paymentStatus: payment.status,
+          isDiscount: false,
           paymentType: 'Subscription Payment',
           subscriptionType: payment.subscriptionType,
           createdAt: payment.createdAt,
@@ -207,6 +208,7 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
           country: '',
           quantity: 1,
           paymentStatus: payment.status === 'active' ? 'succeeded' : payment.status,
+          isDiscount: false,
           paymentType: 'Subscription',
           subscriptionType: payment.type,
           createdAt: payment.createdAt,
@@ -235,6 +237,7 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
           country: payment.country || '',
           quantity: payment.quantity || 1,
           paymentStatus: payment.paymentStatus || 'pending',
+          isDiscount: Boolean(payment.isDiscount),
           paymentType: 'UserPetTagOrder',
           createdAt: payment.createdAt,
           updatedAt: payment.updatedAt
@@ -259,6 +262,7 @@ export const getPayments = asyncHandler(async (req: Request, res: Response): Pro
           country: payment.shippingAddress?.country || '',
           quantity: payment.quantity || 1,
           paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+          isDiscount: Boolean(payment.isDiscount),
           paymentType: 'PetTagOrder',
           createdAt: payment.createdAt,
           updatedAt: payment.updatedAt
@@ -352,6 +356,7 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
         country: '',
         quantity: 1,
         paymentStatus: subscriptionPayment.status === 'active' ? 'succeeded' : subscriptionPayment.status,
+        isDiscount: false,
         paymentType: 'Subscription',
         subscriptionType: subscriptionPayment.type,
         createdAt: subscriptionPayment.createdAt,
@@ -380,6 +385,7 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
         country: payment.country || '',
         quantity: payment.quantity || 1,
         paymentStatus: payment.paymentStatus || 'pending',
+        isDiscount: Boolean(payment.isDiscount),
         paymentType: 'UserPetTagOrder',
         createdAt: payment.createdAt,
         updatedAt: payment.updatedAt
@@ -405,6 +411,7 @@ export const getPaymentById = asyncHandler(async (req: Request, res: Response): 
         country: petPayment.shippingAddress?.country || '',
         quantity: petPayment.quantity || 1,
         paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+        isDiscount: Boolean(petPayment.isDiscount),
         paymentType: 'PetTagOrder',
         createdAt: petPayment.createdAt,
         updatedAt: petPayment.updatedAt

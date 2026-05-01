@@ -155,6 +155,7 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
            zipCode: order.zipCode || '',
            country: order.country || '',
            paymentStatus: order.paymentStatus || 'pending',
+           isDiscount: Boolean(order.isDiscount),
            orderType: 'UserPetTagOrder',
            createdAt: order.createdAt,
            updatedAt: order.updatedAt
@@ -182,6 +183,7 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
            zipCode: order.shippingAddress?.zipCode || '',
            country: order.shippingAddress?.country || '',
            paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+           isDiscount: Boolean(order.isDiscount),
            orderType: 'PetTagOrder',
            createdAt: order.createdAt,
            updatedAt: order.updatedAt
@@ -265,6 +267,7 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
         zipCode: order.zipCode,
         country: order.country,
         paymentStatus: order.paymentStatus,
+        isDiscount: Boolean(order.isDiscount),
         orderType: 'UserPetTagOrder',
         createdAt: order.createdAt,
         updatedAt: order.updatedAt
@@ -293,6 +296,7 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
         zipCode: petOrder.shippingAddress?.zipCode || '',
         country: petOrder.shippingAddress?.country || '',
         paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+        isDiscount: Boolean(petOrder.isDiscount),
         orderType: 'PetTagOrder',
         createdAt: petOrder.createdAt,
         updatedAt: petOrder.updatedAt
@@ -445,6 +449,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         zipCode: updatedOrder.zipCode,
         country: updatedOrder.country,
         paymentStatus: updatedOrder.paymentStatus,
+        isDiscount: Boolean(updatedOrder.isDiscount),
         trackingNumber: updatedOrder.trackingNumber,
         deliveryCompany: updatedOrder.deliveryCompany,
         createdAt: updatedOrder.createdAt,
@@ -472,6 +477,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         zipCode: updatedOrder.shippingAddress?.zipCode || '',
         country: updatedOrder.shippingAddress?.country || '',
         paymentStatus: updatedOrder.paymentStatus || 'pending',
+        isDiscount: Boolean(updatedOrder.isDiscount),
         trackingNumber: updatedOrder.trackingNumber,
         deliveryCompany: updatedOrder.deliveryCompany,
         createdAt: updatedOrder.createdAt,

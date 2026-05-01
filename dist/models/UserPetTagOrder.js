@@ -111,6 +111,10 @@ const UserPetTagOrderSchema = new mongoose_1.Schema({
         enum: ['pending', 'succeeded', 'failed', 'cancelled'],
         default: 'pending'
     },
+    isDiscount: {
+        type: Boolean,
+        default: false
+    },
     isReplacement: {
         type: Boolean,
         default: false
