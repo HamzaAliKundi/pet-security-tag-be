@@ -28,6 +28,12 @@ interface EnvVars {
   TWILIO_WHATSAPP_NUMBER_UK?: string;
   TWILIO_ALPHANUMERIC_SENDER_ID_UK?: string; // Alphanumeric sender ID for UK (e.g., "DigitalTails")
   TWILIO_TEST_NUMBER?: string;
+  EFS_API_BASE_URL?: string;
+  EFS_MERCHANT_ID?: string;
+  EFS_MERCHANT_NAME?: string;
+  EFS_MERCHANT_TOKEN?: string;
+  EFS_API_VERSION?: string;
+  EFS_DEFAULT_SHIPPING_METHOD?: string;
 }
 
 const validateEnv = (): EnvVars => {
@@ -83,7 +89,13 @@ const validateEnv = (): EnvVars => {
     TWILIO_PHONE_NUMBER_UK: process.env.TWILIO_PHONE_NUMBER_UK,
     TWILIO_WHATSAPP_NUMBER_UK: process.env.TWILIO_WHATSAPP_NUMBER_UK,
     TWILIO_ALPHANUMERIC_SENDER_ID_UK: process.env.TWILIO_ALPHANUMERIC_SENDER_ID_UK,
-    TWILIO_TEST_NUMBER: process.env.TWILIO_TEST_NUMBER
+    TWILIO_TEST_NUMBER: process.env.TWILIO_TEST_NUMBER,
+    EFS_API_BASE_URL: process.env.EFS_API_BASE_URL,
+    EFS_MERCHANT_ID: process.env.EFS_MERCHANT_ID,
+    EFS_MERCHANT_NAME: process.env.EFS_MERCHANT_NAME,
+    EFS_MERCHANT_TOKEN: process.env.EFS_MERCHANT_TOKEN,
+    EFS_API_VERSION: process.env.EFS_API_VERSION,
+    EFS_DEFAULT_SHIPPING_METHOD: process.env.EFS_DEFAULT_SHIPPING_METHOD
   };
 };
 

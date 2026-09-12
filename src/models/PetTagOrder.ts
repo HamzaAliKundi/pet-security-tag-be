@@ -24,6 +24,9 @@ export interface IPetTagOrder extends Document {
   deliveryCompany?: string;
   termsAccepted?: boolean;
   isDiscount?: boolean;
+  efsOrderId?: string;
+  efsSubmissionStatus?: 'submitted' | 'failed';
+  efsError?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,6 +127,18 @@ const PetTagOrderSchema: Schema = new Schema({
   isDiscount: {
     type: Boolean,
     default: false
+  },
+  efsOrderId: {
+    type: String,
+    trim: true
+  },
+  efsSubmissionStatus: {
+    type: String,
+    enum: ['submitted', 'failed']
+  },
+  efsError: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

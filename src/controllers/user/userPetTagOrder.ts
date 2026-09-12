@@ -7,6 +7,54 @@ import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeSer
 // NOTE: assignQRToOrder import removed - QR codes are now assigned when user scans the tag, not at order confirmation
 import { sendOrderConfirmationEmail } from '../../utils/emailService';
 import User from '../../models/User';
+import { isUsAddress, submitOrderToEfs, buildTagItems } from '../../utils/efsService';
+import { env } from '../../config/env';
+
+const splitName = (name: string): { firstName: string; lastName: string } => {
+  const nameParts = (name || '').trim().split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || firstName;
+  return { firstName, lastName };
+};
+
+const submitUserOrderToEfs = async (order: any, user: { firstName?: string; lastName?: string; email?: string }): Promise<void> => {
+  if (!isUsAddress(order.country)) return;
+
+  try {
+    const { firstName, lastName } = splitName(`${user.firstName || ''} ${user.lastName || ''}`.trim());
+    const items = buildTagItems(order.tagColors, order.tagColor, order.quantity);
+
+    const efsResult = await submitOrderToEfs({
+      orderNumber: order._id.toString(),
+      shippingMethod: env.EFS_DEFAULT_SHIPPING_METHOD || 'ECONOMY_LIGHTWEIGHT_POST',
+      shippingAddress: {
+        firstName,
+        lastName,
+        address1: order.street || '',
+        city: order.city || '',
+        state: order.state,
+        postalCode: order.zipCode,
+        country: order.country || '',
+        phone: order.phone,
+        email: user.email
+      },
+      items
+    });
+
+    order.efsOrderId = efsResult.orderId;
+    order.efsSubmissionStatus = efsResult.success ? 'submitted' : 'failed';
+    order.efsError = efsResult.error;
+    await order.save();
+
+    if (!efsResult.success) {
+      console.error('EFS order submission failed:', efsResult.error, efsResult.rawResponse);
+    } else {
+      console.log('EFS order submitted:', efsResult.orderId, efsResult.orderStatus);
+    }
+  } catch (efsError) {
+    console.error('Error submitting order to EFS:', efsError);
+  }
+};
 
 // Get user's pet count for limit validation
 export const getUserPetCount = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -252,6 +300,11 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
       order.paymentStatus = 'succeeded';
       order.status = 'paid';
       await order.save();
+
+      const orderUser = await User.findById(userId);
+      if (orderUser) {
+        await submitUserOrderToEfs(order, orderUser);
+      }
 
       // Handle replacement orders differently
       if (order.isReplacement) {
@@ -820,6 +873,11 @@ export const confirmReplacementPayment = asyncHandler(async (req: Request, res: 
       order.paymentStatus = 'succeeded';
       order.status = 'paid';
       await order.save();
+
+      const orderUser = await User.findById(userId);
+      if (orderUser) {
+        await submitUserOrderToEfs(order, orderUser);
+      }
 
       // Find the existing pet
       const existingPet = await Pet.findOne({ _id: petId, userId });

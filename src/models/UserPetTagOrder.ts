@@ -20,6 +20,9 @@ export interface IUserPetTagOrder extends Document {
   isReplacement?: boolean;
   trackingNumber?: string;
   deliveryCompany?: string;
+  efsOrderId?: string;
+  efsSubmissionStatus?: 'submitted' | 'failed';
+  efsError?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -114,6 +117,18 @@ const UserPetTagOrderSchema: Schema = new Schema({
     trim: true
   },
   deliveryCompany: {
+    type: String,
+    trim: true
+  },
+  efsOrderId: {
+    type: String,
+    trim: true
+  },
+  efsSubmissionStatus: {
+    type: String,
+    enum: ['submitted', 'failed']
+  },
+  efsError: {
     type: String,
     trim: true
   }

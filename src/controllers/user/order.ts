@@ -8,6 +8,7 @@ import Referral from '../../models/Referral';
 import { createPaymentIntent, confirmPaymentIntent } from '../../utils/stripeService';
 // NOTE: assignQRToPublicOrder import removed - QR codes are now assigned when user scans the tag, not at order confirmation
 import { sendOrderConfirmationEmail, sendCredentialsEmail } from '../../utils/emailService';
+import { isUsAddress, submitOrderToEfs, buildTagItems } from '../../utils/efsService';
 import bcrypt from 'bcryptjs';
 import { env } from '../../config/env';
 import { generateReferralCode } from '../../utils/referralCode';
@@ -411,6 +412,44 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
       // Update order status
       order.status = 'paid';
       await order.save();
+
+      // Only US shipping addresses are fulfilled through EFS
+      if (isUsAddress(order.shippingAddress?.country)) {
+        try {
+          const { firstName, lastName } = splitName(order.name);
+          const items = buildTagItems(order.tagColors, order.tagColor, order.quantity);
+
+          const efsResult = await submitOrderToEfs({
+            orderNumber: order._id.toString(),
+            shippingMethod: env.EFS_DEFAULT_SHIPPING_METHOD || 'ECONOMY_LIGHTWEIGHT_POST',
+            shippingAddress: {
+              firstName,
+              lastName,
+              address1: order.shippingAddress?.street || '',
+              city: order.shippingAddress?.city || '',
+              state: order.shippingAddress?.state,
+              postalCode: order.shippingAddress?.zipCode,
+              country: order.shippingAddress?.country || '',
+              phone: order.phone,
+              email: order.email
+            },
+            items
+          });
+
+          order.efsOrderId = efsResult.orderId;
+          order.efsSubmissionStatus = efsResult.success ? 'submitted' : 'failed';
+          order.efsError = efsResult.error;
+          await order.save();
+
+          if (!efsResult.success) {
+            console.error('EFS order submission failed:', efsResult.error, efsResult.rawResponse);
+          } else {
+            console.log('EFS order submitted:', efsResult.orderId, efsResult.orderStatus);
+          }
+        } catch (efsError) {
+          console.error('Error submitting order to EFS:', efsError);
+        }
+      }
 
       // Check if user already exists
       let user = await User.findOne({ email: order.email.toLowerCase() });
