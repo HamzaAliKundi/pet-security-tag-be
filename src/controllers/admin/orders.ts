@@ -46,19 +46,41 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build search query
-    let searchQuery: any = {};
-    
+    // Build search query. PetTagOrder keeps email/name directly on the order,
+    // but UserPetTagOrder only has a userId reference - its customer's
+    // name/email live on the User model, so those orders are matched by
+    // first finding Users whose name/email match, then matching on userId.
+    let petTagSearchQuery: any = {};
+    let userPetTagSearchQuery: any = {};
+
     if (search) {
-      searchQuery.$or = [
-        { petName: { $regex: search, $options: 'i' } },
-        { paymentIntentId: { $regex: search, $options: 'i' } }
+      const regex = { $regex: search, $options: 'i' };
+
+      petTagSearchQuery.$or = [
+        { name: regex },
+        { email: regex },
+        { petName: regex },
+        { petNames: regex },
+        { paymentIntentId: regex }
+      ];
+
+      const matchingUsers = await User.find({
+        $or: [{ firstName: regex }, { lastName: regex }, { email: regex }]
+      }).select('_id').lean();
+      const matchingUserIds = matchingUsers.map((user) => user._id);
+
+      userPetTagSearchQuery.$or = [
+        { petName: regex },
+        { petNames: regex },
+        { paymentIntentId: regex },
+        ...(matchingUserIds.length > 0 ? [{ userId: { $in: matchingUserIds } }] : [])
       ];
     }
 
     // Build status filter
     if (status && status !== 'all') {
-      searchQuery.status = status;
+      petTagSearchQuery.status = status;
+      userPetTagSearchQuery.status = status;
     }
 
     // Build sort object
@@ -67,11 +89,11 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
 
     // Execute queries for both models with pagination
     const [userOrders, petOrders] = await Promise.all([
-      UserPetTagOrder.find(searchQuery)
+      UserPetTagOrder.find(userPetTagSearchQuery)
         .populate('userId', 'firstName lastName email')
         .sort(sortObj)
         .lean(),
-      PetTagOrder.find(searchQuery)
+      PetTagOrder.find(petTagSearchQuery)
         .sort(sortObj)
         .lean()
     ]);
