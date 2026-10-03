@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOrderStats = exports.updateOrderStatus = exports.getOrderById = exports.getOrders = void 0;
 const express_async_handler_1 = __importDefault(require("express-async-handler"));
 const UserPetTagOrder_1 = __importDefault(require("../../models/UserPetTagOrder"));
+const User_1 = __importDefault(require("../../models/User"));
 const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder")); // Added import for PetTagOrder
 const emailService_1 = require("../../utils/emailService");
 // Helper function to get currency symbol based on country
@@ -35,28 +36,47 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
-        // Build search query
-        let searchQuery = {};
+        // Build search query. PetTagOrder keeps email/name directly on the order,
+        // but UserPetTagOrder only has a userId reference - its customer's
+        // name/email live on the User model, so those orders are matched by
+        // first finding Users whose name/email match, then matching on userId.
+        let petTagSearchQuery = {};
+        let userPetTagSearchQuery = {};
         if (search) {
-            searchQuery.$or = [
-                { petName: { $regex: search, $options: 'i' } },
-                { paymentIntentId: { $regex: search, $options: 'i' } }
+            const regex = { $regex: search, $options: 'i' };
+            petTagSearchQuery.$or = [
+                { name: regex },
+                { email: regex },
+                { petName: regex },
+                { petNames: regex },
+                { paymentIntentId: regex }
+            ];
+            const matchingUsers = await User_1.default.find({
+                $or: [{ firstName: regex }, { lastName: regex }, { email: regex }]
+            }).select('_id').lean();
+            const matchingUserIds = matchingUsers.map((user) => user._id);
+            userPetTagSearchQuery.$or = [
+                { petName: regex },
+                { petNames: regex },
+                { paymentIntentId: regex },
+                ...(matchingUserIds.length > 0 ? [{ userId: { $in: matchingUserIds } }] : [])
             ];
         }
         // Build status filter
         if (status && status !== 'all') {
-            searchQuery.status = status;
+            petTagSearchQuery.status = status;
+            userPetTagSearchQuery.status = status;
         }
         // Build sort object
         const sortObj = {};
         sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
         // Execute queries for both models with pagination
         const [userOrders, petOrders] = await Promise.all([
-            UserPetTagOrder_1.default.find(searchQuery)
+            UserPetTagOrder_1.default.find(userPetTagSearchQuery)
                 .populate('userId', 'firstName lastName email')
                 .sort(sortObj)
                 .lean(),
-            PetTagOrder_1.default.find(searchQuery)
+            PetTagOrder_1.default.find(petTagSearchQuery)
                 .sort(sortObj)
                 .lean()
         ]);
