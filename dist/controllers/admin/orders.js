@@ -34,7 +34,7 @@ const getCurrencySymbol = (country) => {
 // (or anything past paid) only ever happens after Stripe confirms payment, so
 // it's a safe stand-in for "succeeded" on that older data.
 const derivePaymentStatusFromOrderStatus = (status) => {
-    if (status === 'paid' || status === 'shipped' || status === 'delivered') {
+    if (status === 'paid' || status === 'processing' || status === 'shipped' || status === 'delivered') {
         return 'succeeded';
     }
     if (status === 'cancelled') {
@@ -168,6 +168,9 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
                     country: order.country || '',
                     paymentStatus: order.paymentStatus || 'pending',
                     isDiscount: Boolean(order.isDiscount),
+                    trackingNumber: order.trackingNumber,
+                    deliveryCompany: order.deliveryCompany,
+                    trackingLink: order.trackingLink,
                     orderType: 'UserPetTagOrder',
                     createdAt: order.createdAt,
                     updatedAt: order.updatedAt
@@ -198,6 +201,9 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
                     country: ((_f = order.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
                     paymentStatus: order.paymentStatus || derivePaymentStatusFromOrderStatus(order.status),
                     isDiscount: Boolean(order.isDiscount),
+                    trackingNumber: order.trackingNumber,
+                    deliveryCompany: order.deliveryCompany,
+                    trackingLink: order.trackingLink,
                     orderType: 'PetTagOrder',
                     createdAt: order.createdAt,
                     updatedAt: order.updatedAt
@@ -276,6 +282,9 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
                 country: order.country,
                 paymentStatus: order.paymentStatus,
                 isDiscount: Boolean(order.isDiscount),
+                trackingNumber: order.trackingNumber,
+                deliveryCompany: order.deliveryCompany,
+                trackingLink: order.trackingLink,
                 orderType: 'UserPetTagOrder',
                 createdAt: order.createdAt,
                 updatedAt: order.updatedAt
@@ -307,6 +316,9 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
                 country: ((_g = petOrder.shippingAddress) === null || _g === void 0 ? void 0 : _g.country) || '',
                 paymentStatus: petOrder.paymentStatus || derivePaymentStatusFromOrderStatus(petOrder.status),
                 isDiscount: Boolean(petOrder.isDiscount),
+                trackingNumber: petOrder.trackingNumber,
+                deliveryCompany: petOrder.deliveryCompany,
+                trackingLink: petOrder.trackingLink,
                 orderType: 'PetTagOrder',
                 createdAt: petOrder.createdAt,
                 updatedAt: petOrder.updatedAt
@@ -331,11 +343,11 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
     var _a, _b, _c, _d, _e, _f;
     try {
         const { orderId } = req.params;
-        const { status, trackingNumber, deliveryCompany } = req.body;
-        if (!status || !['pending', 'paid', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+        const { status, trackingNumber, deliveryCompany, trackingLink } = req.body;
+        if (!status || !['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status)) {
             res.status(400).json({
                 message: 'Invalid status',
-                error: 'Status must be one of: pending, paid, shipped, delivered, cancelled'
+                error: 'Status must be one of: pending, paid, processing, shipped, delivered, cancelled'
             });
             return;
         }
@@ -361,6 +373,9 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
         }
         if (deliveryCompany) {
             updateData.deliveryCompany = deliveryCompany.trim();
+        }
+        if (trackingLink) {
+            updateData.trackingLink = trackingLink.trim();
         }
         // Update order status
         let updatedOrder;
@@ -390,17 +405,26 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
             customerEmail = updatedOrder.email || '';
         }
         // Send email notifications (non-blocking)
-        if (customerEmail && (status === 'shipped' || status === 'cancelled')) {
+        if (customerEmail && (status === 'processing' || status === 'shipped' || status === 'cancelled')) {
             try {
                 const orderNumber = updatedOrder.orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`;
-                if (status === 'shipped') {
+                if (status === 'processing') {
+                    await (0, emailService_1.sendOrderProcessingEmail)(customerEmail, {
+                        customerName,
+                        orderNumber,
+                        petName: updatedOrder.petName,
+                        quantity: updatedOrder.quantity
+                    });
+                }
+                else if (status === 'shipped') {
                     await (0, emailService_1.sendOrderShippedEmail)(customerEmail, {
                         customerName,
                         orderNumber,
                         petName: updatedOrder.petName,
                         quantity: updatedOrder.quantity,
                         trackingNumber: updatedOrder.trackingNumber,
-                        deliveryCompany: updatedOrder.deliveryCompany
+                        deliveryCompany: updatedOrder.deliveryCompany,
+                        trackingLink: updatedOrder.trackingLink
                     });
                 }
                 else if (status === 'cancelled') {
@@ -447,6 +471,7 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
                 isDiscount: Boolean(updatedOrder.isDiscount),
                 trackingNumber: updatedOrder.trackingNumber,
                 deliveryCompany: updatedOrder.deliveryCompany,
+                trackingLink: updatedOrder.trackingLink,
                 createdAt: updatedOrder.createdAt,
                 updatedAt: updatedOrder.updatedAt
             };
@@ -477,6 +502,7 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
                 isDiscount: Boolean(updatedOrder.isDiscount),
                 trackingNumber: updatedOrder.trackingNumber,
                 deliveryCompany: updatedOrder.deliveryCompany,
+                trackingLink: updatedOrder.trackingLink,
                 createdAt: updatedOrder.createdAt,
                 updatedAt: updatedOrder.updatedAt
             };

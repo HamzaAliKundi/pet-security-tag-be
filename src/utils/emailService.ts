@@ -8,6 +8,7 @@ import {
   qrCodeFirstScanTemplate,
   credentialsEmailTemplate,
   orderShippedTemplate,
+  orderProcessingTemplate,
   orderCancelledTemplate,
   orderDeliveredTemplate,
   accountDeletedTemplate,
@@ -253,6 +254,34 @@ export const sendCredentialsEmail = async (email: string, credentialsData: {
   }
 };
 
+// Send order processing email
+export const sendOrderProcessingEmail = async (email: string, orderData: {
+  customerName: string;
+  orderNumber: string;
+  petName: string;
+  quantity: number;
+}): Promise<void> => {
+  const html = orderProcessingTemplate(orderData);
+
+  const msg = {
+    to: email,
+    from: {
+      email: env.SENDGRID_FROM_EMAIL,
+      name: env.SENDGRID_FROM_NAME
+    },
+    subject: 'Your Order Is Being Processed - Digital Tails',
+    html
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log('Order processing email sent successfully to:', email);
+  } catch (error) {
+    console.error('Error sending order processing email:', error);
+    throw error;
+  }
+};
+
 // Send order shipped email
 export const sendOrderShippedEmail = async (email: string, orderData: {
   customerName: string;
@@ -261,6 +290,7 @@ export const sendOrderShippedEmail = async (email: string, orderData: {
   quantity: number;
   trackingNumber?: string;
   deliveryCompany?: string;
+  trackingLink?: string;
 }): Promise<void> => {
   const html = orderShippedTemplate(orderData);
 

@@ -13,13 +13,14 @@ export interface IUserPetTagOrder extends Document {
   state: string;
   zipCode: string;
   country: string;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   paymentIntentId?: string;
   paymentStatus: 'pending' | 'succeeded' | 'failed' | 'cancelled';
   isDiscount?: boolean;
   isReplacement?: boolean;
   trackingNumber?: string;
   deliveryCompany?: string;
+  trackingLink?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,7 +89,7 @@ const UserPetTagOrderSchema: Schema = new Schema({
   status: {
     type: String,
     required: true,
-    enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'],
+    enum: ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
   paymentIntentId: {
@@ -114,6 +115,10 @@ const UserPetTagOrderSchema: Schema = new Schema({
     trim: true
   },
   deliveryCompany: {
+    type: String,
+    trim: true
+  },
+  trackingLink: {
     type: String,
     trim: true
   }

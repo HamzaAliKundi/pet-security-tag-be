@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import UserPetTagOrder from '../../models/UserPetTagOrder';
 import User from '../../models/User';
 import PetTagOrder from '../../models/PetTagOrder'; // Added import for PetTagOrder
-import { sendOrderShippedEmail, sendOrderCancelledEmail } from '../../utils/emailService';
+import { sendOrderProcessingEmail, sendOrderShippedEmail, sendOrderCancelledEmail } from '../../utils/emailService';
 
 // Helper function to get currency symbol based on country
 const getCurrencySymbol = (country: string | undefined | null): string => {
@@ -35,7 +35,7 @@ const getCurrencySymbol = (country: string | undefined | null): string => {
 // (or anything past paid) only ever happens after Stripe confirms payment, so
 // it's a safe stand-in for "succeeded" on that older data.
 const derivePaymentStatusFromOrderStatus = (status: string | undefined): string => {
-  if (status === 'paid' || status === 'shipped' || status === 'delivered') {
+  if (status === 'paid' || status === 'processing' || status === 'shipped' || status === 'delivered') {
     return 'succeeded';
   }
   if (status === 'cancelled') {
@@ -193,6 +193,9 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
            country: order.country || '',
            paymentStatus: order.paymentStatus || 'pending',
            isDiscount: Boolean(order.isDiscount),
+           trackingNumber: order.trackingNumber,
+           deliveryCompany: order.deliveryCompany,
+           trackingLink: order.trackingLink,
            orderType: 'UserPetTagOrder',
            createdAt: order.createdAt,
            updatedAt: order.updatedAt
@@ -222,6 +225,9 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
            country: order.shippingAddress?.country || '',
            paymentStatus: order.paymentStatus || derivePaymentStatusFromOrderStatus(order.status),
            isDiscount: Boolean(order.isDiscount),
+           trackingNumber: order.trackingNumber,
+           deliveryCompany: order.deliveryCompany,
+           trackingLink: order.trackingLink,
            orderType: 'PetTagOrder',
            createdAt: order.createdAt,
            updatedAt: order.updatedAt
@@ -307,6 +313,9 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
         country: order.country,
         paymentStatus: order.paymentStatus,
         isDiscount: Boolean(order.isDiscount),
+        trackingNumber: order.trackingNumber,
+        deliveryCompany: order.deliveryCompany,
+        trackingLink: order.trackingLink,
         orderType: 'UserPetTagOrder',
         createdAt: order.createdAt,
         updatedAt: order.updatedAt
@@ -337,6 +346,9 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
         country: petOrder.shippingAddress?.country || '',
         paymentStatus: petOrder.paymentStatus || derivePaymentStatusFromOrderStatus(petOrder.status),
         isDiscount: Boolean(petOrder.isDiscount),
+        trackingNumber: petOrder.trackingNumber,
+        deliveryCompany: petOrder.deliveryCompany,
+        trackingLink: petOrder.trackingLink,
         orderType: 'PetTagOrder',
         createdAt: petOrder.createdAt,
         updatedAt: petOrder.updatedAt
@@ -361,12 +373,12 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
 export const updateOrderStatus = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { orderId } = req.params;
-    const { status, trackingNumber, deliveryCompany } = req.body;
+    const { status, trackingNumber, deliveryCompany, trackingLink } = req.body;
 
-    if (!status || !['pending', 'paid', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+    if (!status || !['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status)) {
       res.status(400).json({
         message: 'Invalid status',
-        error: 'Status must be one of: pending, paid, shipped, delivered, cancelled'
+        error: 'Status must be one of: pending, paid, processing, shipped, delivered, cancelled'
       });
       return;
     }
@@ -396,6 +408,9 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
     }
     if (deliveryCompany) {
       updateData.deliveryCompany = deliveryCompany.trim();
+    }
+    if (trackingLink) {
+      updateData.trackingLink = trackingLink.trim();
     }
 
     // Update order status
@@ -436,18 +451,26 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
     }
 
     // Send email notifications (non-blocking)
-    if (customerEmail && (status === 'shipped' || status === 'cancelled')) {
+    if (customerEmail && (status === 'processing' || status === 'shipped' || status === 'cancelled')) {
       try {
         const orderNumber = (updatedOrder as any).orderId || updatedOrder.paymentIntentId || `ORD-${updatedOrder._id.toString().slice(-6).toUpperCase()}`;
-        
-        if (status === 'shipped') {
+
+        if (status === 'processing') {
+          await sendOrderProcessingEmail(customerEmail, {
+            customerName,
+            orderNumber,
+            petName: updatedOrder.petName,
+            quantity: updatedOrder.quantity
+          });
+        } else if (status === 'shipped') {
           await sendOrderShippedEmail(customerEmail, {
             customerName,
             orderNumber,
             petName: updatedOrder.petName,
             quantity: updatedOrder.quantity,
             trackingNumber: updatedOrder.trackingNumber,
-            deliveryCompany: updatedOrder.deliveryCompany
+            deliveryCompany: updatedOrder.deliveryCompany,
+            trackingLink: updatedOrder.trackingLink
           });
         } else if (status === 'cancelled') {
           await sendOrderCancelledEmail(customerEmail, {
@@ -493,6 +516,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         isDiscount: Boolean(updatedOrder.isDiscount),
         trackingNumber: updatedOrder.trackingNumber,
         deliveryCompany: updatedOrder.deliveryCompany,
+        trackingLink: updatedOrder.trackingLink,
         createdAt: updatedOrder.createdAt,
         updatedAt: updatedOrder.updatedAt
       };
@@ -522,6 +546,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         isDiscount: Boolean(updatedOrder.isDiscount),
         trackingNumber: updatedOrder.trackingNumber,
         deliveryCompany: updatedOrder.deliveryCompany,
+        trackingLink: updatedOrder.trackingLink,
         createdAt: updatedOrder.createdAt,
         updatedAt: updatedOrder.updatedAt
       };

@@ -98,7 +98,7 @@ const UserPetTagOrderSchema = new mongoose_1.Schema({
     status: {
         type: String,
         required: true,
-        enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'],
+        enum: ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'],
         default: 'pending'
     },
     paymentIntentId: {
@@ -124,6 +124,10 @@ const UserPetTagOrderSchema = new mongoose_1.Schema({
         trim: true
     },
     deliveryCompany: {
+        type: String,
+        trim: true
+    },
+    trackingLink: {
         type: String,
         trim: true
     }

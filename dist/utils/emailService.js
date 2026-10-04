@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendAccountDeletedEmail = exports.sendOrderDeliveredEmail = exports.sendOrderCancelledEmail = exports.sendOrderShippedEmail = exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionPaymentFailedFinalEmail = exports.sendSubscriptionPaymentFailedRetryEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
+exports.sendAccountDeletedEmail = exports.sendOrderDeliveredEmail = exports.sendOrderCancelledEmail = exports.sendOrderShippedEmail = exports.sendOrderProcessingEmail = exports.sendCredentialsEmail = exports.sendQRCodeFirstScanEmail = exports.sendSubscriptionPaymentFailedFinalEmail = exports.sendSubscriptionPaymentFailedRetryEmail = exports.sendSubscriptionNotificationEmail = exports.sendOrderConfirmationEmail = exports.sendPasswordResetEmail = exports.sendVerificationEmail = void 0;
 const mail_1 = __importDefault(require("@sendgrid/mail"));
 const env_1 = require("../config/env");
 const emailtemplate_1 = require("./emailtemplate");
@@ -194,6 +194,28 @@ const sendCredentialsEmail = async (email, credentialsData) => {
     }
 };
 exports.sendCredentialsEmail = sendCredentialsEmail;
+// Send order processing email
+const sendOrderProcessingEmail = async (email, orderData) => {
+    const html = (0, emailtemplate_1.orderProcessingTemplate)(orderData);
+    const msg = {
+        to: email,
+        from: {
+            email: env_1.env.SENDGRID_FROM_EMAIL,
+            name: env_1.env.SENDGRID_FROM_NAME
+        },
+        subject: 'Your Order Is Being Processed - Digital Tails',
+        html
+    };
+    try {
+        await mail_1.default.send(msg);
+        console.log('Order processing email sent successfully to:', email);
+    }
+    catch (error) {
+        console.error('Error sending order processing email:', error);
+        throw error;
+    }
+};
+exports.sendOrderProcessingEmail = sendOrderProcessingEmail;
 // Send order shipped email
 const sendOrderShippedEmail = async (email, orderData) => {
     const html = (0, emailtemplate_1.orderShippedTemplate)(orderData);

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.subscriptionPaymentFailedFinalTemplate = exports.subscriptionPaymentFailedRetryTemplate = exports.accountDeletedTemplate = exports.orderDeliveredTemplate = exports.orderCancelledTemplate = exports.orderShippedTemplate = exports.petFoundNotificationTemplate = exports.credentialsEmailTemplate = exports.qrCodeFirstScanTemplate = exports.subscriptionNotificationTemplate = exports.orderConfirmationTemplate = exports.resetPasswordTemplate = exports.verificationEmailTemplate = void 0;
+exports.subscriptionPaymentFailedFinalTemplate = exports.subscriptionPaymentFailedRetryTemplate = exports.accountDeletedTemplate = exports.orderDeliveredTemplate = exports.orderCancelledTemplate = exports.orderProcessingTemplate = exports.orderShippedTemplate = exports.petFoundNotificationTemplate = exports.credentialsEmailTemplate = exports.qrCodeFirstScanTemplate = exports.subscriptionNotificationTemplate = exports.orderConfirmationTemplate = exports.resetPasswordTemplate = exports.verificationEmailTemplate = void 0;
 const handlebars_1 = require("handlebars");
 exports.verificationEmailTemplate = (0, handlebars_1.compile)(`
 <!DOCTYPE html>
@@ -1489,6 +1489,11 @@ exports.orderShippedTemplate = (0, handlebars_1.compile)(`
                 <div class="tracking-info" style="margin-top: 15px; font-size: 14px; color: #636363;">
                     You can use this tracking number on the delivery company's website to track your package.
                 </div>
+                {{#if trackingLink}}
+                <div class="tracking-info" style="margin-top: 15px;">
+                    <a href="{{trackingLink}}" class="tracking-number" style="text-decoration: none;">Track Your Package →</a>
+                </div>
+                {{/if}}
             </div>
             {{/if}}
             
@@ -1508,6 +1513,156 @@ exports.orderShippedTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
+                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+            </div>
+            <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
+                © Digital Tails 2026. All Rights Reserved.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+`);
+// Order Processing Email Template
+exports.orderProcessingTemplate = (0, handlebars_1.compile)(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Order Is Being Processed - Digital Tails</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+            color: #2D2D2D;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: #4CB2E2;
+            padding: 30px 20px;
+            text-align: center;
+            color: white;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .tagline {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .welcome-text {
+            font-size: 24px;
+            color: #4CB2E2;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .description {
+            color: #2D2D2D;
+            font-size: 16px;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .order-details {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        .order-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .order-row:last-child {
+            border-bottom: none;
+        }
+        .order-label {
+            font-weight: bold;
+            color: #2D2D2D;
+        }
+        .order-value {
+            color: #0F2137;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        .footer-text {
+            color: #2D2D2D;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .social-links {
+            margin-top: 20px;
+        }
+        .social-links a {
+            display: inline-block;
+            margin: 0 10px;
+            color: #4CB2E2;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">🐾 DIGITAL TAILS</div>
+            <div class="tagline">Your Order Is Being Processed</div>
+        </div>
+
+        <div class="content">
+            <div class="welcome-text">Thank You, {{customerName}}!</div>
+            <p class="description">
+                Thank you for your order! 🐾 Your order is now being processed and will be shipped shortly.
+                Once your Pet Smart Tag has been dispatched, you'll receive another email with your tracking
+                information so you can keep an eye on its journey to you. 🐈 🐶 ❤️
+            </p>
+
+            <div class="order-details">
+                <div class="order-row">
+                    <span class="order-label">Order Number:</span>
+                    <span class="order-value">{{orderNumber}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Pet Name:</span>
+                    <span class="order-value">{{petName}}</span>
+                </div>
+                <div class="order-row">
+                    <span class="order-label">Quantity:</span>
+                    <span class="order-value">{{quantity}}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p class="footer-text">
+                Best wishes<br>
+                <strong>Digital Tails</strong><br>
+                Support Team
+            </p>
+            <div class="social-links">
+                <a href="mailto:info@digitaltails.com">📧 Email</a> |
                 <a href="https://wa.me/447377518902">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">

@@ -7,7 +7,7 @@ export interface IPetTagOrder extends Document {
   petNames?: string[]; // Array of pet names for each tag (length should match quantity)
   quantity: number;
   subscriptionType: 'monthly' | 'yearly';
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   paymentStatus?: 'pending' | 'succeeded' | 'failed' | 'cancelled';
   paymentIntentId?: string;
   tagColor?: string; // Keep for backward compatibility
@@ -23,6 +23,7 @@ export interface IPetTagOrder extends Document {
   phone?: string;
   trackingNumber?: string;
   deliveryCompany?: string;
+  trackingLink?: string;
   termsAccepted?: boolean;
   isDiscount?: boolean;
   createdAt: Date;
@@ -65,7 +66,7 @@ const PetTagOrderSchema: Schema = new Schema({
   status: {
     type: String,
     required: true,
-    enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'],
+    enum: ['pending', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'],
     default: 'pending'
   },
   paymentStatus: {
@@ -120,6 +121,10 @@ const PetTagOrderSchema: Schema = new Schema({
     trim: true
   },
   deliveryCompany: {
+    type: String,
+    trim: true
+  },
+  trackingLink: {
     type: String,
     trim: true
   },
