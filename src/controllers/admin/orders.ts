@@ -30,6 +30,20 @@ const getCurrencySymbol = (country: string | undefined | null): string => {
   return '£';
 };
 
+// PetTagOrder only started storing its own paymentStatus recently. For orders
+// created before that, derive it from the fulfillment `status` instead: paid
+// (or anything past paid) only ever happens after Stripe confirms payment, so
+// it's a safe stand-in for "succeeded" on that older data.
+const derivePaymentStatusFromOrderStatus = (status: string | undefined): string => {
+  if (status === 'paid' || status === 'shipped' || status === 'delivered') {
+    return 'succeeded';
+  }
+  if (status === 'cancelled') {
+    return 'cancelled';
+  }
+  return 'pending';
+};
+
 // Get all orders with search, filtering, and pagination
 export const getOrders = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
@@ -206,7 +220,7 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
            state: order.shippingAddress?.state || '',
            zipCode: order.shippingAddress?.zipCode || '',
            country: order.shippingAddress?.country || '',
-           paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+           paymentStatus: order.paymentStatus || derivePaymentStatusFromOrderStatus(order.status),
            isDiscount: Boolean(order.isDiscount),
            orderType: 'PetTagOrder',
            createdAt: order.createdAt,
@@ -321,7 +335,7 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response): Pr
         state: petOrder.shippingAddress?.state || '',
         zipCode: petOrder.shippingAddress?.zipCode || '',
         country: petOrder.shippingAddress?.country || '',
-        paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+        paymentStatus: petOrder.paymentStatus || derivePaymentStatusFromOrderStatus(petOrder.status),
         isDiscount: Boolean(petOrder.isDiscount),
         orderType: 'PetTagOrder',
         createdAt: petOrder.createdAt,
@@ -504,7 +518,7 @@ export const updateOrderStatus = asyncHandler(async (req: Request, res: Response
         state: updatedOrder.shippingAddress?.state || '',
         zipCode: updatedOrder.shippingAddress?.zipCode || '',
         country: updatedOrder.shippingAddress?.country || '',
-        paymentStatus: updatedOrder.paymentStatus || 'pending',
+        paymentStatus: updatedOrder.paymentStatus || derivePaymentStatusFromOrderStatus(updatedOrder.status),
         isDiscount: Boolean(updatedOrder.isDiscount),
         trackingNumber: updatedOrder.trackingNumber,
         deliveryCompany: updatedOrder.deliveryCompany,

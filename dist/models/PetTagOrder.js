@@ -73,6 +73,11 @@ const PetTagOrderSchema = new mongoose_1.Schema({
         enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'],
         default: 'pending'
     },
+    paymentStatus: {
+        type: String,
+        enum: ['pending', 'succeeded', 'failed', 'cancelled'],
+        default: 'pending'
+    },
     paymentIntentId: {
         type: String,
         trim: true

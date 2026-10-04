@@ -8,6 +8,7 @@ export interface IPetTagOrder extends Document {
   quantity: number;
   subscriptionType: 'monthly' | 'yearly';
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  paymentStatus?: 'pending' | 'succeeded' | 'failed' | 'cancelled';
   paymentIntentId?: string;
   tagColor?: string; // Keep for backward compatibility
   tagColors?: string[]; // Array of colors for each tag (length should match quantity)
@@ -65,6 +66,11 @@ const PetTagOrderSchema: Schema = new Schema({
     type: String,
     required: true,
     enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled'],
+    default: 'pending'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'succeeded', 'failed', 'cancelled'],
     default: 'pending'
   },
   paymentIntentId: {

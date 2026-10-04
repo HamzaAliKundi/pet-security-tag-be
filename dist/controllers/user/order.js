@@ -113,6 +113,7 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
         // Skip payment intent creation if total cost is 0 (free order with discount)
         let paymentResult = null;
         let orderStatus = 'pending';
+        let orderPaymentStatus = 'pending';
         if (totalCostEuro > 0) {
             // Create Stripe payment intent only if there's a charge
             const amountInCents = Math.round(totalCostEuro * 100); // Convert to cents
@@ -137,6 +138,7 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
         else {
             // For free orders (discount applied), skip payment and mark as paid
             orderStatus = 'paid';
+            orderPaymentStatus = 'succeeded';
         }
         // Create the order
         const order = await PetTagOrder_1.default.create({
@@ -153,6 +155,7 @@ exports.createOrder = (0, express_async_handler_1.default)(async (req, res) => {
             shippingAddress,
             paymentIntentId: paymentResult === null || paymentResult === void 0 ? void 0 : paymentResult.paymentIntentId,
             status: orderStatus,
+            paymentStatus: orderPaymentStatus,
             termsAccepted: termsAccepted || false,
             isDiscount: discountFlag
         });
@@ -384,6 +387,7 @@ exports.confirmPayment = (0, express_async_handler_1.default)(async (req, res) =
         if (isPaymentSuccessful) {
             // Update order status
             order.status = 'paid';
+            order.paymentStatus = 'succeeded';
             await order.save();
             // Check if user already exists
             let user = await User_1.default.findOne({ email: order.email.toLowerCase() });

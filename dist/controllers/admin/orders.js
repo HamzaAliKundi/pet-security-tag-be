@@ -29,6 +29,19 @@ const getCurrencySymbol = (country) => {
     // Default to GBP for all other countries (Europe, etc.)
     return '£';
 };
+// PetTagOrder only started storing its own paymentStatus recently. For orders
+// created before that, derive it from the fulfillment `status` instead: paid
+// (or anything past paid) only ever happens after Stripe confirms payment, so
+// it's a safe stand-in for "succeeded" on that older data.
+const derivePaymentStatusFromOrderStatus = (status) => {
+    if (status === 'paid' || status === 'shipped' || status === 'delivered') {
+        return 'succeeded';
+    }
+    if (status === 'cancelled') {
+        return 'cancelled';
+    }
+    return 'pending';
+};
 // Get all orders with search, filtering, and pagination
 exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
     try {
@@ -183,7 +196,7 @@ exports.getOrders = (0, express_async_handler_1.default)(async (req, res) => {
                     state: ((_d = order.shippingAddress) === null || _d === void 0 ? void 0 : _d.state) || '',
                     zipCode: ((_e = order.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
                     country: ((_f = order.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
-                    paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                    paymentStatus: order.paymentStatus || derivePaymentStatusFromOrderStatus(order.status),
                     isDiscount: Boolean(order.isDiscount),
                     orderType: 'PetTagOrder',
                     createdAt: order.createdAt,
@@ -292,7 +305,7 @@ exports.getOrderById = (0, express_async_handler_1.default)(async (req, res) => 
                 state: ((_e = petOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.state) || '',
                 zipCode: ((_f = petOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.zipCode) || '',
                 country: ((_g = petOrder.shippingAddress) === null || _g === void 0 ? void 0 : _g.country) || '',
-                paymentStatus: 'pending', // PetTagOrder doesn't have paymentStatus
+                paymentStatus: petOrder.paymentStatus || derivePaymentStatusFromOrderStatus(petOrder.status),
                 isDiscount: Boolean(petOrder.isDiscount),
                 orderType: 'PetTagOrder',
                 createdAt: petOrder.createdAt,
@@ -460,7 +473,7 @@ exports.updateOrderStatus = (0, express_async_handler_1.default)(async (req, res
                 state: ((_d = updatedOrder.shippingAddress) === null || _d === void 0 ? void 0 : _d.state) || '',
                 zipCode: ((_e = updatedOrder.shippingAddress) === null || _e === void 0 ? void 0 : _e.zipCode) || '',
                 country: ((_f = updatedOrder.shippingAddress) === null || _f === void 0 ? void 0 : _f.country) || '',
-                paymentStatus: updatedOrder.paymentStatus || 'pending',
+                paymentStatus: updatedOrder.paymentStatus || derivePaymentStatusFromOrderStatus(updatedOrder.status),
                 isDiscount: Boolean(updatedOrder.isDiscount),
                 trackingNumber: updatedOrder.trackingNumber,
                 deliveryCompany: updatedOrder.deliveryCompany,

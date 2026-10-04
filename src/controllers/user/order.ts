@@ -118,7 +118,8 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
     // Skip payment intent creation if total cost is 0 (free order with discount)
     let paymentResult = null;
     let orderStatus = 'pending';
-    
+    let orderPaymentStatus = 'pending';
+
     if (totalCostEuro > 0) {
       // Create Stripe payment intent only if there's a charge
       const amountInCents = Math.round(totalCostEuro * 100); // Convert to cents
@@ -143,6 +144,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
     } else {
       // For free orders (discount applied), skip payment and mark as paid
       orderStatus = 'paid';
+      orderPaymentStatus = 'succeeded';
     }
 
     // Create the order
@@ -160,6 +162,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response): Pro
       shippingAddress,
       paymentIntentId: paymentResult?.paymentIntentId,
       status: orderStatus,
+      paymentStatus: orderPaymentStatus,
       termsAccepted: termsAccepted || false,
       isDiscount: discountFlag
     });
@@ -410,6 +413,7 @@ export const confirmPayment = asyncHandler(async (req: Request, res: Response): 
     if (isPaymentSuccessful) {
       // Update order status
       order.status = 'paid';
+      order.paymentStatus = 'succeeded';
       await order.save();
 
       // Check if user already exists
