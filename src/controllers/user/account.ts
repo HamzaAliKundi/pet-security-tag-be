@@ -7,6 +7,7 @@ import PetTagOrder from '../../models/PetTagOrder';
 import Subscription from '../../models/Subscription';
 import QRCode from '../../models/QRCode';
 import { sendAccountDeletedEmail } from '../../utils/emailService';
+import { cancelStripeSubscription } from '../../utils/stripeService';
 
 // Get single user (Private)
 export const getSingleUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
@@ -209,6 +210,15 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response): P
   const subscriptions = await Subscription.find({ userId });
   const hasSubscription = subscriptions.length > 0;
   const hasLifetimePlan = subscriptions.some(sub => sub.type === 'lifetime');
+
+  // Cancel any active recurring Stripe subscriptions immediately so the
+  // customer isn't auto-billed after their account no longer exists.
+  // Lifetime plans are a one-time payment and have no Stripe subscription to cancel.
+  for (const subscription of subscriptions) {
+    if (subscription.stripeSubscriptionId) {
+      await cancelStripeSubscription(subscription.stripeSubscriptionId, true);
+    }
+  }
 
   // Prepare customer name
   const customerName = existingUser.firstName 

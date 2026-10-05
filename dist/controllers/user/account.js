@@ -12,6 +12,7 @@ const PetTagOrder_1 = __importDefault(require("../../models/PetTagOrder"));
 const Subscription_1 = __importDefault(require("../../models/Subscription"));
 const QRCode_1 = __importDefault(require("../../models/QRCode"));
 const emailService_1 = require("../../utils/emailService");
+const stripeService_1 = require("../../utils/stripeService");
 // Get single user (Private)
 exports.getSingleUser = (0, express_async_handler_1.default)(async (req, res) => {
     var _a;
@@ -194,6 +195,14 @@ exports.deleteAccount = (0, express_async_handler_1.default)(async (req, res) =>
     const subscriptions = await Subscription_1.default.find({ userId });
     const hasSubscription = subscriptions.length > 0;
     const hasLifetimePlan = subscriptions.some(sub => sub.type === 'lifetime');
+    // Cancel any active recurring Stripe subscriptions immediately so the
+    // customer isn't auto-billed after their account no longer exists.
+    // Lifetime plans are a one-time payment and have no Stripe subscription to cancel.
+    for (const subscription of subscriptions) {
+        if (subscription.stripeSubscriptionId) {
+            await (0, stripeService_1.cancelStripeSubscription)(subscription.stripeSubscriptionId, true);
+        }
+    }
     // Prepare customer name
     const customerName = existingUser.firstName
         ? `${existingUser.firstName}${existingUser.lastName ? ' ' + existingUser.lastName : ''}`
