@@ -52,6 +52,7 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
       limit = 10,
       search = '',
       status = 'all',
+      paymentStatus = 'all',
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
@@ -127,18 +128,44 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
       }
     });
 
+    // Effective payment status for an order: the real stored field if present,
+    // otherwise derived from fulfillment status (see derivePaymentStatusFromOrderStatus).
+    const getEffectivePaymentStatus = (order: any): string =>
+      order.paymentStatus || derivePaymentStatusFromOrderStatus(order.status);
+
+    // Breakdown of how many of the current search+status results fall into each
+    // payment status bucket - computed BEFORE narrowing by paymentStatus, so the
+    // frontend can tell the admin e.g. "2 matching orders exist under Pending"
+    // when they're filtered to Succeeded and the search comes up empty there.
+    const paymentStatusBreakdown: Record<string, number> = {
+      succeeded: 0,
+      pending: 0,
+      failed: 0,
+      cancelled: 0
+    };
+    for (const order of allOrders) {
+      const effectiveStatus = getEffectivePaymentStatus(order);
+      paymentStatusBreakdown[effectiveStatus] = (paymentStatusBreakdown[effectiveStatus] || 0) + 1;
+    }
+
+    // Narrow down to the requested payment status, if any
+    if (paymentStatus && paymentStatus !== 'all') {
+      allOrders = allOrders.filter((order) => getEffectivePaymentStatus(order) === paymentStatus);
+    }
+
     // Get total count for pagination
     const totalOrders = allOrders.length;
-    
+
     // Check if requested page is valid
     const totalPages = Math.ceil(totalOrders / limitNum);
-    
+
     // Handle case when there are no orders
     if (totalOrders === 0) {
       res.status(200).json({
         message: 'No orders found',
         status: 200,
         orders: [],
+        paymentStatusBreakdown,
         pagination: {
           currentPage: 1,
           totalPages: 0,
@@ -150,7 +177,7 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
       });
       return;
     }
-    
+
     // Check if requested page is valid
     if (pageNum > totalPages) {
       res.status(400).json({
@@ -239,6 +266,7 @@ export const getOrders = asyncHandler(async (req: Request, res: Response): Promi
       message: 'Orders retrieved successfully',
       status: 200,
       orders: transformedOrders,
+      paymentStatusBreakdown,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(totalOrders / limitNum),
