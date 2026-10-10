@@ -153,7 +153,7 @@ exports.verificationEmailTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -334,7 +334,7 @@ exports.resetPasswordTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -523,7 +523,7 @@ exports.orderConfirmationTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -708,7 +708,7 @@ exports.subscriptionNotificationTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -910,7 +910,7 @@ exports.qrCodeFirstScanTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1129,7 +1129,7 @@ exports.credentialsEmailTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1309,7 +1309,7 @@ exports.petFoundNotificationTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1513,7 +1513,7 @@ exports.orderShippedTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1663,7 +1663,7 @@ exports.orderProcessingTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> |
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1839,7 +1839,7 @@ exports.orderCancelledTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -2016,7 +2016,7 @@ exports.orderDeliveredTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -2190,7 +2190,7 @@ exports.accountDeletedTemplate = (0, handlebars_1.compile)(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.

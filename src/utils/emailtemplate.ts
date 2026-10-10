@@ -151,7 +151,7 @@ export const verificationEmailTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -333,7 +333,7 @@ export const resetPasswordTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -523,7 +523,7 @@ export const orderConfirmationTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -709,7 +709,7 @@ export const subscriptionNotificationTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -912,7 +912,7 @@ export const qrCodeFirstScanTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1132,7 +1132,7 @@ export const credentialsEmailTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1313,7 +1313,7 @@ export const petFoundNotificationTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1518,7 +1518,7 @@ export const orderShippedTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1669,7 +1669,7 @@ export const orderProcessingTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> |
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -1846,7 +1846,7 @@ export const orderCancelledTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -2024,7 +2024,7 @@ export const orderDeliveredTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
@@ -2199,7 +2199,7 @@ export const accountDeletedTemplate = compile(`
             </p>
             <div class="social-links">
                 <a href="mailto:info@digitaltails.com">📧 Email</a> | 
-                <a href="https://wa.me/447377518902">💬 WhatsApp</a>
+                <a href="https://wa.me/447572797141">💬 WhatsApp</a>
             </div>
             <p class="footer-text" style="margin-top: 20px; font-size: 12px;">
                 © Digital Tails 2026. All Rights Reserved.
